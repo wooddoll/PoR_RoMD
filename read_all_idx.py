@@ -38,6 +38,10 @@ def read_all_idx(file_path):
             pos += 1
 
         text = text_bytes.decode('ascii', errors='replace')
+        #check text ends '.all'abs
+        if not text.endswith('.all'):
+            print(f"Warning: Incomplete text ends with .all")
+            break
 
         # Read 8 bytes
         if pos + 8 > len(data):
@@ -46,10 +50,18 @@ def read_all_idx(file_path):
         extra_bytes = data[pos:pos + 8]
         pos += 8
 
+        hi_bytes = int.from_bytes(extra_bytes[:4], byteorder='little')
+        lo_bytes = int.from_bytes(extra_bytes[4:], byteorder='little')
+        
+        # check hi is zero
+        if hi_bytes != 0:
+            print(f"Warning: first 4 bytes should be zero")
+            break
+
         entries.append({
             'index': entry_index,
-            'text': text,
-            'extra_bytes': extra_bytes,
+            'text': text[:-4],
+            'extra_bytes': lo_bytes,
         })
         entry_index += 1
 
@@ -66,7 +78,7 @@ def print_entries(entries):
     print()
 
     for entry in entries:
-        extra_hex = entry['extra_bytes'].hex(' ')
+        extra_hex = hex(entry['extra_bytes'])
         print(f"[{entry['index']:4d}] text='{entry['text']}' extra={extra_hex}")
 
 
