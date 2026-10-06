@@ -10,19 +10,19 @@ from PIL import Image, ImageDraw
 @dataclass
 class DffData:
     """Data structure for parsed DFF binary file."""
-    header: List[int] = field(default_factory=list)          # First 4 values
-    array_5x256: List[List[int]] = field(default_factory=list)  # 5 values x 256 lines
-    array_2x256_a: List[List[int]] = field(default_factory=list)  # 2 values x 256 lines
-    array_2x256_b: List[List[int]] = field(default_factory=list)  # 2 values x 256 lines
+    header: List[int] = field(default_factory=list)          # 3 values: count, width, height
+    array_5x256: List[List[int]] = field(default_factory=list)  # 256 lines of (index, x0, y0, x1, y1)
+    fair_count: int = 0                                      # fair count value
+    array_2x256: List[List[int]] = field(default_factory=list)  # 256 pairs, actual index values
 
 
 def read_binary_as_int32(file_path):
     """
     Reads a binary file and returns a DffData structure.
-    - header: first 4 values
-    - array_5x256: 5 values per line, 256 lines
-    - array_2x256_a: 2 values per line, 256 lines
-    - array_2x256_b: 2 values per line, 256 lines
+    - header: 3 values (count, width, height)
+    - array_5x256: 256 lines of (index, x0, y0, x1, y1), index starts at 0
+    - fair_count: 1 value
+    - array_2x256: 256 pairs, actual index values
     """
     try:
         with open(file_path, 'rb') as f:
@@ -44,39 +44,38 @@ def read_binary_as_int32(file_path):
     for i in range(num_ints):
         offset = i * 4
         value = struct.unpack('<i', data[offset:offset + 4])[0]
-        # If value is between -1 and -128, add 256
-        if -128 <= value <= -1:
-            value += 256
         values.append(value)
 
     result = DffData()
 
-    # Header: first 4 values
-    result.header = values[:4]
+    # Header: first 3 values (count, width, height)
+    result.header = values[:3]
 
-    # array_5x256: next 256 lines, 5 values per line
-    pos = 4
+    # array_5x256: next 256 lines, 5 values per line (index, x0, y0, x1, y1)
+    pos = 3
     for _ in range(256):
         if pos >= num_ints:
             break
         end = min(pos + 5, num_ints)
-        result.array_5x256.append(values[pos:end])
+        ixy01_5 = values[pos:end]
+        index = ixy01_5[0]
+        # If index is between -1 and -128, add 256
+        if -128 <= index <= -1:
+            ixy01_5[0] += 256
+        result.array_5x256.append(ixy01_5)
         pos = end
 
-    # array_2x256_a: next 256 lines, 2 values per line
+    # fair_count: next 1 value
+    if pos < num_ints:
+        result.fair_count = values[pos]
+        pos += 1
+
+    # array_2x256: next 256 pairs, actual index values
     for _ in range(256):
         if pos >= num_ints:
             break
         end = min(pos + 2, num_ints)
-        result.array_2x256_a.append(values[pos:end])
-        pos = end
-
-    # array_2x256_b: next 256 lines, 2 values per line
-    for _ in range(256):
-        if pos >= num_ints:
-            break
-        end = min(pos + 2, num_ints)
-        result.array_2x256_b.append(values[pos:end])
+        result.array_2x256.append(values[pos:end])
         pos = end
 
     # Warn if there are leftover bytes
@@ -92,16 +91,15 @@ def print_dff_data(dff: DffData):
     print("\n=== Header ===")
     print(" ".join(f"{v:10d}" for v in dff.header))
 
-    print("\n=== array_5x256 (5 values x 256 lines) ===")
+    print("\n=== array_5x256 (index, x0, y0, x1, y1) x 256 lines ===")
     for i, line in enumerate(dff.array_5x256):
         print(f"[{i:4d}] " + " ".join(f"{v:10d}" for v in line))
 
-    print("\n=== array_2x256_a (2 values x 256 lines) ===")
-    for i, line in enumerate(dff.array_2x256_a):
-        print(f"[{i:4d}] " + " ".join(f"{v:10d}" for v in line))
+    print(f"\n=== fair_count ===")
+    print(f"{dff.fair_count}")
 
-    print("\n=== array_2x256_b (2 values x 256 lines) ===")
-    for i, line in enumerate(dff.array_2x256_b):
+    print("\n=== array_2x256 (256 pairs) ===")
+    for i, line in enumerate(dff.array_2x256):
         print(f"[{i:4d}] " + " ".join(f"{v:10d}" for v in line))
 
 
@@ -109,8 +107,8 @@ def draw_boxes_on_bmp(dff_path):
     """
     Reads the DFF file, finds the corresponding BMP file (same name, .bmp extension),
     verifies the BMP dimensions match the header (width, height),
-    draws semi-transparent pink boxes using array_5x256 data,
-    and saves the result as a PNG file.
+    draws semi-transparent pink hollow boxes using array_5x256 data,
+    and saves the result as a PNG file in the current folder.
     """
     # Read DFF data
     dff = read_binary_as_int32(dff_path)
@@ -157,11 +155,11 @@ def draw_boxes_on_bmp(dff_path):
     # Pink color with semi-transparency (alpha=128)
     pink = (255, 105, 180, 128)
 
-    # Draw hollow boxes using array_5x256 data: (x0, y0, x1, y1, index)
+    # Draw hollow boxes using array_5x256 data: (index, x0, y0, x1, y1)
     for i, box in enumerate(dff.array_5x256):
-        if len(box) < 4:
+        if len(box) < 5:
             continue
-        x0, y0, x1, y1 = box[0], box[1], box[2], box[3]
+        index, x0, y0, x1, y1 = box[0], box[1], box[2], box[3], box[4]
         # Draw hollow rectangle (outline only) from (x0, y0) to (x1, y1)
         draw.rectangle([x0, y0, x1, y1], outline=pink, width=1)
 
