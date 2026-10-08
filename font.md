@@ -19,7 +19,7 @@ index, x0, y0, x1, y1      // index값은 0부터 시작해서 255까지 증가.
 [127, 127], [126, 126] ... [0, 0] // 128쌍, 일정하게 감소
 [0xFFFFFFFF, 0xFF000000], [0xFEFFFFFF, 0xFE000000] ... [0x80FFFFFF, 0x80000000] // 128쌍, 음수로 나오는 index에 대한 실제 양수 값 index
 
-font0--------------------------------- 
+font0--------------------------------- 가능한 한글 폰트 13px이하
 font heights: {19}
 BMP size: 565x80
 Header expected: 565x80
@@ -35,7 +35,7 @@ BMP dimensions match header.
 A 글자 기준: upper padding 3 px, right padding 2 px, bottom padding 5 px
 💡 상단 시작점으로부터 베이스라인까지의 거리: 14 px
 
-font1---------------------------------
+font1--------------------------------- 가능한 한글 폰트 12px이하
 font heights: {17}
 BMP size: 520x72
 Header expected: 520x72
@@ -51,7 +51,7 @@ BMP dimensions match header.
 A 글자 기준: upper padding 4 px, right padding 2 px, bottom padding 4 px
 💡 상단 시작점으로부터 베이스라인까지의 거리: 13 px
 
-font2---------------------------------
+font2--------------------------------- 가능한 한글 폰트 21px이하
 font heights: {29}
 BMP size: 811x120
 Header expected: 811x120
@@ -67,7 +67,7 @@ BMP dimensions match header.
 A 글자 기준: upper padding 5 px, right padding 2 px, bottom padding 7 px
 💡 상단 시작점으로부터 베이스라인까지의 거리: 22 px
 
-font3---------------------------------
+font3--------------------------------- 가능한 한글 폰트 9px이하
 File size: 7184 bytes
 Number of 4-byte integers: 1796
 font heights: {14}
@@ -85,7 +85,7 @@ BMP dimensions match header.
 A 글자 기준: upper padding 3 px, right padding 1 px, bottom padding 4 px
 💡 상단 시작점으로부터 베이스라인까지의 거리: 10 px
 
-font4---------------------------------
+font4--------------------------------- 가능한 한글 폰트 11px이하
 font heights: {16}
 BMP size: 600x68
 Header expected: 600x68
@@ -101,7 +101,9 @@ BMP dimensions match header.
 A 글자 기준: upper padding 3 px, right padding 1 px, bottom padding 4 px
 💡 상단 시작점으로부터 베이스라인까지의 거리: 12 px
 //////////
-
+0, 1, 2 같은 폰트, 약간 장식적이고 판타지 느낌; 13px, 12px, 21px; Umdot font
+3, 4 같은 폰트, 딱딱하고 포멀한, 시스템용 폰트; 9px, 11px; 굴림체?
+////////////
 struct cFont {
     void *vtable;              // +0x00
 
