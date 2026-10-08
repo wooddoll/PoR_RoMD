@@ -19,8 +19,87 @@ index, x0, y0, x1, y1      // index값은 0부터 시작해서 255까지 증가.
 [127, 127], [126, 126] ... [0, 0] // 128쌍, 일정하게 감소
 [0xFFFFFFFF, 0xFF000000], [0xFEFFFFFF, 0xFE000000] ... [0x80FFFFFF, 0x80000000] // 128쌍, 음수로 나오는 index에 대한 실제 양수 값 index
 
+font0--------------------------------- 
+font heights: {19}
+BMP size: 565x80
+Header expected: 565x80
+BMP dimensions match header.
+--- [실제 글자 크기 분석 결과] ---
+   - bbox(10, 19)
+■ 박스 내 상대 좌표 (0,0 기준)
+   - left 0px, right: 7px
+   - upper: 3px, bottom: 13px
+---------------------------------
+💡 실제 글자 순수 폭(Width)  : 8 px
+💡 실제 글자 순수 높이(Height): 11 px
+A 글자 기준: upper padding 3 px, right padding 2 px, bottom padding 5 px
+💡 상단 시작점으로부터 베이스라인까지의 거리: 14 px
 
+font1---------------------------------
+font heights: {17}
+BMP size: 520x72
+Header expected: 520x72
+BMP dimensions match header.
+--- [실제 글자 크기 분석 결과] ---
+   - bbox(9, 17)
+■ 박스 내 상대 좌표 (0,0 기준)
+   - left 0px, right: 6px
+   - upper: 4px, bottom: 12px
+---------------------------------
+💡 실제 글자 순수 폭(Width)  : 7 px
+💡 실제 글자 순수 높이(Height): 9 px
+A 글자 기준: upper padding 4 px, right padding 2 px, bottom padding 4 px
+💡 상단 시작점으로부터 베이스라인까지의 거리: 13 px
 
+font2---------------------------------
+font heights: {29}
+BMP size: 811x120
+Header expected: 811x120
+BMP dimensions match header.
+--- [실제 글자 크기 분석 결과] ---
+   - bbox(14, 29)
+■ 박스 내 상대 좌표 (0,0 기준)
+   - left 0px, right: 11px
+   - upper: 5px, bottom: 21px
+---------------------------------
+💡 실제 글자 순수 폭(Width)  : 12 px
+💡 실제 글자 순수 높이(Height): 17 px
+A 글자 기준: upper padding 5 px, right padding 2 px, bottom padding 7 px
+💡 상단 시작점으로부터 베이스라인까지의 거리: 22 px
+
+font3---------------------------------
+File size: 7184 bytes
+Number of 4-byte integers: 1796
+font heights: {14}
+BMP size: 544x60
+Header expected: 544x60
+BMP dimensions match header.
+--- [실제 글자 크기 분석 결과] ---
+   - bbox(8, 14)
+■ 박스 내 상대 좌표 (0,0 기준)
+   - left 0px, right: 6px
+   - upper: 3px, bottom: 9px
+---------------------------------
+💡 실제 글자 순수 폭(Width)  : 7 px
+💡 실제 글자 순수 높이(Height): 7 px
+A 글자 기준: upper padding 3 px, right padding 1 px, bottom padding 4 px
+💡 상단 시작점으로부터 베이스라인까지의 거리: 10 px
+
+font4---------------------------------
+font heights: {16}
+BMP size: 600x68
+Header expected: 600x68
+BMP dimensions match header.
+--- [실제 글자 크기 분석 결과] ---
+   - bbox(8, 16)
+■ 박스 내 상대 좌표 (0,0 기준)
+   - left 0px, right: 6px
+   - upper: 3px, bottom: 11px
+---------------------------------
+💡 실제 글자 순수 폭(Width)  : 7 px
+💡 실제 글자 순수 높이(Height): 9 px
+A 글자 기준: upper padding 3 px, right padding 1 px, bottom padding 4 px
+💡 상단 시작점으로부터 베이스라인까지의 거리: 12 px
 //////////
 
 struct cFont {

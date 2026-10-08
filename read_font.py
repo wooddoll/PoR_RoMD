@@ -103,18 +103,13 @@ def print_dff_data(dff: DffData):
         print(f"[{i:4d}] " + " ".join(f"{v:10d}" for v in line))
 
 
-def draw_boxes_on_bmp(dff_path):
+def draw_boxes_on_bmp(dff, dff_path):
     """
     Reads the DFF file, finds the corresponding BMP file (same name, .bmp extension),
     verifies the BMP dimensions match the header (width, height),
     draws semi-transparent pink hollow boxes using array_5x256 data,
     and saves the result as a PNG file in the current folder.
     """
-    # Read DFF data
-    dff = read_binary_as_int32(dff_path)
-    if dff is None:
-        return
-
     # Determine BMP file path (same name, .bmp extension) and PNG path (current folder)
     base_name = os.path.splitext(dff_path)[0]
     bmp_path = base_name + ".bmp"
@@ -148,6 +143,9 @@ def draw_boxes_on_bmp(dff_path):
     else:
         print("BMP dimensions match header.")
 
+    code = int(ord('A'))
+    bbox = (dff.array_5x256[code])
+    baseline = get_font_baseline_offset(img, bbox)
     # Create overlay for semi-transparent pink boxes
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
@@ -170,6 +168,85 @@ def draw_boxes_on_bmp(dff_path):
     result.save(png_path, "PNG")
     print(f"Result saved to: {png_path}")
 
+def analyFontH(dff):
+    gr = set()
+    for xyxyi in dff.array_5x256:
+        y0 = xyxyi[2]
+        y1 = xyxyi[4]
+        gr.add((y1-y0) + 1)
+    print(f'font heights: {gr}')
+
+def get_font_baseline_offset(image, bbox, is_bg_white=False):
+    index, x0, y0, x1, y1 = bbox
+
+    # 바운딩 박스 좌표를 기반으로 가로(w)와 세로(h) 크기 계산
+    w = x1 - x0
+    h = y1 - y0
+
+    # 2. 지정된 A 글자의 바운딩 박스 영역 크롭(Crop)
+    # Pillow의 crop은 (left, upper, right, lower) 구조이므로 (x0, y0, x1, y1)과 완전히 일치합니다.
+    crop_img = image.crop((x0, y0, x1, y1))
+
+    min_x, max_x = w, -1
+    min_y, max_y = h, -1
+
+    # 2. 크롭 영역의 모든 픽셀을 순회하며 글자 픽셀의 경계 탐색
+    for row in range(h):
+        for col in range(w):
+            r, g, b, a = crop_img.getpixel((col, row))
+
+            # 글자 픽셀 조건 판정 (흑백 밝기 기준)
+            is_char_pixel = False
+            if is_bg_white and r < 127:  # 흰 배경에서 어두운 픽셀 = 글자
+                is_char_pixel = True
+            elif not is_bg_white and r > 127:  # 검은 배경에서 밝은 픽셀 = 글자
+
+                is_char_pixel = True
+
+            # 글자 픽셀을 찾은 경우, 상하좌우 경계값 업데이트
+            if is_char_pixel:
+                if col < min_x:
+                    min_x = col  # 가장 왼쪽 픽셀 위치
+                if col > max_x:
+                    max_x = col  # 가장 오른쪽 픽셀 위치
+                if row < min_y:
+                    min_y = row  # 가장 위쪽 픽셀 위치
+                if row > max_y:
+                    max_y = row  # 가장 아래쪽 픽셀 위치
+
+    # 바운딩 박스 안에 글자가 아예 없는 경우 예외 처리
+    if max_x == -1 or max_y == -1:
+        print("바운딩 박스 영역 내에서 실제 글자 픽셀을 찾을 수 없습니다.")
+        return None
+
+    # 3. 실제 글자 크기 및 오프셋 계산
+    # 크기는 (최대 인덱스 - 최소 인덱스 + 1)로 구합니다.
+    actual_width = max_x - min_x + 1
+    actual_height = max_y - min_y + 1
+
+    # 전체 이미지 기준의 실제 절대 좌표 변환
+    absolute_left = x0 + min_x
+    absolute_right = x0 + max_x
+    absolute_top = y0 + min_y
+    absolute_bottom = y0 + max_y
+
+    print(f"--- [실제 글자 크기 분석 결과] ---")
+    print(f"   - bbox{w+1, h+1}")
+    print(f"■ 박스 내 상대 좌표 (0,0 기준)")
+    print(f"   - left {min_x}px, right: {max_x}px")
+    print(f"   - upper: {min_y}px, bottom: {max_y}px")
+    print(f"---------------------------------")
+    print(f"💡 실제 글자 순수 폭(Width)  : {actual_width} px")
+    print(f"💡 실제 글자 순수 높이(Height): {actual_height} px")
+    print(f"A 글자 기준: upper padding {min_y} px, right padding {w-max_x} px, bottom padding {h+1-(min_y+actual_height)} px")
+    print(f"💡 상단 시작점으로부터 베이스라인까지의 거리: {max_y + 1} px")
+    print(f"---------------------------------")
+
+    return {
+        "width": actual_width,
+        "height": actual_height,
+        "baseline_offset": max_y + 1,
+    }
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -177,4 +254,10 @@ if __name__ == '__main__':
         sys.exit(1)
 
     dff_path = sys.argv[1]
-    draw_boxes_on_bmp(dff_path)
+    # Read DFF data
+    dff = read_binary_as_int32(dff_path)
+    if dff is None:
+        exit()
+    analyFontH(dff)
+
+    draw_boxes_on_bmp(dff, dff_path)
