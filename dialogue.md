@@ -23,6 +23,7 @@
 
 
 * 모두 합쳐서 하나의 구조체로 관리할 것.
+'''
 	[Section]
 		[Direction]
 		[Selections]
@@ -30,7 +31,7 @@
 			[Dialogue]
 			[Speaker]
 			[Desc]
-
+'''
 ***
 
 	튜토리얼 시작시 나오는 텍스트는 tutd001a.por / ttadma02
