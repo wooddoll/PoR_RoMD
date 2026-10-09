@@ -3,82 +3,40 @@
 #include "MinHook.h"
 
 // -------------------------------------------------------------
-// [1. 공통 폰트 인터페이스 및 헬퍼]
+// [1. 공통 폰트 인터페이스]
 // -------------------------------------------------------------
-struct FontGlyph {
-    int  nCode;   // 문자 코드 (ASCII 또는 한글 빅엔디안 0xB0A1)
-    RECT rcSrc;   // left, top, right, bottom
-    int  reserved;
-};
-
 class cFont {
 public:
-    void** vftable;       // +0x00
-    int          m_nGlyphCount; // +0x04
-    FontGlyph** m_ppGlyphs;    // +0x08
-    void* m_pCharMap;    // +0x0C
-    int          pad10;         // +0x10
-    void* m_pSurface;    // +0x14 (DirectDraw 서피스)
+    virtual void  Dummy00() = 0;
+    virtual void  Dummy04() = 0;
+    virtual void  Dummy08() = 0;
+    virtual void  Dummy0C() = 0;
+    virtual void  Dummy10() = 0;
+    virtual void  Dummy14() = 0;
+    virtual void  Dummy18() = 0;
+    virtual int   GetCharHeight(int code) = 0; // +0x1C (메모리 패치로 32비트 완벽 지원)
+    virtual int   GetCharWidth(int code) = 0; // +0x20 (메모리 패치로 32비트 완벽 지원)
+    virtual RECT* GetCharRect(int code) = 0; // +0x24
+    virtual void* GetSurface() = 0; // +0x28
 };
 
-// CFontCharMap::FindGlyphIndex (0x004355c0)
-typedef int(__thiscall* tFindGlyphIndex)(void* pCharMap, int charCode);
-tFindGlyphIndex CFontCharMap_FindGlyphIndex = (tFindGlyphIndex)0x004355c0;
-
-// cFont::GetCharRect (0x00435e60)
-typedef RECT* (__thiscall* tGetCharRect)(cFont* pThis, int charCode);
-tGetCharRect cFont_GetCharRect = (tGetCharRect)0x00435e60;
-
-// 엔진 힙 메모리 해제 함수 (0x005ea8f2)
 typedef void(__cdecl* tEngineDelete)(void*);
 tEngineDelete EngineDelete = (tEngineDelete)0x005ea8f2;
 
 // -------------------------------------------------------------
-// [2. 폰트 메트릭 후킹: GetCharHeight & GetCharWidth]
-// -------------------------------------------------------------
-typedef int(__thiscall* tGetCharHeight)(cFont* pThis, int charCode);
-tGetCharHeight fpOriginalGetCharHeight = NULL;
-
-typedef int(__thiscall* tGetCharWidth)(cFont* pThis, int charCode);
-tGetCharWidth fpOriginalGetCharWidth = NULL;
-
-// 0x00435e00 : GetCharHeight
-int __fastcall Hooked_GetCharHeight(cFont* pThis, void* /*edx*/, int charCode)
-{
-    int glyphIdx = CFontCharMap_FindGlyphIndex(pThis->m_pCharMap, charCode);
-    if (glyphIdx != -1 && pThis->m_ppGlyphs && pThis->m_ppGlyphs[glyphIdx]) {
-        FontGlyph* pGlyph = pThis->m_ppGlyphs[glyphIdx];
-        return pGlyph->rcSrc.bottom - pGlyph->rcSrc.top;
-    }
-    return 0;
-}
-
-// 0x00435e30 : GetCharWidth
-int __fastcall Hooked_GetCharWidth(cFont* pThis, void* /*edx*/, int charCode)
-{
-    int glyphIdx = CFontCharMap_FindGlyphIndex(pThis->m_pCharMap, charCode);
-    if (glyphIdx != -1 && pThis->m_ppGlyphs && pThis->m_ppGlyphs[glyphIdx]) {
-        FontGlyph* pGlyph = pThis->m_ppGlyphs[glyphIdx];
-        return pGlyph->rcSrc.right - pGlyph->rcSrc.left;
-    }
-    return 0;
-}
-
-// -------------------------------------------------------------
-// [3. CTextBox::CalculateTextExtents 후킹 (0x0043bf40)]
-// (기존 Code Cave 3, 4를 완벽하게 대체)
+// [2. 복잡한 로직 MinHook 후킹: CalculateTextExtents (0x0043bf40)]
 // -------------------------------------------------------------
 struct CTextBox {
     void* vftable;             // +0x00
     char   pad_00[0x138];
     int    m_nLineCount;        // +0x13C
     int    m_rcBounds_left;     // +0x140
-    int    m_nTotalWidth;       // +0x144 (측정된 가로폭)
+    int    m_nTotalWidth;       // +0x144
     int    m_rcBounds_top;      // +0x148
     char   pad_14C[0x40];
-    char** m_ppLines;           // +0x18C 또는 +0x198 (문자열 라인 포인터 배열)
+    char** m_ppLines;           // +0x18C 또는 +0x198
     char   pad_19C[4];
-    cFont* m_pFont;             // +0x1A0 (폰트 객체)
+    cFont* m_pFont;             // +0x1A0
 };
 
 typedef BOOL(__thiscall* tCalculateTextExtents)(CTextBox*);
@@ -92,14 +50,14 @@ BOOL __fastcall Hooked_CalculateTextExtents(CTextBox* pThis, void* /*edx*/)
     char** ppLines = *(char***)((char*)pThis + 0x198);
     cFont* pFont = *(cFont**)((char*)pThis + 0x1A0);
 
-    if (pThis->m_nLineCount > 0 && ppLines)
+    if (pThis->m_nLineCount > 0 && ppLines && pFont)
     {
         for (int lineIdx = 0; lineIdx < pThis->m_nLineCount; ++lineIdx)
         {
             const char* szLine = ppLines[lineIdx];
             if (!szLine) continue;
 
-            int currentLineWidth = 10; // 왼쪽 마진 10px
+            int currentLineWidth = 10;
 
             for (int i = 0; szLine[i] != '\0'; )
             {
@@ -107,7 +65,7 @@ BOOL __fastcall Hooked_CalculateTextExtents(CTextBox* pThis, void* /*edx*/)
                 int code = 0;
                 int charBytes = 1;
 
-                if (c >= 0x80) { // 한글 2바이트
+                if (c >= 0x80) { // 한글 2바이트 (빅엔디안)
                     code = (c << 8) | (unsigned char)szLine[i + 1];
                     charBytes = 2;
                 }
@@ -116,17 +74,18 @@ BOOL __fastcall Hooked_CalculateTextExtents(CTextBox* pThis, void* /*edx*/)
                     charBytes = 1;
                 }
 
-                int h = Hooked_GetCharHeight(pFont, NULL, code);
+                // 메모리 패치된 원본 폰트 가상 함수를 직접 호출!
+                int h = pFont->GetCharHeight(code);
                 if (maxLineHeight < h) maxLineHeight = h;
 
-                int w = Hooked_GetCharWidth(pFont, NULL, code);
+                int w = pFont->GetCharWidth(code);
                 currentLineWidth += w;
 
                 if (maxBoxWidth < currentLineWidth + 20) {
                     maxBoxWidth = currentLineWidth + 20;
                 }
 
-                i += charBytes; // 한글은 +2, ASCII는 +1
+                i += charBytes;
             }
         }
     }
@@ -139,7 +98,7 @@ BOOL __fastcall Hooked_CalculateTextExtents(CTextBox* pThis, void* /*edx*/)
 }
 
 // -------------------------------------------------------------
-// [4. CTextLayout::WordWrap 후킹 (0x00444890)]
+// [3. 복잡한 로직 MinHook 후킹: WordWrap (0x00444890)]
 // -------------------------------------------------------------
 struct CTextLayout {
     void* vftable;             // +0x00
@@ -206,11 +165,11 @@ BOOL __fastcall Hooked_WordWrap(CTextLayout* pThis)
         int code = 0;
         int charBytes = 1;
 
-        if (c >= 0x80) { // 한글 2바이트
+        if (c >= 0x80) {
             code = (c << 8) | (unsigned char)szText[i + 1];
             charBytes = 2;
         }
-        else {         // ASCII
+        else {
             code = c;
             charBytes = 1;
         }
@@ -220,7 +179,7 @@ BOOL __fastcall Hooked_WordWrap(CTextLayout* pThis)
             widthAtLastSpace = currentLineWidth;
         }
 
-        int charW = Hooked_GetCharWidth(pThis->m_pFont, NULL, code);
+        int charW = pThis->m_pFont->GetCharWidth(code);
 
         if (currentLineWidth + charW > nBoxMaxWidth && i > lineStartIdx)
         {
@@ -270,26 +229,31 @@ BOOL __fastcall Hooked_WordWrap(CTextLayout* pThis)
 }
 
 // -------------------------------------------------------------
-// [5. CTextBox::DrawTextLines (0x0043bc80) 인라인 마이크로 패치]
-// (Cave 1, 2 대신 DLL 로드 시 런타임 메모리 패치로 한 방에 해결)
+// [4. 전체 단순 메모리 패치 (Memory Patching)]
 // -------------------------------------------------------------
-void ApplyDrawTextInlinePatch()
+void ApplyMemoryPatches()
 {
-    // 점프 대상: 0x00613500 (Cave 1), 0x00613600 (Cave 2)
-    // 메모리 보호 해제 후 우리가 앞서 검증한 Cave 바이트를 DLL이 직접 써넣습니다!
     DWORD oldProtect;
+
+    // A. cFont::GetCharHeight (0x00435e00) -> 8B 44 24 04 90 (32비트화)
+    VirtualProtect((void*)0x00435e00, 5, PAGE_EXECUTE_READWRITE, &oldProtect);
+    memcpy((void*)0x00435e00, "\x8B\x44\x24\x04\x90", 5);
+    VirtualProtect((void*)0x00435e00, 5, oldProtect, &oldProtect);
+
+    // B. cFont::GetCharWidth (0x00435e30) -> 8B 44 24 04 90 (32비트화)
+    VirtualProtect((void*)0x00435e30, 5, PAGE_EXECUTE_READWRITE, &oldProtect);
+    memcpy((void*)0x00435e30, "\x8B\x44\x24\x04\x90", 5);
+    VirtualProtect((void*)0x00435e30, 5, oldProtect, &oldProtect);
+
+    // C. CTextBox::DrawTextLines (0x0043bc80) 내부 점프 패치
     VirtualProtect((void*)0x0043bd9b, 0x100, PAGE_EXECUTE_READWRITE, &oldProtect);
+    memcpy((void*)0x0043bd9b, "\xE9\x60\x77\x1D\x00\x90", 6);                               // Cave 1 점프
+    memcpy((void*)0x0043be72, "\xE9\x89\x77\x1D\x00\x90\x90\x90\x90\x90\x90\x90\x90\x90", 14); // Cave 2 점프
+    VirtualProtect((void*)0x0043bd9b, 0x100, oldProtect, &oldProtect);
 
-    // Cave 1 점프 설치 (0x0043bd9b)
-    memcpy((void*)0x0043bd9b, "\xE9\x60\x77\x1D\x00\x90", 6);
-
-    // Cave 2 점프 설치 (0x0043be72)
-    memcpy((void*)0x0043be72, "\xE9\x89\x77\x1D\x00\x90\x90\x90\x90\x90\x90\x90\x90\x90", 14);
-
-    // .text 섹션 끝 빈 공간에 Cave 본체 쓰기
+    // D. Code Cave 본체 쓰기 (0x00613500)
     VirtualProtect((void*)0x00613500, 0x200, PAGE_EXECUTE_READWRITE, &oldProtect);
 
-    // Cave 1 코드
     const unsigned char cave1[] = {
         0x0F, 0xB6, 0x14, 0x18, 0x80, 0xFA, 0x80, 0x72, 0x0F, 0x0F, 0xB6, 0x44, 0x18, 0x01,
         0xC1, 0xE2, 0x08, 0x0B, 0xD0, 0x8B, 0xC2, 0xEB, 0x03, 0x90, 0x0F, 0xBE, 0xC2, 0x8B,
@@ -297,7 +261,6 @@ void ApplyDrawTextInlinePatch()
     };
     memcpy((void*)0x00613500, cave1, sizeof(cave1));
 
-    // Cave 2 코드
     const unsigned char cave2[] = {
         0x51, 0x0F, 0xB6, 0x14, 0x18, 0x80, 0xFA, 0x80, 0x72, 0x16, 0x0F, 0xB6, 0x44, 0x18,
         0x01, 0xC1, 0xE2, 0x08, 0x0B, 0xD0, 0x52, 0x83, 0xC3, 0x02, 0x8B, 0x8E, 0xA0, 0x01,
@@ -306,30 +269,22 @@ void ApplyDrawTextInlinePatch()
         0xC8, 0xE9, 0x42, 0x88, 0xE2, 0xFF
     };
     memcpy((void*)0x00613600, cave2, sizeof(cave2));
+    VirtualProtect((void*)0x00613500, 0x200, oldProtect, &oldProtect);
 }
 
 // -------------------------------------------------------------
-// [6. 통합 후킹 설치 진입점]
+// [5. 최종 초기화 진입점]
 // -------------------------------------------------------------
 void InstallHooks()
 {
-    // 1. MinHook 초기화
+    // 단순 메모리 패치 적용
+    ApplyMemoryPatches();
+
+    // 복잡한 텍스트 레이아웃만 MinHook으로 후킹
     if (MH_Initialize() == MH_OK)
     {
-        // 폰트 메트릭 후킹
-        MH_CreateHook((LPVOID)0x00435e00, &Hooked_GetCharHeight, (LPVOID*)&fpOriginalGetCharHeight);
-        MH_CreateHook((LPVOID)0x00435e30, &Hooked_GetCharWidth, (LPVOID*)&fpOriginalGetCharWidth);
-
-        // 텍스트 박스 크기 측정 후킹 (Cave 3, 4 대체)
         MH_CreateHook((LPVOID)0x0043bf40, &Hooked_CalculateTextExtents, (LPVOID*)&fpOriginalCalculateTextExtents);
-
-        // 단어 자동 줄바꿈 후킹
         MH_CreateHook((LPVOID)0x00444890, &Hooked_WordWrap, (LPVOID*)&fpOriginalWordWrap);
-
-        // 모든 MinHook 활성화
         MH_EnableHook(MH_ALL_HOOKS);
     }
-
-    // 2. 화면 그리기 루프 인라인 패치 적용 (Cave 1, 2 메모리 자동 주입)
-    ApplyDrawTextInlinePatch();
 }
