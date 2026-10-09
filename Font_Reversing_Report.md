@@ -401,8 +401,67 @@ void InstallHooks()
 ```
 
 ## 5. 차후 작업 시 참고 사항
-# 폰트 데이터 파일(.dff) 제작 시:
+### 폰트 데이터 파일(.dff) 제작 시:
 - 한글 완성형 코드(CP949)의 빅엔디안 값(예: '가' = 0xB0A1 = 45217)을 키로 등록할 것.
-# 빌드 환경:
+### 빌드 환경:
 - Visual Studio에서 Win32(x86) Release 모드로 빌드.
 - 프로젝트에 MinHook 라이브러리 링크 및 모듈 정의 파일(d3d8.def) 지정 필수.
+
+
+## 6. 폰트 로드 경로 변경 (`./data/fonts/font%d` -> 커스텀 경로)
+
+### 6.1 원본 호출 위치 어셈블리 분석
+- **호출 함수**: `CFontManager_InitFonts_0043ffa0`
+- **주소**: `0x0043ffcf ~ 0x0043ffd6`
+```assembly
+0043ffcf 50              PUSH  EAX                              ; 인자 3: 폰트 번호 (%d)
+0043ffd0 68 38 48 6b 00  PUSH  0x006B4838                       ; 인자 2: "./data/fonts/font%d" 포맷 문자열 주소
+0043ffd5 51              PUSH  ECX                              ; 인자 1: 출력 버퍼 (local_10c)
+0043ffd6 e8 12 ae 1a 00  CALL  _sprintf_maybe                   ; sprintf 호출
+```
+
+### 6.2 구현 방식 비교
+* [방식 1] .data 섹션 원본 문자열 제자리 덮어쓰기 (In-place Overwrite)
+* 주소: 0x006B4838
+* 공간 분석:
+- 원본 문자열: "./data/fonts/font%d" (20바이트, 널 종료 포함)
+- 뒤쪽 패딩: 0x00이 4바이트 존재 -> 총 24바이트 가용
+- 변경할 문자열: "./data/fonts/font_kr%d" (23바이트, 널 종료 포함)
+* 결과: 가용 공간(24바이트) 안에 23바이트가 들어가므로 제자리 수정 가능.
+
+```c++
+DWORD oldProtect;
+VirtualProtect((void*)0x006b4838, 24, PAGE_READWRITE, &oldProtect);
+memcpy((void*)0x006b4838, "./data/fonts/font_kr%d", 23);
+VirtualProtect((void*)0x006b4838, 24, oldProtect, &oldProtect);
+```
+
+* [방식 2] 포맷 스트링 PUSH 포인터 교체 (★ 가장 추천!)
+* 주소: 0x0043FFD1 (PUSH 0x68 바로 뒤의 4바이트 즉시값 주소)
+* 장점:
+- 원본 .data 섹션을 전혀 건드리지 않음.
+- 문자열 길이 제한이 완전히 사라짐 (예: "./data/fonts/korean_hd/font%d" 등 긴 경로도 자유롭게 사용 가능).
+* 구현 원리:
+ - DLL 내부에 전역 문자열을 정의하고, 0x0043FFD1의 4바이트 값을 해당 전역 문자열의 메모리 주소(&g_szNewFontPath)로 교체.
+
+### 6.3 최종 반영 코드 (hooks.cpp의 ApplyMemoryPatches에 추가)
+```c++
+// 1. 사용할 커스텀 폰트 경로 (길이 제한 없음)
+const char g_szNewFontPath[] = "./data/fonts/font_kr%d";
+
+void ApplyMemoryPatches()
+{
+    DWORD oldProtect;
+
+    // ... (기존 GetCharHeight, GetCharWidth, DrawTextLines 패치 유지) ...
+
+    // [추가] 폰트 경로 PUSH 인자 교체 (0x0043ffd1)
+    const char* pNewPath = g_szNewFontPath;
+    VirtualProtect((void*)0x0043ffd1, 4, PAGE_EXECUTE_READWRITE, &oldProtect);
+    memcpy((void*)0x0043ffd1, &pNewPath, 4);
+    VirtualProtect((void*)0x0043ffd1, 4, oldProtect, &oldProtect);
+}
+```
+### 6.4 결과 및 장점
+* 게임이 실행되면 ./data/fonts/font0.bmp, font0.dff 대신 ./data/fonts/font_kr0.bmp, font_kr0.dff (0~4번)를 자동으로 로드합니다.
+* 영문 원본 폰트 파일을 덮어쓰거나 훼손하지 않고, 한글화 폰트를 독립적인 파일로 깔끔하게 관리할 수 있습니다.

@@ -260,6 +260,21 @@ void ApplyMemoryPatches()
     VirtualProtect((void*)0x00613500, 0x200, oldProtect, &oldProtect);
 }
 
+// 1. 새로운 폰트 경로 (길이에 제한 없음!)
+const char g_szNewFontPath[] = "./data/fonts/font_kr%d";
+
+// 2. 0x0043ffd1 주소의 4바이트 포인터를 우리 문자열 주소로 교체!
+void PatchFontPath()
+{
+    DWORD oldProtect;
+    const char* pNewPath = g_szNewFontPath;
+
+    // 0x0043ffd1 위치: PUSH 명령어(68) 바로 뒤의 4바이트 주소 공간
+    VirtualProtect((void*)0x0043ffd1, 4, PAGE_EXECUTE_READWRITE, &oldProtect);
+    memcpy((void*)0x0043ffd1, &pNewPath, 4);
+    VirtualProtect((void*)0x0043ffd1, 4, oldProtect, &oldProtect);
+}
+
 // [초기화 진입점]
 void InstallHooks()
 {
