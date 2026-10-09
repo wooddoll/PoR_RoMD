@@ -23,13 +23,13 @@
 
 
 * 모두 합쳐서 하나의 구조체로 관리할 것.
->	[Section]
->	>	[Direction]
->	>	[Selections]
->	>	[Keys]
->	>	>	[Dialogue]
->	>	>	[Speaker]
->	>	>	[Desc]
+	>	[Section]
+	>	>	[Direction]
+	>	>	[Selections]
+	>	>	[Keys]
+	>	>	>	[Dialogue]
+	>	>	>	[Speaker]
+	>	>	>	[Desc]
 
 ***
 
