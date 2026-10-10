@@ -19,6 +19,8 @@
 - [127, 127], [126, 126] ... [0, 0] // 128쌍, 일정하게 감소
 - [0xFFFFFFFF, 0xFF000000], [0xFEFFFFFF, 0xFE000000] ... [0x80FFFFFF, 0x80000000] // 128쌍, 음수로 나오는 index에 대한 실제 양수 값 index
 
+
+```
 * font0--------------------------------- 가능한 한글 폰트 13px이하
 - font heights: {19}
 - BMP size: 565x80
@@ -100,10 +102,12 @@ BMP dimensions match header.
 💡 실제 글자 순수 높이(Height): 9 px
 A 글자 기준: upper padding 3 px, right padding 1 px, bottom padding 4 px
 💡 상단 시작점으로부터 베이스라인까지의 거리: 12 px
-//////////
-0, 1, 2 같은 폰트, 약간 장식적이고 판타지 느낌; 13px, 12px, 21px; Umdot font
-3, 4 같은 폰트, 딱딱하고 포멀한, 시스템용 폰트; 9px, 11px; 굴림체?
-////////////
+```
+***
+* 0, 1, 2 같은 폰트, 약간 장식적이고 판타지 느낌; 13px, 12px, 21px; Umdot font
+* 3, 4 같은 폰트, 딱딱하고 포멀한, 시스템용 폰트; 9px, 11px; 굴림체?
+***
+```c++
 struct cFont {
     void *vtable;              // +0x00
 
@@ -137,4 +141,4 @@ struct CharCodeMap {
     int **keys;                // +0x04
     int **values;              // +0x08
 };
-
+```
