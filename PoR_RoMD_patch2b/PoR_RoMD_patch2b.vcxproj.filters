@@ -22,9 +22,4 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="d3d8.def">
-      <Filter>소스 파일</Filter>
-    </None>
-  </ItemGroup>
 </Project>

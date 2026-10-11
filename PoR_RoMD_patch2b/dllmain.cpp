@@ -1,31 +1,34 @@
 ﻿#include <windows.h>
 #include "MinHook.h"
 
-// 원본 시스템 d3d8.dll의 Direct3DCreate8 함수 포인터 타입
-typedef void* (WINAPI* tDirect3DCreate8)(UINT SDKVersion);
-tDirect3DCreate8 oDirect3DCreate8 = NULL;
+#pragma comment(linker, "/export:GetFileVersionInfoA=C:\\Windows\\System32\\version.GetFileVersionInfoA,@1")
+#pragma comment(linker, "/export:GetFileVersionInfoByHandle=C:\\Windows\\System32\\version.GetFileVersionInfoByHandle,@2")
+#pragma comment(linker, "/export:GetFileVersionInfoExA=C:\\Windows\\System32\\version.GetFileVersionInfoExA,@3")
+#pragma comment(linker, "/export:GetFileVersionInfoExW=C:\\Windows\\System32\\version.GetFileVersionInfoExW,@4")
+#pragma comment(linker, "/export:GetFileVersionInfoSizeA=C:\\Windows\\System32\\version.GetFileVersionInfoSizeA,@5")
+#pragma comment(linker, "/export:GetFileVersionInfoSizeExA=C:\\Windows\\System32\\version.GetFileVersionInfoSizeExA,@6")
+#pragma comment(linker, "/export:GetFileVersionInfoSizeExW=C:\\Windows\\System32\\version.GetFileVersionInfoSizeExW,@7")
+#pragma comment(linker, "/export:GetFileVersionInfoSizeW=C:\\Windows\\System32\\version.GetFileVersionInfoSizeW,@8")
+#pragma comment(linker, "/export:GetFileVersionInfoW=C:\\Windows\\System32\\version.GetFileVersionInfoW,@9")
+#pragma comment(linker, "/export:VerFindFileA=C:\\Windows\\System32\\version.VerFindFileA,@10")
+#pragma comment(linker, "/export:VerFindFileW=C:\\Windows\\System32\\version.VerFindFileW,@11")
+#pragma comment(linker, "/export:VerInstallFileA=C:\\Windows\\System32\\version.VerInstallFileA,@12")
+#pragma comment(linker, "/export:VerInstallFileW=C:\\Windows\\System32\\version.VerInstallFileW,@13")
+#pragma comment(linker, "/export:VerLanguageNameA=C:\\Windows\\System32\\version.VerLanguageNameA,@14")
+#pragma comment(linker, "/export:VerLanguageNameW=C:\\Windows\\System32\\version.VerLanguageNameW,@15")
+#pragma comment(linker, "/export:VerQueryValueA=C:\\Windows\\System32\\version.VerQueryValueA,@16")
+#pragma comment(linker, "/export:VerQueryValueW=C:\\Windows\\System32\\version.VerQueryValueW,@17")
 
 // 후킹할 함수 선언부
 void InstallHooks();
 
-// 진짜 시스템 d3d8.dll 로드 및 Direct3DCreate8 포워딩
-extern "C" void* WINAPI Fake_Direct3DCreate8(UINT SDKVersion)
+DWORD WINAPI PatchThread(LPVOID lpParam)
 {
-    if (!oDirect3DCreate8)
-    {
-        HMODULE hOrigD3D8 = LoadLibraryA(".\\d3d8.original.dll");
-        if (hOrigD3D8) {
-            oDirect3DCreate8 = (tDirect3DCreate8)GetProcAddress(hOrigD3D8, "Direct3DCreate8");
-        }
+    UNREFERENCED_PARAMETER(lpParam);
 
-        // 안전한 진입 타이밍: 후킹 설치!
-        InstallHooks();
-    }
+    InstallHooks();
 
-    if (oDirect3DCreate8) {
-        return oDirect3DCreate8(SDKVersion);
-    }
-    return NULL;
+    return 0;
 }
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
@@ -34,6 +37,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     {
     case DLL_PROCESS_ATTACH:
         DisableThreadLibraryCalls(hModule);
+        CreateThread(NULL, 0, PatchThread, NULL, 0, NULL);
         break;
     case DLL_PROCESS_DETACH:
         MH_Uninitialize();
