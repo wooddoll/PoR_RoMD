@@ -25,6 +25,29 @@ class Section:
     keys: List[KeyEntry] = field(default_factory=list)
 
 
+def check_non_ascii(data, label, context=''):
+    """
+    Checks if the given string data contains any character with ASCII value >= 128.
+    Only str type data is checked. Returns a list of (offset, char) tuples for non-ASCII characters found.
+    """
+    if not isinstance(data, str):
+        return []
+
+    found = []
+    for i, ch in enumerate(data):
+        if ord(ch) >= 0x80:
+            found.append((i, ch))
+
+    if found:
+        print(f"  [NON-ASCII] {label}: {len(found)} character(s) >= 0x80 found")
+        for offset, ch in found:
+            print(f"    offset={offset} char=U+{ord(ch):04X} ({ch!r})")
+        if context:
+            print(f"    context: {context!r}")
+
+    return found
+
+
 def read_all_idx(file_path):
     """
     Reads an all.idx file and parses its contents.
@@ -61,6 +84,8 @@ def read_all_idx(file_path):
             pos += 1
 
         text = text_bytes.decode('ascii', errors='replace')
+        # Check for non-ASCII characters in section name (str type)
+        check_non_ascii(text, f"Section name (entry {entry_index})", text)
         #check text ends '.all'abs
         if not text.endswith('.all'):
             print(f"Warning: Incomplete text ends with .all")
@@ -177,6 +202,9 @@ def read_all_db(db_path, idx_entries):
             continue
         _selections = parse_strings(selection_start, selection_end)
         selections = [b.decode('ascii', errors='replace') for b in _selections]
+        # Check for non-ASCII characters in selections (str type)
+        for sel_idx, sel_str in enumerate(selections):
+            check_non_ascii(sel_str, f"Selection[{sel_idx}] (section '{section_name}')")
 
         # Read Key: byte arrays of size header[2]
         key_start = selection_end
@@ -240,6 +268,12 @@ def read_por_file(por_path, keys):
 
         # Only include entries whose key is in the keys list
         if key in keys:
+            # Check for non-ASCII characters in .por file data (str type only)
+            # key, dialogue, speaker, desc are bytes type - decode to str for checking
+            check_non_ascii(dialogue.decode('ascii', errors='replace'), f"POR dialogue (section '{os.path.basename(por_path)}')")
+            check_non_ascii(speaker.decode('ascii', errors='replace'), f"POR speaker (section '{os.path.basename(por_path)}')")
+            check_non_ascii(desc.decode('ascii', errors='replace'), f"POR desc (section '{os.path.basename(por_path)}')")
+
             entries.append({
                 'key': key,
                 'dialogue': dialogue,
@@ -274,11 +308,19 @@ def build_sections(sections, idx_dir):
                 # Find matching por entry
                 matching = next((e for e in por_entries if e['key'] == key_bytes), None)
                 if matching:
+                    # Check for non-ASCII characters in final KeyEntry data (str type only)
+                    dialogue_str = matching['dialogue'].decode('ascii', errors='replace')
+                    speaker_str = matching['speaker'].decode('ascii', errors='replace')
+                    desc_str = matching['desc'].decode('ascii', errors='replace')
+                    check_non_ascii(dialogue_str, f"KeyEntry dialogue (section '{section['section']}')")
+                    check_non_ascii(speaker_str, f"KeyEntry speaker (section '{section['section']}')")
+                    check_non_ascii(desc_str, f"KeyEntry desc (section '{section['section']}')")
+
                     sec.keys.append(KeyEntry(
                         key=key_bytes,
-                        dialogue=matching['dialogue'].decode('ascii', errors='replace'),
-                        speaker=matching['speaker'].decode('ascii', errors='replace'),
-                        desc=matching['desc'].decode('ascii', errors='replace'),
+                        dialogue=dialogue_str,
+                        speaker=speaker_str,
+                        desc=desc_str,
                     ))
                 else:
                     sec.keys.append(KeyEntry(key=key_bytes))
@@ -308,7 +350,7 @@ def write_por_files(sections, output_dir):
 
         lines = []
         for key_entry in section.keys:
-            parts = [key_entry.key, key_entry.dialogue.encode('ascii', errors='replace'),
+            parts = [key_entry.key, key_entry.dialogue.encode('euc-kr', errors='replace'),
                      key_entry.speaker.encode('ascii', errors='replace'),
                      key_entry.desc.encode('ascii', errors='replace')]
             # Remove trailing empty fields

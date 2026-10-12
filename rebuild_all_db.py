@@ -37,7 +37,7 @@ def serialize_section(section: Section) -> bytes:
     # Selection: strings joined with '\r\n' + trailing '\r\n'
     selection_bytes = b''
     if section.selections:
-        selection_bytes = b'\r\n'.join(s.encode('ascii', errors='replace') for s in section.selections)
+        selection_bytes = b'\r\n'.join(s.encode('euc-kr', errors='replace') for s in section.selections)
         selection_bytes += b'\r\n'
 
     # Key: check if key is 7 bytes, if so add ':' (0x3A) to make it 8 bytes
@@ -157,27 +157,43 @@ def save_combined_to_json(combined, output_json_path):
     Encoding:
     - key: latin-1 encoded string
     - direction: base64 encoded string
-    - dialogue, speaker, desc: plain strings
+    - selections, dialogue: euc-kr encoded (stored as latin-1 in file)
+    - speaker, desc: plain strings
     """
     data = []
     for section in combined:
+        # Encode selections to euc-kr bytes, then decode as latin-1 to preserve bytes
+        selections = []
+        for sel in section.selections:
+            try:
+                selections.append(sel.encode('euc-kr').decode('latin-1'))
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                selections.append(sel)
+
         sec_data = {
             'name': section.name,
             'address': section.address,
             'direction': base64.b64encode(section.direction).decode('ascii'),
-            'selections': section.selections,
+            'selections': selections,
             'keys': [],
         }
         for key_entry in section.keys:
+            # Encode dialogue to euc-kr bytes, then decode as latin-1 to preserve bytes
+            dialogue = key_entry.dialogue
+            try:
+                dialogue = dialogue.encode('euc-kr').decode('latin-1')
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                pass
+
             sec_data['keys'].append({
                 'key': key_entry.key.decode('latin-1'),
-                'dialogue': key_entry.dialogue,
+                'dialogue': dialogue,
                 'speaker': key_entry.speaker,
                 'desc': key_entry.desc,
             })
         data.append(sec_data)
 
-    with open(output_json_path, 'w', encoding='utf-8') as f:
+    with open(output_json_path, 'w', encoding='latin-1') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
     print(f"Combined data saved to JSON: {output_json_path}")
@@ -191,22 +207,41 @@ def load_combined_from_json(json_path):
     Decoding:
     - key: latin-1 decoded to bytes
     - direction: base64 decoded to bytes
+    - selections, dialogue: euc-kr decoded to str
     """
-    with open(json_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+    with open(json_path, 'rb') as f:
+        raw_data = f.read()
+
+    # Read as latin-1 to preserve all bytes, then parse JSON
+    data = json.loads(raw_data.decode('latin-1'))
 
     combined = []
     for sec_data in data:
+        # Decode selections from euc-kr
+        selections = []
+        for sel in sec_data['selections']:
+            try:
+                selections.append(sel.encode('latin-1').decode('euc-kr'))
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                selections.append(sel)
+
         section = Section(
             name=sec_data['name'],
             address=sec_data['address'],
             direction=base64.b64decode(sec_data['direction']),
-            selections=sec_data['selections'],
+            selections=selections,
         )
         for key_data in sec_data['keys']:
+            # Decode dialogue from euc-kr
+            dialogue = key_data['dialogue']
+            try:
+                dialogue = dialogue.encode('latin-1').decode('euc-kr')
+            except (UnicodeDecodeError, UnicodeEncodeError):
+                pass
+
             section.keys.append(KeyEntry(
                 key=key_data['key'].encode('latin-1'),
-                dialogue=key_data['dialogue'],
+                dialogue=dialogue,
                 speaker=key_data['speaker'],
                 desc=key_data['desc'],
             ))
@@ -273,7 +308,7 @@ def write_por_files(sections, output_dir):
 
         lines = []
         for key_entry in section.keys:
-            parts = [key_entry.key, key_entry.dialogue.encode('ascii', errors='replace'),
+            parts = [key_entry.key, key_entry.dialogue.encode('euc-kr', errors='replace'),
                      key_entry.speaker.encode('ascii', errors='replace'),
                      key_entry.desc.encode('ascii', errors='replace')]
             line = b'\t'.join(parts)
