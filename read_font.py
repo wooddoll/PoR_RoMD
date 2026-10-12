@@ -248,15 +248,13 @@ def get_font_baseline_offset(image, bbox, is_bg_white=False):
         "baseline_offset": max_y + 1,
     }
 
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: python read_dff.py <dff_file_path>")
-        sys.exit(1)
-
-    dff_path = sys.argv[1]
-    # Read DFF data
+def process_dff_file(dff_path, output_dir="./font"):
+    """DFF 파일을 읽어 TXT 메타데이터 파일을 생성합니다."""
     dff = read_binary_as_int32(dff_path)
-    
+    if dff is None:
+        print(f"Error: Failed to read DFF file: {dff_path}")
+        return False
+
     txt_lines = []
     for idx, rect in enumerate(dff.array_5x256):
         asciicode = idx if idx < 128 else idx - 256
@@ -265,18 +263,46 @@ if __name__ == '__main__':
         x1 = rect[3]
         y1 = rect[4]
         txt_lines.append(f"{asciicode}\t{x0}\t{y0}\t{x1}\t{y1}")
-    folder_path = "./font"
-    if folder_path and not os.path.exists(folder_path):
-        os.makedirs(folder_path, exist_ok=True)
+
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
     basename = os.path.basename(dff_path)
-    output_txt_path = f"{folder_path}/{basename}.txt"
+    output_txt_path = f"{output_dir}/{basename}.txt"
     with open(output_txt_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(txt_lines))
-    
-    exit()
-    
-    if dff is None:
-        exit()
-    analyFontH(dff)
+    print(f"Generated: {output_txt_path}")
+    return True
 
-    draw_boxes_on_bmp(dff, dff_path)
+
+def process_all_fonts(dff_dir, output_dir="./font"):
+    """모든 폰트(font0.dff ~ font4.dff)를 일괄 처리합니다."""
+    font_indices = range(5)  # font0 ~ font4
+    success_count = 0
+    for i in font_indices:
+        dff_path = os.path.join(dff_dir, f"font{i}.dff")
+        if not os.path.exists(dff_path):
+            print(f"Warning: File not found: {dff_path}")
+            continue
+        if process_dff_file(dff_path, output_dir):
+            success_count += 1
+    print(f"\n=== Batch processing complete: {success_count}/5 fonts processed ===")
+    return success_count
+
+
+if __name__ == '__main__':
+    # 기본 DFF 소스 디렉토리 (게임 설치 경로)
+    DEFAULT_DFF_DIR = "../Pool of Radiance/data/fonts"
+
+    if len(sys.argv) >= 2:
+        # 단일 파일 처리 (기존 호환)
+        dff_path = sys.argv[1]
+        # 디렉토리가 전달되면 해당 디렉토리의 모든 fontX.dff 일괄 처리
+        if os.path.isdir(dff_path):
+            print(f"Batch processing all fonts from: {dff_path}")
+            process_all_fonts(dff_path)
+        else:
+            process_dff_file(dff_path)
+    else:
+        # 인자 없이 실행 시 모든 폰트 일괄 처리
+        print(f"Batch processing all fonts from: {DEFAULT_DFF_DIR}")
+        process_all_fonts(DEFAULT_DFF_DIR)
