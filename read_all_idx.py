@@ -51,9 +51,9 @@ def read_all_idx(file_path):
     entry_index = 0
 
     while pos < len(data):
-        # Read text (up to 16 bytes, ending with '.all')
+        # Read text (up to 12 bytes, ending with '.all')
         text_bytes = bytearray()
-        while pos < len(data) and len(text_bytes) < 16:
+        while pos < len(data) and len(text_bytes) < 12:
             b = data[pos]
             if b == 0x00:
                 break
@@ -367,7 +367,7 @@ def print_entries(entries):
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
-        print("Usage: python read_all_idx.py <all.idx_file_path>")
+        print("Usage: python read_all_idx.py <all.idx_file_path> [output_dir]")
         sys.exit(1)
 
     idx_path = sys.argv[1]
@@ -385,9 +385,12 @@ if __name__ == '__main__':
             combined = build_sections(sections, idx_dir)
             #print_sections(combined)
 
-            # Create output directory with current date/time
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            output_dir = os.path.join('.', 'dump')
+            if len(sys.argv) >= 3:
+                output_dir = sys.argv[2]
+            else:
+                # Create output directory with current date/time
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                output_dir = os.path.join('.', f'store_{timestamp}')
             os.makedirs(output_dir, exist_ok=True)
             print(f"Output directory: {output_dir}")
             print()

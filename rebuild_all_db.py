@@ -132,13 +132,16 @@ def write_address_verification(sections_data, output_path):
 def write_all_idx(sections_data, output_idx_path):
     """
     Writes a new all.idx file with the new sequential addresses.
+
+    Format per entry (20 bytes fixed):
+    - 16 bytes: section name + '.all' padded with 0x00
+    - 4 bytes: 0x00000000
+    - 4 bytes: little-endian address
     """
     with open(output_idx_path, 'wb') as f:
         for sec in sections_data:
-            # Section name + '.all' (null-terminated, up to 16 bytes)
             name_bytes = (sec['section'] + '.all').encode('ascii')
             f.write(name_bytes)
-            #f.write(b'\x00')  # null terminator 없음
 
             # 8 bytes: 4 zero bytes + 4-byte little-endian address
             f.write(b'\x00\x00\x00\x00')
