@@ -1,8 +1,8 @@
-Pool of Radiance: Ruins of Myth Drannor
-한글화 테스트
+# Pool of Radiance: Ruins of Myth Drannor
+## 한글화 테스트
 
-windows xp  // ?
-directx8.0a // dgVoodoo2 
+- windows xp  // ?
+- directx8.0a // dgVoodoo2 
 
 * font관련은 Pool of Radiance/data/fonts/font%d.bmp / .idx
 * dialogue관련은 Pool of Radiance/data/Dialogue/* // test. 파일들 제외
