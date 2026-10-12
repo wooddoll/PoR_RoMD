@@ -39,7 +39,7 @@ BOOL __thiscall cFont_CreateSurface_00435c10(cFont *this,IDirectDraw *pDD)						
 BOOL __thiscall cFont_Reset_00435c70(cFont *this,LPCSTR pszFaceName,DWORD dwCharSet,int nHeight)			10
 BOOL __thiscall cFont_AddGlyph_00435d00(cFont *this,RECT *pRect,int charCode)								14
 void __thiscall cFont_SetSurface_00435dd0(cFont *this,IDirectDrawSurface *pSurface)							18
-int __thiscall cFont_GetCharHeight_00435e00(cFont *this,char charCode)
-int __thiscall cFont_GetCharWidth_00435e30(cFont *this,char charCode)
-RECT * __thiscall cFont_GetCharRect_00435e60(cFont *this,int charCode)
-IDirectDrawSurface * __thiscall cFont_GetSurface_005484e0(cFont *this)
+int __thiscall cFont_GetCharHeight_00435e00(cFont *this,char charCode)										1c
+int __thiscall cFont_GetCharWidth_00435e30(cFont *this,char charCode)										20
+RECT * __thiscall cFont_GetCharRect_00435e60(cFont *this,int charCode)										24
+IDirectDrawSurface * __thiscall cFont_GetSurface_005484e0(cFont *this)										28
