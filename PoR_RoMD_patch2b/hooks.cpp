@@ -43,9 +43,9 @@ tCalculateTextExtents fpOriginalCalculateTextExtents = NULL;
 
 inline bool IsKoreanLeadByte(unsigned char c1, unsigned char c2)
 {
-    // CP949 한글 범위 검사: 
-    // 첫 바이트가 0x81~0xFE 이고, 두 번째 바이트도 유효한 범위(0x41~0xFE)일 때만 진짜 한글!
-    return (c1 >= 0x81 && c1 <= 0xFE) && (c2 >= 0x41 && c2 <= 0xFE);
+    // CP949 한글 범위 검사: 완성형 2350자
+    // 첫 바이트가 0xB0~0xC8 이고, 두 번째 바이트도 유효한 범위(0xA1~0xFE)일 때만 진짜 한글!
+    return (0xB0 <= c1 && c1 <= 0xC8) && (0xA1 <= c2 && c2 <= 0xFE);
 }
 
 BOOL __fastcall Hooked_CalculateTextExtents(CTextBox* pThis, void* /*edx*/)
@@ -137,7 +137,7 @@ inline int CallGetMaxWidth(void* pThis)
 
 typedef BOOL(__fastcall* tWordWrap)(void*, void*);
 tWordWrap fpOriginalWordWrap = NULL;
-
+#if 1
 BOOL __fastcall Hooked_WordWrap(void* pThis, void* /*edx*/)
 {
     if (!pThis) return FALSE;
@@ -146,30 +146,33 @@ BOOL __fastcall Hooked_WordWrap(void* pThis, void* /*edx*/)
     const char* szText = GetText(pThis);
     cFont* pFont = GetFont(pThis);
 
-    GetTotalHeight(pThis) = 0;
-    GetMaxLineWidth(pThis) = 0;
-
     if (!szText || szText[0] == '\0' || !pFont) {
-        GetLineCount(pThis) = 0;
+        *(int*)((char*)pThis + 0x138) = 0;
+        *(int*)((char*)pThis + 0x144) = 0;
+        *(int*)((char*)pThis + 0x148) = 0;
+        *(int*)((char*)pThis + 0x14C) = 0;
         return TRUE;
     }
+
+    int textLen = (int)strlen(szText);
 
     std::vector<int> lineEndIndices;
     std::vector<int> lineWidths;
 
     int currentLineWidth = 0;
     int maxLineWidth = 0;
+    int maxLineHeight = 0;
     int lineStartIdx = 0;
     int lastSpaceIdx = -1;
     int widthAtLastSpace = 0;
 
     int i = 0;
-    while (szText[i] != '\0')
+    while (i < textLen)
     {
-        // 1. 강제 줄바꿈('\n') 처리
+        // 1. 개행 문자 ('\n')
         if (szText[i] == '\n')
         {
-            lineEndIndices.push_back(i - 1);
+            lineEndIndices.push_back(i);
             lineWidths.push_back(currentLineWidth);
             if (maxLineWidth < currentLineWidth) maxLineWidth = currentLineWidth;
 
@@ -180,54 +183,48 @@ BOOL __fastcall Hooked_WordWrap(void* pThis, void* /*edx*/)
             continue;
         }
 
-        // 2. 글자 판별 (CP949 한글 2바이트 vs ASCII 1바이트)
+        // 2. 글자 파싱 (한글 2바이트 vs ASCII 1바이트)
         int code = 0;
         int charBytes = 1;
-
         unsigned char c1 = (unsigned char)szText[i];
+        unsigned char c2 = (unsigned char)szText[i + 1];
 
-        if (c1 >= 0x81 && c1 <= 0xFE && szText[i + 1] != '\0')
-        {
-            // 한글 (빅엔디안 결합)
-            unsigned char c2 = (unsigned char)szText[i + 1];
+        /*if (IsKoreanLeadByte(c1, c2)) {
             code = (c1 << 8) | c2;
             charBytes = 2;
         }
-        else
+        else */
         {
-            // ASCII
             code = (char)c1;
             charBytes = 1;
         }
 
-        // 공백 위치 기록
         if (code == ' ') {
             lastSpaceIdx = i;
             widthAtLastSpace = currentLineWidth;
         }
 
-        // 글자 폭 가져오기
+        int charH = pFont->GetCharHeight(code);
+        if (maxLineHeight < charH) maxLineHeight = charH;
+
         int charW = pFont->GetCharWidth(code);
 
-        // 3. 줄바꿈 조건 검사
+        // 3. 줄바꿈 조건
         if (currentLineWidth + charW > nBoxMaxWidth && i > lineStartIdx)
         {
             if (lastSpaceIdx != -1 && lastSpaceIdx > lineStartIdx)
             {
-                // 영문: 단어 단위 줄바꿈 (공백 위치에서 자름)
                 lineEndIndices.push_back(lastSpaceIdx);
                 lineWidths.push_back(widthAtLastSpace);
                 if (maxLineWidth < widthAtLastSpace) maxLineWidth = widthAtLastSpace;
 
-                i = lastSpaceIdx + 1; // 다음 줄은 공백 다음부터
+                i = lastSpaceIdx + 1;
             }
             else
             {
-                // 한글 또는 공백 없는 긴 단어: 현재 글자 바로 앞에서 줄바꿈!
-                lineEndIndices.push_back(i - 1);
+                lineEndIndices.push_back(i);
                 lineWidths.push_back(currentLineWidth);
                 if (maxLineWidth < currentLineWidth) maxLineWidth = currentLineWidth;
-                // i는 현재 위치 그대로 유지하여 다음 줄의 첫 글자가 됨!
             }
 
             currentLineWidth = 0;
@@ -240,41 +237,58 @@ BOOL __fastcall Hooked_WordWrap(void* pThis, void* /*edx*/)
         i += charBytes;
     }
 
-    // 마지막 줄 등록
-    lineEndIndices.push_back(i - 1);
+    // 4. 마지막 줄 추가
+    lineEndIndices.push_back(textLen);
     lineWidths.push_back(currentLineWidth);
     if (maxLineWidth < currentLineWidth) maxLineWidth = currentLineWidth;
 
     int lineCount = (int)lineEndIndices.size();
-    GetLineCount(pThis) = lineCount;
-    GetMaxLineWidth(pThis) = maxLineWidth;
 
-    // -------------------------------------------------------------
-    // ★ 핵심 수정: 힙 불일치 크래시 방지!
-    // DLL의 new[] 대신 게임 엔진의 malloc/operator_new 사용
-    // -------------------------------------------------------------
-    size_t allocSize = (lineCount + 1) * sizeof(int); // 여유 버퍼 1칸 추가
-
-    // 엔진의 operator_new 호출 (0x0047e6d0 등이 확실하지 않다면 LocalAlloc이나 원본 포인터 재활용)
-    int* pNewEndIndices = (int*)EngineNew(allocSize);
-    int* pNewWidths = (int*)EngineNew(allocSize);
+    // 5. 엔진 힙 메모리 할당 (0x005ea8fd)
+    int* pNewEndIndices = (int*)EngineNew(lineCount * sizeof(int));
+    int* pNewWidths = (int*)EngineNew(lineCount * sizeof(int));
 
     if (pNewEndIndices && pNewWidths)
     {
-        memcpy(pNewEndIndices, lineEndIndices.data(), lineCount * sizeof(int));
-        memcpy(pNewWidths, lineWidths.data(), lineCount * sizeof(int));
+        for (int k = 0; k < lineCount; ++k) {
+            pNewEndIndices[k] = lineEndIndices[k];
+            pNewWidths[k] = lineWidths[k];
+        }
 
-        // 기존 메모리 해제
-        if (GetLineEndIndices(pThis)) EngineDelete(GetLineEndIndices(pThis));
-        if (GetLineWidths(pThis))     EngineDelete(GetLineWidths(pThis));
+        // 기존 배열 해제 (0x005ea8f2)
+        if (*(int**)((char*)pThis + 0x13C)) EngineDelete(*(int**)((char*)pThis + 0x13C));
+        if (*(int**)((char*)pThis + 0x140)) EngineDelete(*(int**)((char*)pThis + 0x140));
 
-        // 새 포인터 장착
-        GetLineEndIndices(pThis) = pNewEndIndices;
-        GetLineWidths(pThis) = pNewWidths;
+        // ★★★ 원본 덤프 값과 100% 동일하게 세팅! ★★★
+        *(int*)((char*)pThis + 0x138) = lineCount;                         // orig_138 = 1
+        *(int**)((char*)pThis + 0x13C) = pNewEndIndices;                    // orig_13c -> 13
+        *(int**)((char*)pThis + 0x140) = pNewWidths;                        // orig_140 -> 65
+        *(int*)((char*)pThis + 0x144) = maxLineWidth + 2;                  // orig_144 = 67
+        *(int*)((char*)pThis + 0x148) = (maxLineHeight * lineCount) + 2;  // orig_148 = 15
+        *(int*)((char*)pThis + 0x14C) = textLen;                           // orig_14c = 13 (★★★ 핵심 해결!)
     }
 
     return TRUE;
 }
+#else
+BOOL __fastcall Hooked_WordWrap(void* pThis, void* edx)
+{
+    // 1. 원본 엔진 함수를 그대로 먼저 실행시킵니다!
+    BOOL result = fpOriginalWordWrap(pThis, edx);
+
+    // 2. 원본 함수가 끝난 직후, 객체에 무슨 값들이 들어갔는지 확인!
+    int lineCount = *(int*)((char*)pThis + 0x138);
+    int* pLineEnds = *(int**)((char*)pThis + 0x13C);
+    int* pLineWidths = *(int**)((char*)pThis + 0x140);
+    int maxWidth = *(int*)((char*)pThis + 0x144);
+    int totalHeight = *(int*)((char*)pThis + 0x148);
+    const char* text = *(const char**)((char*)pThis + 0x128);
+
+    // ★ 여기에 중단점(BP)을 걸고 Visual Studio 조사식(Watch) 창을 봅니다!
+    // text가 무엇일 때, lineCount가 몇이고, pLineEnds[0]이 무엇인지 확인!
+    return result;
+}
+#endif
 
 void patchBytes(void* ptr, const void* data, size_t bytes) {
     DWORD oldProtect;
@@ -290,8 +304,8 @@ void patchBytes(void* ptr, const void* data, size_t bytes) {
 void ApplyMemoryPatches()
 {
     {
-        const unsigned char patch[] = { 0x31, 0xC0, 0x90 };
         // CFontCharMap::FindGlyphIndex (0x004355c0)
+        const unsigned char patch[] = { 0x31, 0xC0, 0x90 };
         patchBytes(reinterpret_cast<void*>(0x00435601), patch, sizeof(patch));
     }
 
@@ -299,7 +313,7 @@ void ApplyMemoryPatches()
         const unsigned char patch[] = { 0x8B, 0x44, 0x24, 0x04, 0x90 };
         // 1. cFont::GetCharHeight (0x00435e00)
         patchBytes(reinterpret_cast<void*>(0x00435e00), patch, sizeof(patch));
-
+    
         // 2. cFont::GetCharWidth (0x00435e30)
         patchBytes(reinterpret_cast<void*>(0x00435E30), patch, sizeof(patch));
     }
@@ -309,9 +323,12 @@ void ApplyMemoryPatches()
         const unsigned char patch1[] = { 0xE9, 0x60, 0x77, 0x1D, 0x00, 0x90 };
         patchBytes(reinterpret_cast<void*>(0x0043bd9b), patch1, sizeof(patch1));
         // 3.1.b Code Cave1 쓰기 (0x00613500)
-        const unsigned char cave1[] = {
-        0x0F, 0xB6, 0x14, 0x18, 0x80, 0xFA, 0x80, 0x72, 0x0F, 0x0F, 0xB6, 0x44, 0x18, 0x01, 0xC1, 0xE2, 0x08, 0x0B, 0xD0, 0x8B, 0xC2, 0xEB, 0x03, 0x90, 0x0F, 0xBE, 0xC2, 0x8B, 0x11, 0xE9, 0x80, 0x88, 0xE2, 0xFF
-        };
+		const unsigned char cave1[] = {
+		0x0F, 0xB6, 0x14, 0x18, 0x80, 0xFA, 0xB0, 0x72, 0x1E, 0x80, 0xFA, 0xC8, 0x77, 0x19,
+		0x0F, 0xB6, 0x44, 0x18, 0x01, 0x3C, 0xA1, 0x72, 0x10, 0x3C, 0xFE, 0x77, 0x0C, 0xC1,
+		0xE2, 0x08, 0x0B, 0xD0, 0x8B, 0xC2, 0xEB, 0x06, 0x90, 0x90, 0x90, 0x0F, 0xBE, 0xC2,
+		0x8B, 0x11, 0xE9, 0x70, 0x88, 0xE2, 0xFF
+		};
         patchBytes(reinterpret_cast<void*>(0x00613500), cave1, sizeof(cave1));
 
         // 3.2.a CTextBox::DrawTextLines 내부 점프 패치
@@ -319,7 +336,10 @@ void ApplyMemoryPatches()
         patchBytes(reinterpret_cast<void*>(0x0043be72), patch2, sizeof(patch2));
         // 3.2.b Code Cave2 쓰기 (0x00613600)
         const unsigned char cave2[] = {
-        0x0F, 0xB6, 0x14, 0x18, 0x80, 0xFA, 0x80, 0x72, 0x0F, 0x0F, 0xB6, 0x44, 0x18, 0x01, 0xC1, 0xE2, 0x08, 0x0B, 0xD0, 0x8B, 0xC2, 0xEB, 0x03, 0x90, 0x0F, 0xBE, 0xC2, 0x50, 0x8B, 0x11, 0xE9, 0x54, 0x88, 0xE2, 0xFF
+        0x0F, 0xB6, 0x14, 0x18, 0x80, 0xFA, 0xB0, 0x72, 0x1E, 0x80, 0xFA, 0xC8, 0x77, 0x19,
+        0x0F, 0xB6, 0x44, 0x18, 0x01, 0x3C, 0xA1, 0x72, 0x10, 0x3C, 0xFE, 0x77, 0x0C, 0xC1,
+        0xE2, 0x08, 0x0B, 0xD0, 0x8B, 0xC2, 0xEB, 0x06, 0x90, 0x90, 0x90, 0x0F, 0xBE, 0xC2,
+        0x50, 0x8B, 0x11, 0xE9, 0x44, 0x88, 0xE2, 0xFF
         };
         patchBytes(reinterpret_cast<void*>(0x00613600), cave2, sizeof(cave2));
 
@@ -328,17 +348,21 @@ void ApplyMemoryPatches()
         patchBytes(reinterpret_cast<void*>(0x0043be7f), patch3, sizeof(patch3));
         // 3.3.b Code Cave3 쓰기 (0x00613700)
         const unsigned char cave3[] = {
-        0x8A, 0x04, 0x18, 0x3C, 0x80, 0x72, 0x05, 0x83, 0xC3, 0x02, 0xEB, 0x01, 0x43, 0x89, 0x4C, 0x24, 0x30, 0xE9, 0x6E, 0x87, 0xE2, 0xFF
+        0x8A, 0x04, 0x18, 0x3C, 0xB0, 0x72, 0x1B, 0x3C, 0xC8, 0x77, 0x17, 0x8A, 0x44, 0x18,
+        0x01, 0x3C, 0xA1, 0x72, 0x0F, 0x3C, 0xFE, 0x77, 0x0B, 0x83, 0xC3, 0x02, 0xEB, 0x07,
+        0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x43, 0x89, 0x4C, 0x24, 0x30, 0xE9, 0x58, 0x87,
+        0xE2, 0xFF
         };
         patchBytes(reinterpret_cast<void*>(0x00613700), cave3, sizeof(cave3));
     }
+
 }
 
 // 1. 새로운 폰트 경로 (길이에 제한 없음!)
 const char g_szNewFontPath[] = ".\\Data\\Fonts_kr\\font%d";
 const char g_szNewDialgouePath[] = ".\\Data\\Dialogue_kr\\%s";
 
-void PatchFontPath()
+void PatchResourcePath()
 {
     //DWORD oldProtect;
 
@@ -359,7 +383,7 @@ void PatchFontPath()
 // [초기화 진입점]
 void InstallHooks()
 {
-    PatchFontPath();
+    PatchResourcePath();
     ApplyMemoryPatches();
     
     if (MH_Initialize() == MH_OK)
