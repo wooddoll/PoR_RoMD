@@ -189,11 +189,11 @@ BOOL __fastcall Hooked_WordWrap(void* pThis, void* /*edx*/)
         unsigned char c1 = (unsigned char)szText[i];
         unsigned char c2 = (unsigned char)szText[i + 1];
 
-        /*if (IsKoreanLeadByte(c1, c2)) {
+        if (IsKoreanLeadByte(c1, c2)) {
             code = (c1 << 8) | c2;
             charBytes = 2;
         }
-        else */
+        else 
         {
             code = (char)c1;
             charBytes = 1;
