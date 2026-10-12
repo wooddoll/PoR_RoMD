@@ -137,49 +137,95 @@ def merge_bitmap_fonts(img_a_path, txt_a_path, img_b_path, txt_b_path, output_im
     print(f"성공적으로 병합되었습니다! -> {output_img_path}, {output_txt_path}")
 
 # --- 실행 가이드 ---
+# 폰트별 설정 테이블
+# 각 항목: (원본 폰트 이미지, 원본 폰트 TXT, 한글 폰트 PNG, 한글 폰트 TXT)
+# 원본 폰트 이미지는 워크스페이스 루트의 fontX.png 또는 게임 설치 경로의 fontX.bmp 사용 가능
+FONT_CONFIGS = [
+    {
+        "name": "font0",
+        "img_a": "../Pool of Radiance/data/fonts/font0.bmp",
+        "txt_a": "font/font0.dff.txt",
+        "img_b": "font/Umdot14.ttf_19.png",
+        "txt_b": "font/Umdot14.ttf_19.txt",
+    },
+    {
+        "name": "font1",
+        "img_a": "../Pool of Radiance/data/fonts/font1.bmp",
+        "txt_a": "font/font1.dff.txt",
+        "img_b": "font/Umdot12.ttf_17.png",
+        "txt_b": "font/Umdot12.ttf_17.txt",
+    },
+    {
+        "name": "font2",
+        "img_a": "../Pool of Radiance/data/fonts/font2.bmp",
+        "txt_a": "font/font2.dff.txt",
+        "img_b": "font/Umdot20-Bold.ttf_29.png",
+        "txt_b": "font/Umdot20-Bold.ttf_29.txt",
+    },
+    {
+        "name": "font3",
+        "img_a": "../Pool of Radiance/data/fonts/font3.bmp",
+        "txt_a": "font/font3.dff.txt",
+        "img_b": "font/Galmuri9.ttf_14.png",
+        "txt_b": "font/Galmuri9.ttf_14.txt",
+    },
+    {
+        "name": "font4",
+        "img_a": "../Pool of Radiance/data/fonts/font4.bmp",
+        "txt_a": "font/font4.dff.txt",
+        "img_b": "font/Galmuri11.ttf_16.png",
+        "txt_b": "font/Galmuri11.ttf_16.txt",
+    },
+]
+
+
+def process_all_fonts(configs=None, output_dir="font/font_kr"):
+    """모든 폰트를 일괄 병합합니다."""
+    if configs is None:
+        configs = FONT_CONFIGS
+
+    # 출력 디렉토리 생성
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+
+    success_count = 0
+    for cfg in configs:
+        name = cfg["name"]
+        output_img = os.path.join(output_dir, f"{name}.bmp")
+        output_txt = os.path.join(output_dir, f"{name}.dff.txt")
+
+        print(f"\n=== Processing {name} ===")
+        try:
+            merge_bitmap_fonts(
+                img_a_path=cfg["img_a"],
+                txt_a_path=cfg["txt_a"],
+                img_b_path=cfg["img_b"],
+                txt_b_path=cfg["txt_b"],
+                output_img_path=output_img,
+                output_txt_path=output_txt
+            )
+            success_count += 1
+        except Exception as e:
+            print(f"Error processing {name}: {e}")
+
+    print(f"\n=== Batch merge complete: {success_count}/{len(configs)} fonts processed ===")
+    return success_count
+
+
 if __name__ == "__main__":
-    # 파일 경로를 본인의 환경에 맞게 수정하세요.
-    merge_bitmap_fonts(
-        img_a_path="E:/Games/Pool of Radiance/Data/Fonts_/font0.bmp",
-        txt_a_path='font/font0.dff.txt',
-        img_b_path='font/Umdot14.ttf_19.png',
-        txt_b_path='font/Umdot14.ttf_19.txt',
-        output_img_path='font/font_kr/font0.bmp',
-        output_txt_path='font/font_kr/font0.dff.txt'
-    )
-    
-    merge_bitmap_fonts(
-        img_a_path="E:/Games/Pool of Radiance/Data/Fonts_/font1.bmp",
-        txt_a_path='font/font1.dff.txt',
-        img_b_path='font/Umdot12.ttf_17.png',
-        txt_b_path='font/Umdot12.ttf_17.txt',
-        output_img_path='font/font_kr/font1.bmp',
-        output_txt_path='font/font_kr/font1.dff.txt'
-    )
-    
-    merge_bitmap_fonts(
-        img_a_path="E:/Games/Pool of Radiance/Data/Fonts_/font2.bmp",
-        txt_a_path='font/font2.dff.txt',
-        img_b_path='font/Umdot20-Bold.ttf_29.png',
-        txt_b_path='font/Umdot20-Bold.ttf_29.txt',
-        output_img_path='font/font_kr/font2.bmp',
-        output_txt_path='font/font_kr/font2.dff.txt'
-    )
-    
-    merge_bitmap_fonts(
-        img_a_path="E:/Games/Pool of Radiance/Data/Fonts_/font3.bmp",
-        txt_a_path='font/font3.dff.txt',
-        img_b_path='font/Galmuri9.ttf_14.png',
-        txt_b_path='font/Galmuri9.ttf_14.txt',
-        output_img_path='font/font_kr/font3.bmp',
-        output_txt_path='font/font_kr/font3.dff.txt'
-    )
-    
-    merge_bitmap_fonts(
-        img_a_path="E:/Games/Pool of Radiance/Data/Fonts_/font4.bmp",
-        txt_a_path='font/font4.dff.txt',
-        img_b_path='font/Galmuri11.ttf_16.png',
-        txt_b_path='font/Galmuri11.ttf_16.txt',
-        output_img_path='font/font_kr/font4.bmp',
-        output_txt_path='font/font_kr/font4.dff.txt'
-    )
+    import sys
+
+    # 명령줄 인자 처리: --output-dir <경로> 또는 -o <경로>
+    output_dir = "font/font_kr"
+    args = sys.argv[1:]
+    i = 0
+    while i < len(args):
+        if args[i] in ("--output-dir", "-o") and i + 1 < len(args):
+            output_dir = args[i + 1]
+            i += 2
+        else:
+            print(f"Unknown argument: {args[i]}")
+            print("Usage: python merge_font.py [--output-dir <path>]")
+            sys.exit(1)
+
+    process_all_fonts(output_dir=output_dir)
