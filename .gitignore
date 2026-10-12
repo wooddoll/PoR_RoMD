@@ -1,0 +1,9 @@
+﻿################################################################################
+# 이 .gitignore 파일은 Microsoft(R) Visual Studio에서 자동으로 만들어졌습니다.
+################################################################################
+
+/PoR_RoMD_patch2b/.vs/PoR_RoMD_patch2b
+/PoR_RoMD_patch2b/PoR_RoMD_patch2b/Release
+/.vscode
+/PoR_RoMD_patch2b/PoR_RoMD_patch2b/Debug/PoR_RoMD_patch2b.tlog
+/PoR_RoMD_patch2b/PoR_RoMD_patch2b/Debug

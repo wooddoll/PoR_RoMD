@@ -256,6 +256,25 @@ if __name__ == '__main__':
     dff_path = sys.argv[1]
     # Read DFF data
     dff = read_binary_as_int32(dff_path)
+    
+    txt_lines = []
+    for idx, rect in enumerate(dff.array_5x256):
+        asciicode = idx if idx < 128 else idx - 256
+        x0 = rect[1]
+        y0 = rect[2]
+        x1 = rect[3]
+        y1 = rect[4]
+        txt_lines.append(f"{asciicode}\t{x0}\t{y0}\t{x1}\t{y1}")
+    folder_path = "./font"
+    if folder_path and not os.path.exists(folder_path):
+        os.makedirs(folder_path, exist_ok=True)
+    basename = os.path.basename(dff_path)
+    output_txt_path = f"{folder_path}/{basename}.txt"
+    with open(output_txt_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(txt_lines))
+    
+    exit()
+    
     if dff is None:
         exit()
     analyFontH(dff)

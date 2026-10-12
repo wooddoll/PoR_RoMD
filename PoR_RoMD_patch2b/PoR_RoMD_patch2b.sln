@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37628.2 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PoR_RoMD_patch2b", "PoR_RoMD_patch2b.vcxproj", "{1CE8F8EC-4E7B-4CD9-9D29-CD8F52D3DC39}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1CE8F8EC-4E7B-4CD9-9D29-CD8F52D3DC39}.Debug|x64.ActiveCfg = Debug|x64
+		{1CE8F8EC-4E7B-4CD9-9D29-CD8F52D3DC39}.Debug|x64.Build.0 = Debug|x64
+		{1CE8F8EC-4E7B-4CD9-9D29-CD8F52D3DC39}.Debug|x86.ActiveCfg = Debug|Win32
+		{1CE8F8EC-4E7B-4CD9-9D29-CD8F52D3DC39}.Debug|x86.Build.0 = Debug|Win32
+		{1CE8F8EC-4E7B-4CD9-9D29-CD8F52D3DC39}.Release|x64.ActiveCfg = Release|x64
+		{1CE8F8EC-4E7B-4CD9-9D29-CD8F52D3DC39}.Release|x64.Build.0 = Release|x64
+		{1CE8F8EC-4E7B-4CD9-9D29-CD8F52D3DC39}.Release|x86.ActiveCfg = Release|Win32
+		{1CE8F8EC-4E7B-4CD9-9D29-CD8F52D3DC39}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {29C20798-ABE7-4E75-840A-4D6CB2E75CA2}
+	EndGlobalSection
+EndGlobal
