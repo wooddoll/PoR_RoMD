@@ -20,13 +20,13 @@
 #pragma comment(linker, "/export:VerQueryValueW=C:\\Windows\\System32\\version.VerQueryValueW,@17")
 
 // 후킹할 함수 선언부
-void InstallHooks();
+void ApplyMemoryPatches();
 
 DWORD WINAPI PatchThread(LPVOID lpParam)
 {
     UNREFERENCED_PARAMETER(lpParam);
 
-    InstallHooks();
+    ApplyMemoryPatches();
 
     return 0;
 }

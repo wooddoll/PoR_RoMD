@@ -1,294 +1,4 @@
 #include <windows.h>
-#include <vector>
-#include "MinHook.h"
-
-
-// 폰트 인터페이스
-class cFont {
-public:
-    virtual void  Dummy00() = 0;
-    virtual void  Dummy04() = 0;
-    virtual void  Dummy08() = 0;
-    virtual void  Dummy0C() = 0;
-    virtual void  Dummy10() = 0;
-    virtual void  Dummy14() = 0;
-    virtual void  Dummy18() = 0;
-    virtual int   GetCharHeight(int code) = 0; // +0x1C
-    virtual int   GetCharWidth(int code) = 0; // +0x20
-    virtual RECT* GetCharRect(int code) = 0; // +0x24
-    virtual void* GetSurface() = 0; // +0x28
-};
-
-typedef void* (__cdecl* tEngineNew)(size_t size);
-tEngineNew EngineNew = (tEngineNew)0x005ea8fd;
-typedef void(__cdecl* tEngineDelete)(void* ptr);
-tEngineDelete EngineDelete = (tEngineDelete)0x005ea8f2;
-
-// [후킹 1] CTextBox::CalculateTextExtents (0x0043bf40)
-struct CTextBox {
-    void* vftable;
-    char   pad_00[0x138];
-    int    m_nLineCount;
-    int    m_rcBounds_left;
-    int    m_nTotalWidth;
-    int    m_rcBounds_top;
-    char   pad_14C[0x40];
-    char** m_ppLines;
-    char   pad_19C[4];
-    cFont* m_pFont;
-};
-
-typedef BOOL(__thiscall* tCalculateTextExtents)(CTextBox*);
-tCalculateTextExtents fpOriginalCalculateTextExtents = NULL;
-
-inline bool IsKoreanLeadByte(unsigned char c1, unsigned char c2)
-{
-    // CP949 한글 범위 검사: 완성형 2350자
-    // 첫 바이트가 0xB0~0xC8 이고, 두 번째 바이트도 유효한 범위(0xA1~0xFE)일 때만 진짜 한글!
-    return (0xB0 <= c1 && c1 <= 0xC8) && (0xA1 <= c2 && c2 <= 0xFE);
-}
-
-BOOL __fastcall Hooked_CalculateTextExtents(CTextBox* pThis, void* /*edx*/)
-{
-    if (!pThis) return FALSE;
-
-    int maxBoxWidth = 0;
-    int maxLineHeight = 0;
-
-    int lineCount = *(int*)((char*)pThis + 0x13C);
-    char** ppLines = *(char***)((char*)pThis + 0x198);
-    cFont* pFont = *(cFont**)((char*)pThis + 0x1A0);
-
-    if (lineCount > 0 && ppLines && pFont)
-    {
-        for (int lineIdx = 0; lineIdx < lineCount; ++lineIdx)
-        {
-            const char* szLine = ppLines[lineIdx];
-            if (!szLine) continue;
-
-            int currentLineWidth = 10; // 초기 마진 10px
-
-            for (int i = 0; szLine[i] != '\0'; )
-            {
-                int code = 0;
-                int charBytes = 1;
-
-                unsigned char c1 = (unsigned char)szLine[i];
-                unsigned char c2 = (unsigned char)szLine[i + 1];
-
-                if (IsKoreanLeadByte(c1, c2)) {
-                    code = (c1 << 8) | c2;
-                    charBytes = 2;
-                }
-                else {
-                    code = (char)c1;
-                    charBytes = 1;
-                }
-
-                // 글자 높이 측정 및 최대 라인 높이 갱신
-                int h = pFont->GetCharHeight(code);
-                if (maxLineHeight < h) {
-                    maxLineHeight = h;
-                }
-
-                // 글자 폭 누적
-                int w = pFont->GetCharWidth(code);
-                currentLineWidth += w;
-
-                if (maxBoxWidth < currentLineWidth + 20) {
-                    maxBoxWidth = currentLineWidth + 20;
-                }
-
-                i += charBytes;
-            }
-        }
-    }
-
-    // -------------------------------------------------------------
-    // ★★★ 핵심 교정: 어셈블리 0043bff4 ~ 0043c000 과 100% 일치시킴!
-    // -------------------------------------------------------------
-    int totalBoxHeight = lineCount * maxLineHeight; // IMUL EDX, EAX
-
-    *(int*)((char*)pThis + 0x140) = maxLineHeight;  // [ESI + 0x140] = 한 줄 높이
-    *(int*)((char*)pThis + 0x144) = maxBoxWidth;    // [ESI + 0x144] = 전체 폭
-    *(int*)((char*)pThis + 0x148) = totalBoxHeight; // [ESI + 0x148] = 전체 박스 높이 (절대 0이면 안 됨!)
-
-    return TRUE;
-}
-
-// [후킹 2] CTextLayout::WordWrap (0x00444890)
-inline cFont* GetFont(void* pThis) { return *(cFont**)((char*)pThis + 0x124); }
-inline const char* GetText(void* pThis) { return *(const char**)((char*)pThis + 0x128); }
-inline int& GetLineCount(void* pThis) { return *(int*)((char*)pThis + 0x138); }
-inline int*& GetLineEndIndices(void* pThis) { return *(int**)((char*)pThis + 0x13C); }
-inline int*& GetLineWidths(void* pThis) { return *(int**)((char*)pThis + 0x140); }
-inline int& GetMaxLineWidth(void* pThis) { return *(int*)((char*)pThis + 0x144); }
-inline int& GetTotalHeight(void* pThis) { return *(int*)((char*)pThis + 0x148); }
-
-// 원본의 GetMaxWidth() 호출 교정:
-// 원본 어셈블리: MOV ECX, pThis -> CALL [vftable + 0x48] (순수 __thiscall, 인자 없음!)
-inline int CallGetMaxWidth(void* pThis)
-{
-    typedef int(__thiscall* tGetMaxWidth)(void*);
-    void** vftable = *(void***)pThis;
-    tGetMaxWidth fnGetMaxWidth = (tGetMaxWidth)(vftable[0x48 / 4]);
-    return fnGetMaxWidth(pThis);
-}
-
-typedef BOOL(__fastcall* tWordWrap)(void*, void*);
-tWordWrap fpOriginalWordWrap = NULL;
-#if 1
-BOOL __fastcall Hooked_WordWrap(void* pThis, void* /*edx*/)
-{
-    if (!pThis) return FALSE;
-
-    int nBoxMaxWidth = CallGetMaxWidth(pThis);
-    const char* szText = GetText(pThis);
-    cFont* pFont = GetFont(pThis);
-
-    if (!szText || szText[0] == '\0' || !pFont) {
-        *(int*)((char*)pThis + 0x138) = 0;
-        *(int*)((char*)pThis + 0x144) = 0;
-        *(int*)((char*)pThis + 0x148) = 0;
-        *(int*)((char*)pThis + 0x14C) = 0;
-        return TRUE;
-    }
-
-    int textLen = (int)strlen(szText);
-
-    std::vector<int> lineEndIndices;
-    std::vector<int> lineWidths;
-
-    int currentLineWidth = 0;
-    int maxLineWidth = 0;
-    int maxLineHeight = 0;
-    int lineStartIdx = 0;
-    int lastSpaceIdx = -1;
-    int widthAtLastSpace = 0;
-
-    int i = 0;
-    while (i < textLen)
-    {
-        // 1. 개행 문자 ('\n')
-        if (szText[i] == '\n')
-        {
-            lineEndIndices.push_back(i);
-            lineWidths.push_back(currentLineWidth);
-            if (maxLineWidth < currentLineWidth) maxLineWidth = currentLineWidth;
-
-            currentLineWidth = 0;
-            lastSpaceIdx = -1;
-            i++;
-            lineStartIdx = i;
-            continue;
-        }
-
-        // 2. 글자 파싱 (한글 2바이트 vs ASCII 1바이트)
-        int code = 0;
-        int charBytes = 1;
-        unsigned char c1 = (unsigned char)szText[i];
-        unsigned char c2 = (unsigned char)szText[i + 1];
-
-        if (IsKoreanLeadByte(c1, c2)) {
-            code = (c1 << 8) | c2;
-            charBytes = 2;
-        }
-        else 
-        {
-            code = (char)c1;
-            charBytes = 1;
-        }
-
-        if (code == ' ') {
-            lastSpaceIdx = i;
-            widthAtLastSpace = currentLineWidth;
-        }
-
-        int charH = pFont->GetCharHeight(code);
-        if (maxLineHeight < charH) maxLineHeight = charH;
-
-        int charW = pFont->GetCharWidth(code);
-
-        // 3. 줄바꿈 조건
-        if (currentLineWidth + charW > nBoxMaxWidth && i > lineStartIdx)
-        {
-            if (lastSpaceIdx != -1 && lastSpaceIdx > lineStartIdx)
-            {
-                lineEndIndices.push_back(lastSpaceIdx);
-                lineWidths.push_back(widthAtLastSpace);
-                if (maxLineWidth < widthAtLastSpace) maxLineWidth = widthAtLastSpace;
-
-                i = lastSpaceIdx + 1;
-            }
-            else
-            {
-                lineEndIndices.push_back(i);
-                lineWidths.push_back(currentLineWidth);
-                if (maxLineWidth < currentLineWidth) maxLineWidth = currentLineWidth;
-            }
-
-            currentLineWidth = 0;
-            lastSpaceIdx = -1;
-            lineStartIdx = i;
-            continue;
-        }
-
-        currentLineWidth += charW;
-        i += charBytes;
-    }
-
-    // 4. 마지막 줄 추가
-    lineEndIndices.push_back(textLen);
-    lineWidths.push_back(currentLineWidth);
-    if (maxLineWidth < currentLineWidth) maxLineWidth = currentLineWidth;
-
-    int lineCount = (int)lineEndIndices.size();
-
-    // 5. 엔진 힙 메모리 할당 (0x005ea8fd)
-    int* pNewEndIndices = (int*)EngineNew(lineCount * sizeof(int));
-    int* pNewWidths = (int*)EngineNew(lineCount * sizeof(int));
-
-    if (pNewEndIndices && pNewWidths)
-    {
-        for (int k = 0; k < lineCount; ++k) {
-            pNewEndIndices[k] = lineEndIndices[k];
-            pNewWidths[k] = lineWidths[k];
-        }
-
-        // 기존 배열 해제 (0x005ea8f2)
-        if (*(int**)((char*)pThis + 0x13C)) EngineDelete(*(int**)((char*)pThis + 0x13C));
-        if (*(int**)((char*)pThis + 0x140)) EngineDelete(*(int**)((char*)pThis + 0x140));
-
-        // ★★★ 원본 덤프 값과 100% 동일하게 세팅! ★★★
-        *(int*)((char*)pThis + 0x138) = lineCount;                         // orig_138 = 1
-        *(int**)((char*)pThis + 0x13C) = pNewEndIndices;                    // orig_13c -> 13
-        *(int**)((char*)pThis + 0x140) = pNewWidths;                        // orig_140 -> 65
-        *(int*)((char*)pThis + 0x144) = maxLineWidth + 2;                  // orig_144 = 67
-        *(int*)((char*)pThis + 0x148) = (maxLineHeight * lineCount) + 2;  // orig_148 = 15
-        *(int*)((char*)pThis + 0x14C) = textLen;                           // orig_14c = 13 (★★★ 핵심 해결!)
-    }
-
-    return TRUE;
-}
-#else
-BOOL __fastcall Hooked_WordWrap(void* pThis, void* edx)
-{
-    // 1. 원본 엔진 함수를 그대로 먼저 실행시킵니다!
-    BOOL result = fpOriginalWordWrap(pThis, edx);
-
-    // 2. 원본 함수가 끝난 직후, 객체에 무슨 값들이 들어갔는지 확인!
-    int lineCount = *(int*)((char*)pThis + 0x138);
-    int* pLineEnds = *(int**)((char*)pThis + 0x13C);
-    int* pLineWidths = *(int**)((char*)pThis + 0x140);
-    int maxWidth = *(int*)((char*)pThis + 0x144);
-    int totalHeight = *(int*)((char*)pThis + 0x148);
-    const char* text = *(const char**)((char*)pThis + 0x128);
-
-    // ★ 여기에 중단점(BP)을 걸고 Visual Studio 조사식(Watch) 창을 봅니다!
-    // text가 무엇일 때, lineCount가 몇이고, pLineEnds[0]이 무엇인지 확인!
-    return result;
-}
-#endif
 
 void patchBytes(void* ptr, const void* data, size_t bytes) {
     DWORD oldProtect;
@@ -300,62 +10,247 @@ void patchBytes(void* ptr, const void* data, size_t bytes) {
     }
 }
 
-// [메모리 패치] GetCharHeight/Width 32비트화 및 DrawTextLines 인라인 패치
-void ApplyMemoryPatches()
+// ============================================================
+// [패치 1] CFontCharMap::FindGlyphIndex (0x004355c0)
+// ============================================================
+void PatchFindGlyphIndex()
 {
-    {
-        // CFontCharMap::FindGlyphIndex (0x004355c0)
-        const unsigned char patch[] = { 0x31, 0xC0, 0x90 };
-        patchBytes(reinterpret_cast<void*>(0x00435601), patch, sizeof(patch));
-    }
+    // 0x00435601: XOR EAX,EAX; NOP (인덱스 검색 실패 시 -1 대신 0 반환)
+    const unsigned char patch[] = { 0x31, 0xC0, 0x90 };
+    patchBytes(reinterpret_cast<void*>(0x00435601), patch, sizeof(patch));
+}
 
-    {
-        const unsigned char patch[] = { 0x8B, 0x44, 0x24, 0x04, 0x90 };
-        // 1. cFont::GetCharHeight (0x00435e00)
-        patchBytes(reinterpret_cast<void*>(0x00435e00), patch, sizeof(patch));
-    
-        // 2. cFont::GetCharWidth (0x00435e30)
-        patchBytes(reinterpret_cast<void*>(0x00435E30), patch, sizeof(patch));
-    }
+// ============================================================
+// [패치 2] cFont::GetCharHeight/GetCharWidth → code cave 이동
+// ============================================================
+void PatchGetCharWH_CodeCave()
+{
+    // 원래 함수는 1바이트 charCode만 처리하므로, 2바이트 한글을 처리하기 위해
+    // code cave (0x00613800, 0x00613900)에 재구현한 함수로 점프시킵니다.
 
-    {
-        // 3.1.a CTextBox::DrawTextLines 내부 점프 패치
-        const unsigned char patch1[] = { 0xE9, 0x60, 0x77, 0x1D, 0x00, 0x90 };
-        patchBytes(reinterpret_cast<void*>(0x0043bd9b), patch1, sizeof(patch1));
-        // 3.1.b Code Cave1 쓰기 (0x00613500)
-		const unsigned char cave1[] = {
-		0x0F, 0xB6, 0x14, 0x18, 0x80, 0xFA, 0xB0, 0x72, 0x1E, 0x80, 0xFA, 0xC8, 0x77, 0x19,
-		0x0F, 0xB6, 0x44, 0x18, 0x01, 0x3C, 0xA1, 0x72, 0x10, 0x3C, 0xFE, 0x77, 0x0C, 0xC1,
-		0xE2, 0x08, 0x0B, 0xD0, 0x8B, 0xC2, 0xEB, 0x06, 0x90, 0x90, 0x90, 0x0F, 0xBE, 0xC2,
-		0x8B, 0x11, 0xE9, 0x70, 0x88, 0xE2, 0xFF
-		};
-        patchBytes(reinterpret_cast<void*>(0x00613500), cave1, sizeof(cave1));
+    // 1. GetCharHeight: JMP 0x00613800 (E9 FB D9 1D 00 + NOP 패딩)
+    const unsigned char jmp1[] = { 0xE9, 0xFB, 0xD9, 0x1D, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90 };
+    patchBytes(reinterpret_cast<void*>(0x00435E00), jmp1, sizeof(jmp1));
 
-        // 3.2.a CTextBox::DrawTextLines 내부 점프 패치
-        const unsigned char patch2[] = { 0xE9, 0x8B, 0x77, 0x1D, 0x00, 0x90 };
-        patchBytes(reinterpret_cast<void*>(0x0043be72), patch2, sizeof(patch2));
-        // 3.2.b Code Cave2 쓰기 (0x00613600)
-        const unsigned char cave2[] = {
-        0x0F, 0xB6, 0x14, 0x18, 0x80, 0xFA, 0xB0, 0x72, 0x1E, 0x80, 0xFA, 0xC8, 0x77, 0x19,
-        0x0F, 0xB6, 0x44, 0x18, 0x01, 0x3C, 0xA1, 0x72, 0x10, 0x3C, 0xFE, 0x77, 0x0C, 0xC1,
-        0xE2, 0x08, 0x0B, 0xD0, 0x8B, 0xC2, 0xEB, 0x06, 0x90, 0x90, 0x90, 0x0F, 0xBE, 0xC2,
-        0x50, 0x8B, 0x11, 0xE9, 0x44, 0x88, 0xE2, 0xFF
-        };
-        patchBytes(reinterpret_cast<void*>(0x00613600), cave2, sizeof(cave2));
+    // 2. GetCharWidth: JMP 0x00613900 (E9 CB DA 1D 00 + NOP 패딩)
+    const unsigned char jmp2[] = { 0xE9, 0xCB, 0xDA, 0x1D, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90 };
+    patchBytes(reinterpret_cast<void*>(0x00435E30), jmp2, sizeof(jmp2));
 
-        // 3.3.a CTextBox::DrawTextLines 내부 점프 패치
-        const unsigned char patch3[] = { 0xE9, 0x7C, 0x78, 0x1D, 0x00 };
-        patchBytes(reinterpret_cast<void*>(0x0043be7f), patch3, sizeof(patch3));
-        // 3.3.b Code Cave3 쓰기 (0x00613700)
-        const unsigned char cave3[] = {
-        0x8A, 0x04, 0x18, 0x3C, 0xB0, 0x72, 0x1B, 0x3C, 0xC8, 0x77, 0x17, 0x8A, 0x44, 0x18,
-        0x01, 0x3C, 0xA1, 0x72, 0x0F, 0x3C, 0xFE, 0x77, 0x0B, 0x83, 0xC3, 0x02, 0xEB, 0x07,
-        0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x43, 0x89, 0x4C, 0x24, 0x30, 0xE9, 0x58, 0x87,
-        0xE2, 0xFF
-        };
-        patchBytes(reinterpret_cast<void*>(0x00613700), cave3, sizeof(cave3));
-    }
+    // 3. Code Cave: GetCharHeight 구현 (0x00613800)
+    const unsigned char caveH[] = {
+        // c1 = charCode & 0xFF; c2 = (charCode >> 8) & 0xFF
+        0x8B, 0x44, 0x24, 0x04,             // MOV EAX, [ESP+4]
+        0x0F, 0xB6, 0xC0,                   // MOVZX EAX, AL (c1)
+        0x8B, 0x54, 0x24, 0x04,             // MOV EDX, [ESP+4]
+        0xC1, 0xEA, 0x08,                   // SHR EDX, 8
+        0x81, 0xE2, 0xFF, 0x00, 0x00, 0x00, // AND EDX, 0xFF (c2)
+        // if ((0xB0 <= c1 && c1 <= 0xC8) && (0xA1 <= c2 && c2 <= 0xFE))
+        0x3D, 0xB0, 0x00, 0x00, 0x00,       // CMP EAX, 0xB0
+        0x7C, 0x1E,                         // JL check_tail (0x00613839)
+        0x3D, 0xC8, 0x00, 0x00, 0x00,       // CMP EAX, 0xC8
+        0x7F, 0x17,                         // JG check_tail (0x00613839)
+        0x81, 0xFA, 0xA1, 0x00, 0x00, 0x00, // CMP EDX, 0xA1
+        0x7C, 0x0F,                         // JL check_tail (0x00613839)
+        0x81, 0xFA, 0xFE, 0x00, 0x00, 0x00, // CMP EDX, 0xFE
+        0x7F, 0x07,                         // JG check_tail (0x00613839)
+        // charCode = (c1 << 8) | c2
+        0xC1, 0xE0, 0x08,                   // SHL EAX, 8
+        0x0B, 0xC2,                         // OR EAX, EDX
+        0xEB, 0x16,                         // JMP do_find (0x0061384F)
+        // check_tail: else if (0xA1 <= c1 && c1 <= 0xFE) → return 0
+        0x3D, 0xA1, 0x00, 0x00, 0x00,       // CMP EAX, 0xA1
+        0x7C, 0x0C,                         // JL do_ascii (0x0061384C)
+        0x3D, 0xFE, 0x00, 0x00, 0x00,       // CMP EAX, 0xFE
+        0x7F, 0x05,                         // JG do_ascii (0x0061384C)
+        0x31, 0xC0,                         // XOR EAX, EAX
+        0xC2, 0x04, 0x00,                   // RET 4
+        // do_ascii: charCode = (char)c1 (sign extend)
+        0x0F, 0xBE, 0xC0,                   // MOVSX EAX, AL
+        // do_find: idx = FindCodeIndex(this->charMap, charCode)
+        0x56,                               // PUSH ESI
+        0x8B, 0xF1,                         // MOV ESI, ECX
+        0x50,                               // PUSH EAX
+        0x8B, 0x4E, 0x0C,                   // MOV ECX, [ESI+0xC]
+        0xE8, 0x65, 0x25, 0xE2, 0xFF,       // CALL 0x004355C0
+        // return this->glyphs[idx]->y1 - this->glyphs[idx]->y0
+        0x8B, 0x4E, 0x08,                   // MOV ECX, [ESI+0x8]
+        0x5E,                               // POP ESI
+        0x8B, 0x0C, 0x81,                   // MOV ECX, [ECX+EAX*4]
+        0x8B, 0x41, 0x10,                   // MOV EAX, [ECX+0x10] (y1)
+        0x8B, 0x51, 0x08,                   // MOV EDX, [ECX+0x8]  (y0)
+        0x2B, 0xC2,                         // SUB EAX, EDX
+        0xC2, 0x04, 0x00                    // RET 4
+    };
+    patchBytes(reinterpret_cast<void*>(0x00613800), caveH, sizeof(caveH));
 
+    // 4. Code Cave: GetCharWidth 구현 (0x00613900)
+    const unsigned char caveW[] = {
+        // c1 = charCode & 0xFF; c2 = (charCode >> 8) & 0xFF
+        0x8B, 0x44, 0x24, 0x04,             // MOV EAX, [ESP+4]
+        0x0F, 0xB6, 0xC0,                   // MOVZX EAX, AL (c1)
+        0x8B, 0x54, 0x24, 0x04,             // MOV EDX, [ESP+4]
+        0xC1, 0xEA, 0x08,                   // SHR EDX, 8
+        0x81, 0xE2, 0xFF, 0x00, 0x00, 0x00, // AND EDX, 0xFF (c2)
+        // if ((0xB0 <= c1 && c1 <= 0xC8) && (0xA1 <= c2 && c2 <= 0xFE))
+        0x3D, 0xB0, 0x00, 0x00, 0x00,       // CMP EAX, 0xB0
+        0x7C, 0x1E,                         // JL check_tail (0x00613939)
+        0x3D, 0xC8, 0x00, 0x00, 0x00,       // CMP EAX, 0xC8
+        0x7F, 0x17,                         // JG check_tail (0x00613939)
+        0x81, 0xFA, 0xA1, 0x00, 0x00, 0x00, // CMP EDX, 0xA1
+        0x7C, 0x0F,                         // JL check_tail (0x00613939)
+        0x81, 0xFA, 0xFE, 0x00, 0x00, 0x00, // CMP EDX, 0xFE
+        0x7F, 0x07,                         // JG check_tail (0x00613939)
+        // charCode = (c1 << 8) | c2
+        0xC1, 0xE0, 0x08,                   // SHL EAX, 8
+        0x0B, 0xC2,                         // OR EAX, EDX
+        0xEB, 0x16,                         // JMP do_find (0x0061394F)
+        // check_tail: else if (0xA1 <= c1 && c1 <= 0xFE) → return 0
+        0x3D, 0xA1, 0x00, 0x00, 0x00,       // CMP EAX, 0xA1
+        0x7C, 0x0C,                         // JL do_ascii (0x0061394C)
+        0x3D, 0xFE, 0x00, 0x00, 0x00,       // CMP EAX, 0xFE
+        0x7F, 0x05,                         // JG do_ascii (0x0061394C)
+        0x31, 0xC0,                         // XOR EAX, EAX
+        0xC2, 0x04, 0x00,                   // RET 4
+        // do_ascii: charCode = (char)c1 (sign extend)
+        0x0F, 0xBE, 0xC0,                   // MOVSX EAX, AL
+        // do_find: idx = FindCodeIndex(this->charMap, charCode)
+        0x56,                               // PUSH ESI
+        0x8B, 0xF1,                         // MOV ESI, ECX
+        0x50,                               // PUSH EAX
+        0x8B, 0x4E, 0x0C,                   // MOV ECX, [ESI+0xC]
+        0xE8, 0x65, 0x22, 0xE2, 0xFF,       // CALL 0x004355C0
+        // return this->glyphs[idx]->x1 - this->glyphs[idx]->x0
+        0x8B, 0x4E, 0x08,                   // MOV ECX, [ESI+0x8]
+        0x5E,                               // POP ESI
+        0x8B, 0x0C, 0x81,                   // MOV ECX, [ECX+EAX*4]
+        0x8B, 0x41, 0x0C,                   // MOV EAX, [ECX+0xC] (x1)
+        0x8B, 0x51, 0x04,                   // MOV EDX, [ECX+0x4] (x0)
+        0x2B, 0xC2,                         // SUB EAX, EDX
+        0xC2, 0x04, 0x00                    // RET 4
+    };
+    patchBytes(reinterpret_cast<void*>(0x00613900), caveW, sizeof(caveW));
+
+    // 5. GetCharRect: JMP 0x00613A00 (E9 9B DB 1D 00 + NOP 패딩)
+    const unsigned char jmp3[] = { 0xE9, 0x9B, 0xDB, 0x1D, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90 };
+    patchBytes(reinterpret_cast<void*>(0x00435E60), jmp3, sizeof(jmp3));
+
+    // 6. Code Cave: GetCharRect 구현 (0x00613A00)
+    const unsigned char caveR[] = {
+        // c1 = charCode & 0xFF; c2 = (charCode >> 8) & 0xFF
+        0x8B, 0x44, 0x24, 0x04,             // MOV EAX, [ESP+4]
+        0x0F, 0xB6, 0xC0,                   // MOVZX EAX, AL (c1)
+        0x8B, 0x54, 0x24, 0x04,             // MOV EDX, [ESP+4]
+        0xC1, 0xEA, 0x08,                   // SHR EDX, 8
+        0x81, 0xE2, 0xFF, 0x00, 0x00, 0x00, // AND EDX, 0xFF (c2)
+        // if ((0xB0 <= c1 && c1 <= 0xC8) && (0xA1 <= c2 && c2 <= 0xFE))
+        0x3D, 0xB0, 0x00, 0x00, 0x00,       // CMP EAX, 0xB0
+        0x7C, 0x11,                         // JL check_tail (0x00613A27)
+        0x3D, 0xC8, 0x00, 0x00, 0x00,       // CMP EAX, 0xC8
+        0x7F, 0x0C,                         // JG check_tail (0x00613A27)
+        0x81, 0xFA, 0xA1, 0x00, 0x00, 0x00, // CMP EDX, 0xA1
+        0x7C, 0x07,                         // JL check_tail (0x00613A27)
+        0x81, 0xFA, 0xFE, 0x00, 0x00, 0x00, // CMP EDX, 0xFE
+        0x7F, 0x02,                         // JG check_tail (0x00613A27)
+        // charCode = (c1 << 8) | c2
+        0xC1, 0xE0, 0x08,                   // SHL EAX, 8
+        0x0B, 0xC2,                         // OR EAX, EDX
+        0xEB, 0x1C,                         // JMP do_find (0x00613A43)
+        // check_tail: else if (0xA1 <= c1 && c1 <= 0xFE) → return &glyphs[0]->x0
+        0x3D, 0xA1, 0x00, 0x00, 0x00,       // CMP EAX, 0xA1
+        0x7C, 0x17,                         // JL do_ascii (0x00613A57)
+        0x3D, 0xFE, 0x00, 0x00, 0x00,       // CMP EAX, 0xFE
+        0x7F, 0x10,                         // JG do_ascii (0x00613A57)
+        0x56,                               // PUSH ESI
+        0x8B, 0xF1,                         // MOV ESI, ECX
+        0x8B, 0x4E, 0x08,                   // MOV ECX, [ESI+0x8] (glyphs)
+        0x8B, 0x04, 0x81,                   // MOV EAX, [ECX+EAX*4] (glyphs[0])
+        0x5E,                               // POP ESI
+        0x83, 0xC0, 0x04,                   // ADD EAX, 4 (&glyphs[0]->x0)
+        0xC2, 0x04, 0x00,                   // RET 4
+        // do_ascii: charCode = (char)c1 (sign extend)
+        0x0F, 0xBE, 0xC0,                   // MOVSX EAX, AL
+        // do_find: idx = FindCodeIndex(this->charMap, charCode)
+        0x56,                               // PUSH ESI
+        0x8B, 0xF1,                         // MOV ESI, ECX
+        0x50,                               // PUSH EAX
+        0x8B, 0x4E, 0x0C,                   // MOV ECX, [ESI+0xC]
+        0xE8, 0x1B, 0xE2, 0xFF, 0xFF,       // CALL 0x004355C0
+        // return &this->glyphs[idx]->x0 (FindCodeIndex가 0 반환하므로 -1 체크 불필요)
+        0x8B, 0x4E, 0x08,                   // MOV ECX, [ESI+0x8]
+        0x5E,                               // POP ESI
+        0x8B, 0x04, 0x81,                   // MOV EAX, [ECX+EAX*4]
+        0x83, 0xC0, 0x04,                   // ADD EAX, 4
+        0xC2, 0x04, 0x00                    // RET 4
+    };
+    patchBytes(reinterpret_cast<void*>(0x00613A00), caveR, sizeof(caveR));
+}
+
+// ============================================================
+// [패치 3] CTextLayout::WordWrap (0x00444890) 4바이트 읽기
+// ============================================================
+void PatchWordWrap_4ByteRead()
+{
+    // MOV AL, [EAX+ESI*1] (8A 04 30) → MOV EAX, [EAX+ESI*1] (8B 04 30)
+    // MOV DL, [EDX+ESI*1] (8A 14 32) → MOV EDX, [EDX+ESI*1] (8B 14 32)
+    // 각 호출부에서 1바이트만 변경하여 4바이트를 읽어서 전달합니다.
+    // GetCharHeight/GetCharWidth 내부에서 리드바이트(0xB0-0xC8) 확인 후
+    // 테일바이트(0xA1-0xFE)와 결합하여 사용하고, 테일바이트면 0을 반환합니다.
+
+    const unsigned char patch[] = { 0x8B };
+
+    // 1. GetCharHeight 호출부 (0x00444a08)
+    patchBytes(reinterpret_cast<void*>(0x00444a08), patch, sizeof(patch));
+
+    // 2. GetCharWidth 호출부 (0x00444a27)
+    patchBytes(reinterpret_cast<void*>(0x00444a27), patch, sizeof(patch));
+
+    // 3. 백트래킹 GetCharWidth 호출부 (0x00444a52)
+    patchBytes(reinterpret_cast<void*>(0x00444a52), patch, sizeof(patch));
+
+    // 4. 공백 스킵 GetCharWidth 호출부 (0x00444a89)
+    patchBytes(reinterpret_cast<void*>(0x00444a89), patch, sizeof(patch));
+}
+
+// ============================================================
+// [패치 4] CTextBox::CalculateTextExtents (0x0043bf40) 4바이트 읽기
+// ============================================================
+void PatchCalculateTextExtents_4ByteRead()
+{
+    // MOV AL, [EDI+EAX*1] (8A 04 07) → MOV EAX, [EDI+EAX*1] (8B 04 07)
+    // MOV AL, [EAX+EDI*1] (8A 04 38) → MOV EAX, [EAX+EDI*1] (8B 04 38)
+    // 각 호출부에서 1바이트만 변경하여 4바이트를 읽어서 전달합니다.
+    // GetCharHeight/GetCharWidth 내부에서 리드바이트(0xB0-0xC8) 확인 후
+    // 테일바이트(0xA1-0xFE)와 결합하여 사용하고, 테일바이트면 0을 반환합니다.
+
+    const unsigned char patch[] = { 0x8B };
+
+    // 1. GetCharHeight 호출부 (0x0043bf83)
+    patchBytes(reinterpret_cast<void*>(0x0043bf83), patch, sizeof(patch));
+
+    // 2. GetCharWidth 호출부 (0x0043bfa7)
+    patchBytes(reinterpret_cast<void*>(0x0043bfa7), patch, sizeof(patch));
+}
+
+// ============================================================
+// [패치 5] CTextBox::DrawTextLines (0x0043bd9b) 4바이트 읽기
+// ============================================================
+void PatchDrawTextLines_CodeCave()
+{
+    // MOVSX EAX, byte ptr [EAX+EBX*1] (0F BE 04 18) → MOV EAX, [EAX+EBX*1] (8B 04 18) + NOP
+    // MOV AL, byte ptr [EAX+EBX*1] (8A 04 18) → MOV EAX, [EAX+EBX*1] (8B 04 18)
+    // 각 호출부에서 4바이트를 읽어서 전달합니다.
+    // GetCharRect/GetCharWidth 내부에서 리드바이트(0xB0-0xC8) 확인 후
+    // 테일바이트(0xA1-0xFE)와 결합하여 사용하고, 테일바이트면 0을 반환합니다.
+    // 인덱스 증가(INC EBX)는 항상 +1이지만, 테일바이트에서 0이 반환되므로
+    // 그리기/폭 누적이 건너뛰어지고 다음 반복에서 테일바이트 다음으로 이동합니다.
+
+    // 1. GetCharRect 호출부 (0x0043bd9b): MOVSX → MOV + NOP
+    const unsigned char patch1[] = { 0x8B, 0x04, 0x18, 0x90 };
+    patchBytes(reinterpret_cast<void*>(0x0043bd9b), patch1, sizeof(patch1));
+
+    // 2. GetCharWidth 호출부 (0x0043be72): MOV AL → MOV EAX (1바이트만 변경)
+    const unsigned char patch2[] = { 0x8B };
+    patchBytes(reinterpret_cast<void*>(0x0043be72), patch2, sizeof(patch2));
 }
 
 // 1. 새로운 폰트 경로 (길이에 제한 없음!)
@@ -364,8 +259,6 @@ const char g_szNewDialgouePath[] = ".\\Data\\Dialogue_kr\\%s";
 
 void PatchResourcePath()
 {
-    //DWORD oldProtect;
-
     uint32_t newPathAddr = reinterpret_cast<uint32_t>(g_szNewFontPath);
     // 2. 0x0043ffd1 주소의 4바이트 포인터를 문자열 주소로 교체!
     patchBytes(reinterpret_cast<void*>(0x0043ffd1), &newPathAddr, 4);
@@ -380,16 +273,16 @@ void PatchResourcePath()
 }
 
 
-// [초기화 진입점]
-void InstallHooks()
+// ============================================================
+// [메모리 패치] 전체 적용
+// ============================================================
+void ApplyMemoryPatches()
 {
     PatchResourcePath();
-    ApplyMemoryPatches();
-    
-    if (MH_Initialize() == MH_OK)
-    {
-        MH_CreateHook((LPVOID)0x0043bf40, &Hooked_CalculateTextExtents, (LPVOID*)&fpOriginalCalculateTextExtents);
-        MH_CreateHook((LPVOID)0x00444890, &Hooked_WordWrap, (LPVOID*)&fpOriginalWordWrap);
-        MH_EnableHook(MH_ALL_HOOKS);
-    }
+
+    PatchFindGlyphIndex();
+    PatchGetCharWH_CodeCave();
+    PatchWordWrap_4ByteRead();
+    PatchCalculateTextExtents_4ByteRead();
+    PatchDrawTextLines_CodeCave();
 }

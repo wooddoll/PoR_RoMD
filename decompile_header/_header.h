@@ -13,39 +13,51 @@ struct Glyph {
     IDirectDrawSurface *surface;             // +0x14
 };
 
+struct cFont_vtable {
+  HFONT __thiscall cFont_CreateFontDIB_004356f0(cFont *this,LPCSTR pszFaceName,DWORD dwCharSet,int nHeight);	  // 0x0
+  BOOL __thiscall cFont_RasterizeGlyphs_00435950(cFont *this);												                          // 0x4
+  BOOL __thiscall cFont_UploadDIBToDirectDrawSurface_004359b0(cFont *this)									                    // 0x8
+  BOOL __thiscall cFont_CreateSurface_00435c10(cFont *this,IDirectDraw *pDD)									                  // 0xc
+  BOOL __thiscall cFont_Reset_00435c70(cFont *this,LPCSTR pszFaceName,DWORD dwCharSet,int nHeight)			        // 0x10
+  BOOL __thiscall cFont_AddGlyph_00435d00(cFont *this,RECT *pRect,int charCode)								                  // 0x14
+  void __thiscall cFont_SetSurface_00435dd0(cFont *this,IDirectDrawSurface *pSurface)							              // 0x18
+  int __thiscall cFont_GetCharHeight_00435e00(cFont *this,char charCode)										                    // 0x1c
+  int __thiscall cFont_GetCharWidth_00435e30(cFont *this,char charCode)										                      // 0x20
+  RECT * __thiscall cFont_GetCharRect_00435e60(cFont *this,int charCode)										                    // 0x24
+  IDirectDrawSurface * __thiscall cFont_GetSurface_005484e0(cFont *this)										                    // 0x28
+}
+
 struct cFont {
-    void *vtable;              // +0x00
-
-    int glyphCount;            // +0x04
-    Glyph **glyphs;            // +0x08
-    CharCodeMap *charMap;      // +0x0c
-
-    int unknown_10;            // +0x10
-
+    cFont_vtable *vtable;                // +0x00
+    int glyphCount;              // +0x04
+    Glyph **glyphs;              // +0x08
+    CharCodeMap *charMap;        // +0x0c
+    int unknown_10;              // +0x10
     IDirectDrawSurface *surface; // +0x14
-
-    HDC hdc;                   // +0x18
-    HBITMAP dibBitmap;         // +0x1c
-    void *dibBits;             // +0x20
-
-    int canvasWidth;            // +0x24
-    int canvasHeight;           // +0x28
+    HDC hdc;                     // +0x18
+    HBITMAP dibBitmap;           // +0x1c
+    void *dibBits;               // +0x20
+    int canvasWidth;             // +0x24
+    int canvasHeight;            // +0x28
 };
 
-HFONT __thiscall cFont_CreateFontDIB_004356f0(cFont *this,LPCSTR pszFaceName,DWORD dwCharSet,int nHeight);	0
-BOOL __thiscall cFont_RasterizeGlyphs_00435950(cFont *this);												4
-BOOL __thiscall cFont_UploadDIBToDirectDrawSurface_004359b0(cFont *this)									8
-BOOL __thiscall cFont_CreateSurface_00435c10(cFont *this,IDirectDraw *pDD)									c
-BOOL __thiscall cFont_Reset_00435c70(cFont *this,LPCSTR pszFaceName,DWORD dwCharSet,int nHeight)			10
-BOOL __thiscall cFont_AddGlyph_00435d00(cFont *this,RECT *pRect,int charCode)								14
-void __thiscall cFont_SetSurface_00435dd0(cFont *this,IDirectDrawSurface *pSurface)							18
-int __thiscall cFont_GetCharHeight_00435e00(cFont *this,char charCode)										1c
-int __thiscall cFont_GetCharWidth_00435e30(cFont *this,char charCode)										20
-RECT * __thiscall cFont_GetCharRect_00435e60(cFont *this,int charCode)										24
-IDirectDrawSurface * __thiscall cFont_GetSurface_005484e0(cFont *this)										28
 
 
-
+inline bool IsKoreanLeadByte(unsigned char c1, unsigned char c2)
+{
+    // CP949 한글 범위 검사: 완성형 2350자
+    // 첫 바이트가 0xB0~0xC8 이고, 두 번째 바이트도 유효한 범위(0xA1~0xFE)일 때만 진짜 한글!
+    return (0xB0 <= c1 && c1 <= 0xC8) && (0xA1 <= c2 && c2 <= 0xFE);
+}
+unsigned char c1 = (unsigned char)szLine[i];
+unsigned char c2 = (unsigned char)szLine[i + 1];
+int code;
+if (IsKoreanLeadByte(c1, c2)) {
+    code = (c1 << 8) | c2;
+}
+else {
+    code = (char)c1;
+}
 
 
 
