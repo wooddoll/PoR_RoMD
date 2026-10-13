@@ -1,5 +1,4 @@
 ﻿#include <windows.h>
-#include "MinHook.h"
 
 #pragma comment(linker, "/export:GetFileVersionInfoA=C:\\Windows\\System32\\version.GetFileVersionInfoA,@1")
 #pragma comment(linker, "/export:GetFileVersionInfoByHandle=C:\\Windows\\System32\\version.GetFileVersionInfoByHandle,@2")
@@ -19,6 +18,8 @@
 #pragma comment(linker, "/export:VerQueryValueA=C:\\Windows\\System32\\version.VerQueryValueA,@16")
 #pragma comment(linker, "/export:VerQueryValueW=C:\\Windows\\System32\\version.VerQueryValueW,@17")
 
+void openLogFile();
+void closeLogFile();
 // 후킹할 함수 선언부
 void ApplyMemoryPatches();
 
@@ -37,11 +38,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     {
     case DLL_PROCESS_ATTACH:
         DisableThreadLibraryCalls(hModule);
+        openLogFile();
         CreateThread(NULL, 0, PatchThread, NULL, 0, NULL);
         break;
-    case DLL_PROCESS_DETACH:
-        MH_Uninitialize();
-        break;
+	case DLL_PROCESS_DETACH:
+        closeLogFile();
+		break;
     }
     return TRUE;
 }
