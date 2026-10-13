@@ -1,188 +1,206 @@
 #include <windows.h>
+#include <intrin.h>
+#include <stdint.h>
 
-void patchBytes(void* ptr, const void* data, size_t bytes) {
-    DWORD oldProtect;
-    if (VirtualProtect(ptr, bytes, PAGE_EXECUTE_READWRITE, &oldProtect)) {
-        memcpy(ptr, data, bytes);
-        VirtualProtect(ptr, bytes, oldProtect, &oldProtect);
-        // 패치한 메모리 영역의 CPU 캐시를 갱신합니다.
-        FlushInstructionCache(GetCurrentProcess(), ptr, bytes);
+#include <stdio.h>
+
+const char logFileNmae[] = "hooks.log";
+static FILE* fp_log = stderr;
+void openLogFile()
+{
+    if (fp_log == stderr) {
+        fopen_s(&fp_log, logFileNmae, "wt");
     }
 }
 
-// ============================================================
-// [패치 1] CFontCharMap::FindGlyphIndex (0x004355c0)
-// ============================================================
-void PatchFindGlyphIndex()
+void closeLogFile()
 {
-    // 0x00435601: XOR EAX,EAX; NOP (인덱스 검색 실패 시 -1 대신 0 반환)
-    const unsigned char patch[] = { 0x31, 0xC0, 0x90 };
-    patchBytes(reinterpret_cast<void*>(0x00435601), patch, sizeof(patch));
+    if (fp_log != stderr) {
+        fclose(fp_log);
+        fp_log = stderr;
+    }
 }
 
-// ============================================================
-// [패치 2] cFont::GetCharHeight/GetCharWidth → code cave 이동
-// ============================================================
-void PatchGetCharWH_CodeCave()
+// ----------------------------------------------------------------
+// cFont 글리프 검색 함수 포인터 (0x004355C0)
+// ----------------------------------------------------------------
+typedef int(__thiscall* pfnFindGlyphIndex)(void* charMap, int code);
+const pfnFindGlyphIndex CFontCharMap_FindGlyphIndex = reinterpret_cast<pfnFindGlyphIndex>(0x004355C0);
+
+// [구조체 오프셋 정의]
+// this + 0x08 : glyphs 배열 포인터
+// this + 0x0C : charMap 포인터
+// glyph + 0x04: x0, glyph + 0x08: y0, glyph + 0x0C: x1, glyph + 0x10: y1
+
+// 한 줄 최대 버퍼 길이(예: 1024바이트)를 커버하는 상태 테이블
+thread_local bool g_isTailByte[1024] = { false };
+
+// 호출자에 맞는 정확한 루프 인덱스를 추출하는 함수
+__forceinline int GetCurrentLoopIndex()
 {
-    // 원래 함수는 1바이트 charCode만 처리하므로, 2바이트 한글을 처리하기 위해
-    // code cave (0x00613800, 0x00613900)에 재구현한 함수로 점프시킵니다.
+    uintptr_t retAddr = reinterpret_cast<uintptr_t>(_ReturnAddress());
+    int idx = 0;
 
-    // 1. GetCharHeight: JMP 0x00613800 (E9 FB D9 1D 00 + NOP 패딩)
-    const unsigned char jmp1[] = { 0xE9, 0xFB, 0xD9, 0x1D, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90 };
-    patchBytes(reinterpret_cast<void*>(0x00435E00), jmp1, sizeof(jmp1));
+    // 1. WordWrap (0x00444890 ~ 0x00444CAB 부근): ESI가 인덱스
+    if (retAddr >= 0x00444890 && retAddr <= 0x00444CAB) {
+        __asm { mov idx, esi }
+		fprintf(fp_log, "[GetCurrentLoopIndex] WordWrap: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+    }
+    // 2. DrawTextLines (0x0043BD00 ~ 0x0043BF00 부근): EBX가 인덱스
+    else if (retAddr >= 0x0043BD00 && retAddr <= 0x0043BF00) {
+        __asm { mov idx, ebx }
+		fprintf(fp_log, "[GetCurrentLoopIndex] DrawTextLines: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+    }
+    // 3. CalculateTextExtents: EDI가 인덱스!
+    else if (retAddr >= 0x0043BF40 && retAddr <= 0x0043C00F) {
+        __asm { mov idx, edi }
+		fprintf(fp_log, "[GetCurrentLoopIndex] CalculateTextExtents: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+    }
+    // 4. RenderShadow: EDI가 인덱스!
+    else if (retAddr >= 0x00444d40 && retAddr <= 0x00445039) {
+        __asm { mov idx, edi }
+		fprintf(fp_log, "[GetCurrentLoopIndex] RenderShadow: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+    }
+    // 5. unknown: EDI가 인덱스!
+    else if (retAddr >= 0x00476820 && retAddr <= 0x00476adc) {
+        uintptr_t ptrEBP = 0;
+        __asm { mov ptrEBP, ebp }
+        idx = static_cast<int>(ptrEBP & 0x3FF); // 0~1023 안전 매핑
+    }
+    else {
+        __asm { mov idx, esi } // 기본값
+		fprintf(fp_log, "[GetCurrentLoopIndex] Default: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+    }
 
-    // 2. GetCharWidth: JMP 0x00613900 (E9 CB DA 1D 00 + NOP 패딩)
-    const unsigned char jmp2[] = { 0xE9, 0xCB, 0xDA, 0x1D, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90 };
-    patchBytes(reinterpret_cast<void*>(0x00435E30), jmp2, sizeof(jmp2));
+    return idx;
+}
 
-    // 3. Code Cave: GetCharHeight 구현 (0x00613800)
-    const unsigned char caveH[] = {
-        // c1 = charCode & 0xFF; c2 = (charCode >> 8) & 0xFF
-        0x8B, 0x44, 0x24, 0x04,             // MOV EAX, [ESP+4]
-        0x0F, 0xB6, 0xC0,                   // MOVZX EAX, AL (c1)
-        0x8B, 0x54, 0x24, 0x04,             // MOV EDX, [ESP+4]
-        0xC1, 0xEA, 0x08,                   // SHR EDX, 8
-        0x81, 0xE2, 0xFF, 0x00, 0x00, 0x00, // AND EDX, 0xFF (c2)
-        // if ((0xB0 <= c1 && c1 <= 0xC8) && (0xA1 <= c2 && c2 <= 0xFE))
-        0x3D, 0xB0, 0x00, 0x00, 0x00,       // CMP EAX, 0xB0
-        0x7C, 0x1E,                         // JL check_tail (0x00613839)
-        0x3D, 0xC8, 0x00, 0x00, 0x00,       // CMP EAX, 0xC8
-        0x7F, 0x17,                         // JG check_tail (0x00613839)
-        0x81, 0xFA, 0xA1, 0x00, 0x00, 0x00, // CMP EDX, 0xA1
-        0x7C, 0x0F,                         // JL check_tail (0x00613839)
-        0x81, 0xFA, 0xFE, 0x00, 0x00, 0x00, // CMP EDX, 0xFE
-        0x7F, 0x07,                         // JG check_tail (0x00613839)
-        // charCode = (c1 << 8) | c2
-        0xC1, 0xE0, 0x08,                   // SHL EAX, 8
-        0x0B, 0xC2,                         // OR EAX, EDX
-        0xEB, 0x16,                         // JMP do_find (0x0061384F)
-        // check_tail: else if (0xA1 <= c1 && c1 <= 0xFE) → return 0
-        0x3D, 0xA1, 0x00, 0x00, 0x00,       // CMP EAX, 0xA1
-        0x7C, 0x0C,                         // JL do_ascii (0x0061384C)
-        0x3D, 0xFE, 0x00, 0x00, 0x00,       // CMP EAX, 0xFE
-        0x7F, 0x05,                         // JG do_ascii (0x0061384C)
-        0x31, 0xC0,                         // XOR EAX, EAX
-        0xC2, 0x04, 0x00,                   // RET 4
-        // do_ascii: charCode = (char)c1 (sign extend)
-        0x0F, 0xBE, 0xC0,                   // MOVSX EAX, AL
-        // do_find: idx = FindCodeIndex(this->charMap, charCode)
-        0x56,                               // PUSH ESI
-        0x8B, 0xF1,                         // MOV ESI, ECX
-        0x50,                               // PUSH EAX
-        0x8B, 0x4E, 0x0C,                   // MOV ECX, [ESI+0xC]
-        0xE8, 0x65, 0x25, 0xE2, 0xFF,       // CALL 0x004355C0
-        // return this->glyphs[idx]->y1 - this->glyphs[idx]->y0
-        0x8B, 0x4E, 0x08,                   // MOV ECX, [ESI+0x8]
-        0x5E,                               // POP ESI
-        0x8B, 0x0C, 0x81,                   // MOV ECX, [ECX+EAX*4]
-        0x8B, 0x41, 0x10,                   // MOV EAX, [ECX+0x10] (y1)
-        0x8B, 0x51, 0x08,                   // MOV EDX, [ECX+0x8]  (y0)
-        0x2B, 0xC2,                         // SUB EAX, EDX
-        0xC2, 0x04, 0x00                    // RET 4
-    };
-    patchBytes(reinterpret_cast<void*>(0x00613800), caveH, sizeof(caveH));
+// ----------------------------------------------------------------
+// 공통 한글 판별 및 상태 업데이트 헬퍼
+// ----------------------------------------------------------------
+__forceinline bool CheckAndProcessHangul(int currentIdx, int charCode, int& outFinalCode)
+{
+    // 새로운 문자열/라인 시작 시 (인덱스가 0이면) 테이블 클리어!
+    if (currentIdx == 0) {
+        memset(g_isTailByte, 0, sizeof(g_isTailByte));
+    }
 
-    // 4. Code Cave: GetCharWidth 구현 (0x00613900)
-    const unsigned char caveW[] = {
-        // c1 = charCode & 0xFF; c2 = (charCode >> 8) & 0xFF
-        0x8B, 0x44, 0x24, 0x04,             // MOV EAX, [ESP+4]
-        0x0F, 0xB6, 0xC0,                   // MOVZX EAX, AL (c1)
-        0x8B, 0x54, 0x24, 0x04,             // MOV EDX, [ESP+4]
-        0xC1, 0xEA, 0x08,                   // SHR EDX, 8
-        0x81, 0xE2, 0xFF, 0x00, 0x00, 0x00, // AND EDX, 0xFF (c2)
-        // if ((0xB0 <= c1 && c1 <= 0xC8) && (0xA1 <= c2 && c2 <= 0xFE))
-        0x3D, 0xB0, 0x00, 0x00, 0x00,       // CMP EAX, 0xB0
-        0x7C, 0x1E,                         // JL check_tail (0x00613939)
-        0x3D, 0xC8, 0x00, 0x00, 0x00,       // CMP EAX, 0xC8
-        0x7F, 0x17,                         // JG check_tail (0x00613939)
-        0x81, 0xFA, 0xA1, 0x00, 0x00, 0x00, // CMP EDX, 0xA1
-        0x7C, 0x0F,                         // JL check_tail (0x00613939)
-        0x81, 0xFA, 0xFE, 0x00, 0x00, 0x00, // CMP EDX, 0xFE
-        0x7F, 0x07,                         // JG check_tail (0x00613939)
-        // charCode = (c1 << 8) | c2
-        0xC1, 0xE0, 0x08,                   // SHL EAX, 8
-        0x0B, 0xC2,                         // OR EAX, EDX
-        0xEB, 0x16,                         // JMP do_find (0x0061394F)
-        // check_tail: else if (0xA1 <= c1 && c1 <= 0xFE) → return 0
-        0x3D, 0xA1, 0x00, 0x00, 0x00,       // CMP EAX, 0xA1
-        0x7C, 0x0C,                         // JL do_ascii (0x0061394C)
-        0x3D, 0xFE, 0x00, 0x00, 0x00,       // CMP EAX, 0xFE
-        0x7F, 0x05,                         // JG do_ascii (0x0061394C)
-        0x31, 0xC0,                         // XOR EAX, EAX
-        0xC2, 0x04, 0x00,                   // RET 4
-        // do_ascii: charCode = (char)c1 (sign extend)
-        0x0F, 0xBE, 0xC0,                   // MOVSX EAX, AL
-        // do_find: idx = FindCodeIndex(this->charMap, charCode)
-        0x56,                               // PUSH ESI
-        0x8B, 0xF1,                         // MOV ESI, ECX
-        0x50,                               // PUSH EAX
-        0x8B, 0x4E, 0x0C,                   // MOV ECX, [ESI+0xC]
-        0xE8, 0x65, 0x22, 0xE2, 0xFF,       // CALL 0x004355C0
-        // return this->glyphs[idx]->x1 - this->glyphs[idx]->x0
-        0x8B, 0x4E, 0x08,                   // MOV ECX, [ESI+0x8]
-        0x5E,                               // POP ESI
-        0x8B, 0x0C, 0x81,                   // MOV ECX, [ECX+EAX*4]
-        0x8B, 0x41, 0x0C,                   // MOV EAX, [ECX+0xC] (x1)
-        0x8B, 0x51, 0x04,                   // MOV EDX, [ECX+0x4] (x0)
-        0x2B, 0xC2,                         // SUB EAX, EDX
-        0xC2, 0x04, 0x00                    // RET 4
-    };
-    patchBytes(reinterpret_cast<void*>(0x00613900), caveW, sizeof(caveW));
+    // 테일바이트 위치라면 처리 중단 (너비/높이 0 반환 대상)
+    if (currentIdx >= 0 && currentIdx < 1024 && g_isTailByte[currentIdx]) {
+        return false; // 테일바이트임
+    }
 
-    // 5. GetCharRect: JMP 0x00613A00 (E9 9B DB 1D 00 + NOP 패딩)
-    const unsigned char jmp3[] = { 0xE9, 0x9B, 0xDB, 0x1D, 0x00, 0x90, 0x90, 0x90, 0x90, 0x90 };
-    patchBytes(reinterpret_cast<void*>(0x00435E60), jmp3, sizeof(jmp3));
+    unsigned char c1 = static_cast<unsigned char>(charCode & 0xFF);
+    unsigned char c2 = static_cast<unsigned char>((charCode >> 8) & 0xFF);
 
-    // 6. Code Cave: GetCharRect 구현 (0x00613A00)
-    const unsigned char caveR[] = {
-        // c1 = charCode & 0xFF; c2 = (charCode >> 8) & 0xFF
-        0x8B, 0x44, 0x24, 0x04,             // MOV EAX, [ESP+4]
-        0x0F, 0xB6, 0xC0,                   // MOVZX EAX, AL (c1)
-        0x8B, 0x54, 0x24, 0x04,             // MOV EDX, [ESP+4]
-        0xC1, 0xEA, 0x08,                   // SHR EDX, 8
-        0x81, 0xE2, 0xFF, 0x00, 0x00, 0x00, // AND EDX, 0xFF (c2)
-        // if ((0xB0 <= c1 && c1 <= 0xC8) && (0xA1 <= c2 && c2 <= 0xFE))
-        0x3D, 0xB0, 0x00, 0x00, 0x00,       // CMP EAX, 0xB0
-        0x7C, 0x11,                         // JL check_tail (0x00613A27)
-        0x3D, 0xC8, 0x00, 0x00, 0x00,       // CMP EAX, 0xC8
-        0x7F, 0x0C,                         // JG check_tail (0x00613A27)
-        0x81, 0xFA, 0xA1, 0x00, 0x00, 0x00, // CMP EDX, 0xA1
-        0x7C, 0x07,                         // JL check_tail (0x00613A27)
-        0x81, 0xFA, 0xFE, 0x00, 0x00, 0x00, // CMP EDX, 0xFE
-        0x7F, 0x02,                         // JG check_tail (0x00613A27)
-        // charCode = (c1 << 8) | c2
-        0xC1, 0xE0, 0x08,                   // SHL EAX, 8
-        0x0B, 0xC2,                         // OR EAX, EDX
-        0xEB, 0x1C,                         // JMP do_find (0x00613A43)
-        // check_tail: else if (0xA1 <= c1 && c1 <= 0xFE) → return &glyphs[0]->x0
-        0x3D, 0xA1, 0x00, 0x00, 0x00,       // CMP EAX, 0xA1
-        0x7C, 0x17,                         // JL do_ascii (0x00613A57)
-        0x3D, 0xFE, 0x00, 0x00, 0x00,       // CMP EAX, 0xFE
-        0x7F, 0x10,                         // JG do_ascii (0x00613A57)
-        0x56,                               // PUSH ESI
-        0x8B, 0xF1,                         // MOV ESI, ECX
-        0x8B, 0x4E, 0x08,                   // MOV ECX, [ESI+0x8] (glyphs)
-        0x8B, 0x04, 0x81,                   // MOV EAX, [ECX+EAX*4] (glyphs[0])
-        0x5E,                               // POP ESI
-        0x83, 0xC0, 0x04,                   // ADD EAX, 4 (&glyphs[0]->x0)
-        0xC2, 0x04, 0x00,                   // RET 4
-        // do_ascii: charCode = (char)c1 (sign extend)
-        0x0F, 0xBE, 0xC0,                   // MOVSX EAX, AL
-        // do_find: idx = FindCodeIndex(this->charMap, charCode)
-        0x56,                               // PUSH ESI
-        0x8B, 0xF1,                         // MOV ESI, ECX
-        0x50,                               // PUSH EAX
-        0x8B, 0x4E, 0x0C,                   // MOV ECX, [ESI+0xC]
-        0xE8, 0x1B, 0xE2, 0xFF, 0xFF,       // CALL 0x004355C0
-        // return &this->glyphs[idx]->x0 (FindCodeIndex가 0 반환하므로 -1 체크 불필요)
-        0x8B, 0x4E, 0x08,                   // MOV ECX, [ESI+0x8]
-        0x5E,                               // POP ESI
-        0x8B, 0x04, 0x81,                   // MOV EAX, [ECX+EAX*4]
-        0x83, 0xC0, 0x04,                   // ADD EAX, 4
-        0xC2, 0x04, 0x00                    // RET 4
-    };
-    patchBytes(reinterpret_cast<void*>(0x00613A00), caveR, sizeof(caveR));
+    if (c1 >= 0xB0 && c1 <= 0xC8 && c2 >= 0xA1 && c2 <= 0xFE) {
+        outFinalCode = (c1 << 8) | c2; // 한글 완성형
+
+        // 다음 바이트를 테일바이트로 마킹
+        if (currentIdx >= 0 && currentIdx < 1023) {
+            g_isTailByte[currentIdx] = false;
+            g_isTailByte[currentIdx + 1] = true;
+        }
+    }
+    else {
+        outFinalCode = static_cast<char>(c1); // ASCII
+
+        if (currentIdx >= 0 && currentIdx < 1024) {
+            g_isTailByte[currentIdx] = false;
+        }
+    }
+    return true; // 유효한 글자
+}
+
+
+// ----------------------------------------------------------------
+// [1] GetCharWidth 훅
+// ----------------------------------------------------------------
+int __fastcall Hook_GetCharWidth(void* thisPtr, void* /*dummyEDX*/, int charCode)
+{
+    int currentIdx = GetCurrentLoopIndex();
+    int finalCode = 0;
+
+    // 테일바이트 위치면 즉시 너비 0 반환!
+    if (!CheckAndProcessHangul(currentIdx, charCode, finalCode)) {
+		fprintf(fp_log, "[Hook_GetCharWidth] Tail byte detected at index %d, charCode %d, finalCode %d\n", currentIdx, charCode, finalCode);
+        return 0;
+    }
+
+    void* charMap = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(thisPtr) + 0x0C);
+    int idx = CFontCharMap_FindGlyphIndex(charMap, finalCode);
+
+    uintptr_t glyphs = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(thisPtr) + 0x08);
+    uintptr_t pGlyph = *reinterpret_cast<uintptr_t*>(glyphs + idx * 4);
+	fprintf(fp_log, "[Hook_GetCharWidth] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
+    return *reinterpret_cast<int*>(pGlyph + 0x0C) - *reinterpret_cast<int*>(pGlyph + 0x04);
+}
+
+
+// ----------------------------------------------------------------
+// [2] GetCharHeight 훅
+// ----------------------------------------------------------------
+int __fastcall Hook_GetCharHeight(void* thisPtr, void* /*dummyEDX*/, int charCode)
+{
+    int currentIdx = GetCurrentLoopIndex();
+    int finalCode = 0;
+
+    // 테일바이트 위치면 즉시 높이 0 반환!
+    if (!CheckAndProcessHangul(currentIdx, charCode, finalCode)) {
+		fprintf(fp_log, "[Hook_GetCharHeight] Tail byte detected at index %d, charCode %d, finalCode %d\n", currentIdx, charCode, finalCode);
+        return 0;
+    }
+
+    void* charMap = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(thisPtr) + 0x0C);
+    int idx = CFontCharMap_FindGlyphIndex(charMap, finalCode);
+
+    uintptr_t glyphs = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(thisPtr) + 0x08);
+    uintptr_t pGlyph = *reinterpret_cast<uintptr_t*>(glyphs + idx * 4);
+	fprintf(fp_log, "[Hook_GetCharHeight] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
+    return *reinterpret_cast<int*>(pGlyph + 0x10) - *reinterpret_cast<int*>(pGlyph + 0x08);
+}
+
+
+// 크래시 방지용 전역 빈 사각형 구조체
+static RECT g_dummyZeroRect = { 0, 0, 0, 0 };
+
+
+// ----------------------------------------------------------------
+// [훅 3] GetCharRect (0x00435E60)
+// ----------------------------------------------------------------
+RECT* __fastcall Hook_GetCharRect(void* thisPtr, void* /*edx*/, int charCode)
+{
+    int currentIdx = GetCurrentLoopIndex();
+    int finalCode = 0;
+
+    // 테일바이트 위치면 즉시 높이 0 반환!
+    if (!CheckAndProcessHangul(currentIdx, charCode, finalCode)) {
+		fprintf(fp_log, "[Hook_GetCharRect] Tail byte detected at index %d, charCode %d, finalCode %d\n", currentIdx, charCode, finalCode);
+        return &g_dummyZeroRect;
+    }
+
+    void* charMap = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(thisPtr) + 0x0C);
+    int idx = CFontCharMap_FindGlyphIndex(charMap, finalCode);
+    if (idx < 0)
+        return &g_dummyZeroRect;
+
+    uintptr_t glyphs = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(thisPtr) + 0x08);
+    uintptr_t pGlyph = *reinterpret_cast<uintptr_t*>(glyphs + idx * 4);
+	fprintf(fp_log, "[Hook_GetCharRect] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
+    // &pGlyph->x0 주소 반환 (RECT 포인터)
+    return reinterpret_cast<RECT*>(pGlyph + 0x04);
+}
+
+
+
+void patchBytes(uintptr_t targetAddr, const void* data, size_t bytes) {
+    DWORD oldProtect;
+    if (VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, PAGE_EXECUTE_READWRITE, &oldProtect)) {
+        memcpy(reinterpret_cast<void*>(targetAddr), data, bytes);
+        VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, oldProtect, &oldProtect);
+        // 패치한 메모리 영역의 CPU 캐시를 갱신합니다.
+        FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), bytes);
+    }
 }
 
 // ============================================================
@@ -199,16 +217,16 @@ void PatchWordWrap_4ByteRead()
     const unsigned char patch[] = { 0x8B };
 
     // 1. GetCharHeight 호출부 (0x00444a08)
-    patchBytes(reinterpret_cast<void*>(0x00444a08), patch, sizeof(patch));
+    patchBytes(0x00444a08, patch, sizeof(patch));
 
     // 2. GetCharWidth 호출부 (0x00444a27)
-    patchBytes(reinterpret_cast<void*>(0x00444a27), patch, sizeof(patch));
+    patchBytes(0x00444a27, patch, sizeof(patch));
 
     // 3. 백트래킹 GetCharWidth 호출부 (0x00444a52)
-    patchBytes(reinterpret_cast<void*>(0x00444a52), patch, sizeof(patch));
+    patchBytes(0x00444a52, patch, sizeof(patch));
 
     // 4. 공백 스킵 GetCharWidth 호출부 (0x00444a89)
-    patchBytes(reinterpret_cast<void*>(0x00444a89), patch, sizeof(patch));
+    patchBytes(0x00444a89, patch, sizeof(patch));
 }
 
 // ============================================================
@@ -225,16 +243,16 @@ void PatchCalculateTextExtents_4ByteRead()
     const unsigned char patch[] = { 0x8B };
 
     // 1. GetCharHeight 호출부 (0x0043bf83)
-    patchBytes(reinterpret_cast<void*>(0x0043bf83), patch, sizeof(patch));
+    patchBytes(0x0043bf83, patch, sizeof(patch));
 
     // 2. GetCharWidth 호출부 (0x0043bfa7)
-    patchBytes(reinterpret_cast<void*>(0x0043bfa7), patch, sizeof(patch));
+    patchBytes(0x0043bfa7, patch, sizeof(patch));
 }
 
 // ============================================================
 // [패치 5] CTextBox::DrawTextLines (0x0043bd9b) 4바이트 읽기
 // ============================================================
-void PatchDrawTextLines_CodeCave()
+void PatchDrawTextLines_4ByteRead()
 {
     // MOVSX EAX, byte ptr [EAX+EBX*1] (0F BE 04 18) → MOV EAX, [EAX+EBX*1] (8B 04 18) + NOP
     // MOV AL, byte ptr [EAX+EBX*1] (8A 04 18) → MOV EAX, [EAX+EBX*1] (8B 04 18)
@@ -246,11 +264,36 @@ void PatchDrawTextLines_CodeCave()
 
     // 1. GetCharRect 호출부 (0x0043bd9b): MOVSX → MOV + NOP
     const unsigned char patch1[] = { 0x8B, 0x04, 0x18, 0x90 };
-    patchBytes(reinterpret_cast<void*>(0x0043bd9b), patch1, sizeof(patch1));
+    patchBytes(0x0043bd9b, patch1, sizeof(patch1));
 
     // 2. GetCharWidth 호출부 (0x0043be72): MOV AL → MOV EAX (1바이트만 변경)
     const unsigned char patch2[] = { 0x8B };
-    patchBytes(reinterpret_cast<void*>(0x0043be72), patch2, sizeof(patch2));
+    patchBytes(0x0043be72, patch2, sizeof(patch2));
+}
+
+// ============================================================
+// [패치 6] cTextLayout::RenderShadow (00444d40) 4바이트 읽기
+// ============================================================
+void PatchRenderShadow_4ByteRead()
+{
+    // 1. GetCharRect 호출부 (0x00444e65): MOVSX → MOV + NOP (4바이트 교체)
+    const unsigned char patch1[] = { 0x8B, 0x04, 0x28, 0x90 };
+    patchBytes(0x00444e65, patch1, sizeof(patch1));
+
+    // 2. GetCharWidth 호출부 (0x00444f3e): MOV AL → MOV EAX (첫 1바이트만 0x8B로 변경)
+    const unsigned char patch2[] = { 0x8B };
+    patchBytes(0x00444f3e, patch2, sizeof(patch2));
+}
+
+// ============================================================
+// [패치 7] 0x0047695D (sprintf 텍스트 폭 측정 루프) 4바이트 읽기
+// ============================================================
+void PatchSprintfMeasure_4ByteRead()
+{
+    // 004769a5: MOVSX EAX, AL (0F BE C0) -> MOV EAX, [EBP] (8B 45 00)
+    // 3바이트 1:1 교체
+    const unsigned char patch[] = { 0x8B, 0x45, 0x00 };
+    patchBytes(0x004769a5, patch, sizeof(patch));
 }
 
 // 1. 새로운 폰트 경로 (길이에 제한 없음!)
@@ -259,18 +302,47 @@ const char g_szNewDialgouePath[] = ".\\Data\\Dialogue_kr\\%s";
 
 void PatchResourcePath()
 {
-    uint32_t newPathAddr = reinterpret_cast<uint32_t>(g_szNewFontPath);
+    uintptr_t newPathAddr = reinterpret_cast<uintptr_t>(g_szNewFontPath);
     // 2. 0x0043ffd1 주소의 4바이트 포인터를 문자열 주소로 교체!
-    patchBytes(reinterpret_cast<void*>(0x0043ffd1), &newPathAddr, 4);
+    patchBytes(0x0043ffd1, &newPathAddr, 4);
 
-    newPathAddr = reinterpret_cast<uint32_t>(g_szNewDialgouePath);
-    uint32_t pDialpath[] = { 0x005b2b86, 0x005b2ba5, 0x005b35d6, 0x005b35f5, 0x005b3832, 0x005b39d2, 0x005b3a31,0x005b3a6f, 0x005b3e3a, 0x005b44f1, 0x005b4541 };
+    newPathAddr = reinterpret_cast<uintptr_t>(g_szNewDialgouePath);
+    uintptr_t pDialpath[] = { 0x005b2b86, 0x005b2ba5, 0x005b35d6, 0x005b35f5, 0x005b3832, 0x005b39d2, 0x005b3a31,0x005b3a6f, 0x005b3e3a, 0x005b44f1, 0x005b4541 };
     int elementCount = sizeof(pDialpath) / sizeof(pDialpath[0]);
     // 2. pDialpath[] 주소들 4바이트 포인터를 문자열 주소로 교체!
     for (int i = 0; i < elementCount; ++i) {
-        patchBytes(reinterpret_cast<void*>(pDialpath[i]), &newPathAddr, 4);
+        patchBytes(pDialpath[i], &newPathAddr, 4);
     }
 }
+
+
+//////////////////============================================================
+// 32비트 전용: 5바이트 점프 훅 함수 (MinHook 대체)
+bool HookFunction(uintptr_t targetAddr, uintptr_t hookFuncAddr)
+{
+    DWORD oldProtect;
+    if (!VirtualProtect(reinterpret_cast<void*>(targetAddr), 5, PAGE_EXECUTE_READWRITE, &oldProtect))
+        return false;
+
+    // E9 [상대 변위 4바이트] : JMP hookFuncAddr
+    *reinterpret_cast<uint8_t*>(targetAddr) = 0xE9;
+    *reinterpret_cast<int32_t*>(targetAddr + 1) = static_cast<int32_t>(hookFuncAddr - (targetAddr + 5));
+
+    VirtualProtect(reinterpret_cast<void*>(targetAddr), 5, oldProtect, &oldProtect);
+    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), 5);
+    return true;
+}
+
+void ApplyHooks()
+{
+    // 1. GetCharHeight (0x00435E00) -> Hook_GetCharHeight 점프
+    HookFunction(0x00435E00, reinterpret_cast<uintptr_t>(Hook_GetCharHeight));
+    // 2. GetCharWidth (0x00435E30) -> Hook_GetCharWidth 점프
+    HookFunction(0x00435E30, reinterpret_cast<uintptr_t>(Hook_GetCharWidth));
+    // 3. GetCharRect (0x00435E60) -> Hook_GetCharRect 점프
+    HookFunction(0x00435E60, reinterpret_cast<uintptr_t>(Hook_GetCharRect));
+}
+//////////////////============================================================
 
 
 // ============================================================
@@ -279,10 +351,12 @@ void PatchResourcePath()
 void ApplyMemoryPatches()
 {
     PatchResourcePath();
+    
+    ApplyHooks();
 
-    PatchFindGlyphIndex();
-    PatchGetCharWH_CodeCave();
     PatchWordWrap_4ByteRead();
     PatchCalculateTextExtents_4ByteRead();
-    PatchDrawTextLines_CodeCave();
+    PatchDrawTextLines_4ByteRead();
+    PatchRenderShadow_4ByteRead();
+    PatchSprintfMeasure_4ByteRead();
 }
