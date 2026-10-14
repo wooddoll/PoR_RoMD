@@ -2,7 +2,7 @@ import os
 from PIL import Image, ImageFont, ImageDraw
 
 
-def load_char_list(file_path, encoding="cp949"):
+def load_char_list(file_path, encoding="euc-kr"):
     """CP949 인코딩 텍스트 파일에서 문자 목록을 읽어옵니다."""
     with open(file_path, "r", encoding=encoding) as f:
         content = f.read()
@@ -171,16 +171,17 @@ def generate_all_fonts(char_list_file="./cp949_kor2350.txt", output_dir="./font"
 
     # 폰트 설정: [경로, 폰트 크기, 고정 높이, baseline 아래 여백]
     FONTS = {
-        "font0": ["../font/Umdot-ttf/Proportional/Regular/Umdot14.ttf", 13, 19, 5],
-        "font1": ["../font/Umdot-ttf/Proportional/Regular/Umdot12.ttf", 12, 17, 4],
-        "font2": ["../font/Umdot-ttf/Proportional/Bold/Umdot20-Bold.ttf", 20, 29, 7],
-        "font3": ["../font/Galmuri-v2.40.4/Galmuri9.ttf", 10, 14, 4],
-        "font4": ["../font/Galmuri-v2.40.4/Galmuri11.ttf", 12, 16, 4],
+        "font0": ["../font/Umdot-ttf/Proportional/Regular/Umdot14.ttf", 13, 19, 4],
+        "font1": ["../font/Umdot-ttf/Proportional/Regular/Umdot12.ttf", 12, 17, 3],
+        "font2": ["../font/Umdot-ttf/Proportional/Bold/Umdot20-Bold.ttf", 20, 29, 6],
+ 
+        "font3": ["../font/Galmuri-v2.40.4/Galmuri9.ttf", 10, 14, 3],
+        "font4": ["../font/Galmuri-v2.40.4/Galmuri11.ttf", 12, 16, 3],
     }
 
     # 좌우 여백 설정 (세로는 baseline 옵션으로 고정되므로 좌우만 지정)
     PAD_LEFT = 0
-    PAD_RIGHT = 0
+    PAD_RIGHT = 1
 
     BACKGROUND_COLOR = (0, 0, 0)    # 검은색 배경
     FONT_COLOR = (255, 255, 255)    # 흰색 글씨

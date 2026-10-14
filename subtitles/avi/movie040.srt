@@ -1,0 +1,8 @@
+1
+00:00:00,000 --> 00:00:07,000
+The gate you summon takes you 
+above ground, to the heart of Myth Drannor.
+
+2
+00:00:19,320 --> 00:00:21,760
+You have made it up from under.

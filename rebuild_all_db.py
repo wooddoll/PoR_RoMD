@@ -14,6 +14,7 @@ from read_all_idx import (
     build_sections,
     Section,
     KeyEntry,
+    save_combined_to_json
 )
 
 
@@ -149,55 +150,6 @@ def write_all_idx(sections_data, output_idx_path):
 
     print(f"Rebuilt idx file: {output_idx_path}")
 
-
-def save_combined_to_json(combined, output_json_path):
-    """
-    Saves the combined Section data to a JSON file.
-
-    Encoding:
-    - key: latin-1 encoded string
-    - direction: base64 encoded string
-    - selections, dialogue: euc-kr encoded (stored as latin-1 in file)
-    - speaker, desc: plain strings
-    """
-    data = []
-    for section in combined:
-        # Encode selections to euc-kr bytes, then decode as latin-1 to preserve bytes
-        selections = []
-        for sel in section.selections:
-            try:
-                selections.append(sel.encode('euc-kr').decode('latin-1'))
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                selections.append(sel)
-
-        sec_data = {
-            'name': section.name,
-            'address': section.address,
-            'direction': base64.b64encode(section.direction).decode('ascii'),
-            'selections': selections,
-            'keys': [],
-        }
-        for key_entry in section.keys:
-            # Encode dialogue to euc-kr bytes, then decode as latin-1 to preserve bytes
-            dialogue = key_entry.dialogue
-            try:
-                dialogue = dialogue.encode('euc-kr').decode('latin-1')
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                pass
-
-            sec_data['keys'].append({
-                'key': key_entry.key.decode('latin-1'),
-                'dialogue': dialogue,
-                'speaker': key_entry.speaker,
-                'desc': key_entry.desc,
-            })
-        data.append(sec_data)
-
-    with open(output_json_path, 'w', encoding='latin-1') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-    print(f"Combined data saved to JSON: {output_json_path}")
-    print(f"Total sections: {len(data)}")
 
 
 def load_combined_from_json(json_path):
