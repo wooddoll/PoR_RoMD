@@ -1,6 +1,8 @@
 import sys
 import os
 import struct
+import json
+import base64
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import List
@@ -66,8 +68,7 @@ def read_all_idx(file_path):
         print(f"Error reading file: {e}")
         return None
 
-    print(f"File size: {len(data)} bytes")
-    print()
+    print(f"[all.idx] File size: {len(data)} bytes")
 
     entries = []
     pos = 0
@@ -137,8 +138,7 @@ def read_all_db(db_path, idx_entries):
         print(f"Error reading file: {e}")
         return None
 
-    print(f"DB file size: {len(data)} bytes")
-    print()
+    print(f"[all.db] File size: {len(data)} bytes")
 
     sections = []
     for i, entry in enumerate(idx_entries):
@@ -288,6 +288,7 @@ def build_sections(sections, idx_dir):
     """
     Combines all.db section data with .por file data into a single Section structure.
     """
+    por_count = 0
     result = []
     for section in sections:
         sec = Section(
@@ -303,6 +304,7 @@ def build_sections(sections, idx_dir):
         por_entries = read_por_file(por_path, section['keys'])
 
         if por_entries is not None:
+            por_count += 1
             # Create KeyEntry for each key
             for key_bytes in section['keys']:
                 # Find matching por entry
@@ -326,9 +328,112 @@ def build_sections(sections, idx_dir):
                     sec.keys.append(KeyEntry(key=key_bytes))
 
         result.append(sec)
-
+    
+    print(f"Imported {por_count} [.por] files")
+    print()
     return result
 
+
+def save_combined_to_json(combined, output_json_path, exclude_fields=None, drop_empty=False):
+    """
+    Saves the combined Section data to a JSON file.
+
+    Encoding:
+    - key: latin-1 encoded string
+    - direction: base64 encoded string
+    - selections, dialogue: euc-kr encoded (stored as latin-1 in file)
+    - speaker, desc: plain strings
+
+    Args:
+        combined: List of Section objects to save.
+        output_json_path: Path to the output JSON file.
+        exclude_fields: Optional set/list of field names to exclude from the output. The excluded fields are set to empty string (''), not deleted. Supported values: 'name', 'address', 'direction', 'selections', 'key', 'dialogue', 'speaker', 'desc'.
+        drop_empty: Optional. If True, fields whose value is the string 'null' (or None) are set to empty string (''). Empty string values are left untouched. Entries with an empty key are excluded from this processing. Default False.
+    """
+    if exclude_fields is None:
+        exclude_fields = set()
+    else:
+        exclude_fields = set(exclude_fields)
+
+    def is_null(value):
+        """Returns True if value is None or the string 'null' (case-insensitive)."""
+        if value is None:
+            return True
+        if isinstance(value, str) and value.lower() == 'null':
+            return True
+        return False
+
+    data = []
+    for section in combined:
+        # Encode selections to euc-kr bytes, then decode as latin-1 to preserve bytes
+        selections = []
+        for sel in section.selections:
+            try:
+                selections.append(sel.encode('euc-kr').decode('latin-1'))
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                selections.append(sel)
+
+        sec_data = {
+            'name': section.name,
+            'address': section.address,
+            'direction': base64.b64encode(section.direction).decode('ascii'),
+            'selections': selections,
+            'keys': [],
+        }
+
+        # Apply excluded top-level fields: set to empty string instead of delete
+        for field in list(sec_data.keys()):
+            if field in exclude_fields:
+                sec_data[field] = ''
+
+        # Apply drop-empty top-level: set to empty string, only for 'null' values
+        if drop_empty:
+            for field in list(sec_data.keys()):
+                if field != 'keys' and is_null(sec_data[field]):
+                    sec_data[field] = ''
+
+        for key_entry in section.keys:
+            # Encode dialogue to euc-kr bytes, then decode as latin-1 to preserve bytes
+            dialogue = key_entry.dialogue
+            try:
+                dialogue = dialogue.encode('euc-kr').decode('latin-1')
+            except (UnicodeEncodeError, UnicodeDecodeError):
+                pass
+
+            key_data = {
+                'key': key_entry.key.decode('latin-1'),
+                'dialogue': dialogue,
+                'speaker': key_entry.speaker,
+                'desc': key_entry.desc,
+            }
+
+            # Determine if this key entry has an empty key (excluded from drop-empty processing)
+            is_empty_key = (key_entry.key is None or key_entry.key == b'')
+
+            # Apply excluded key-level fields: set to empty string instead of delete
+            for field in list(key_data.keys()):
+                if field in exclude_fields:
+                    key_data[field] = ''
+
+            # Apply drop-empty key-level: set to empty string, only for 'null' values, skip if empty key
+            if drop_empty and not is_empty_key:
+                for field in list(key_data.keys()):
+                    if field != 'key' and is_null(key_data[field]):
+                        key_data[field] = ''
+
+            sec_data['keys'].append(key_data)
+
+        data.append(sec_data)
+
+    with open(output_json_path, 'w', encoding='latin-1') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+    print(f"Combined data saved to JSON: {output_json_path}")
+    print(f"Total sections: {len(data)}")
+    if exclude_fields:
+        print(f"Excluded fields: {', '.join(sorted(exclude_fields))} (set to empty)")
+    if drop_empty:
+        print("Null fields set to empty: True")
 
 def write_por_files(sections, output_dir):
     """
@@ -408,13 +513,43 @@ def print_entries(entries):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: python read_all_idx.py <all.idx_file_path> [output_dir]")
+    if len(sys.argv) < 3:
+        print("Usage: python read_all_idx.py <game_dir> <to_export.json> [--exclude FIELD1,FIELD2] [--drop-empty]")
+        print("  <game_dir>     - Path to the game directory (e.g., '../Pool of Radiance')")
+        print("  <to_export.json> - JSON file containing combined dialogue data")
+        print("  --exclude     Optional. Comma-separated list of fields to set to empty string in JSON output.")
+        print("                Available fields: name, address, direction, selections, key, dialogue, speaker, desc")
+        print("                Example: --exclude address,direction")
+        print("  --drop-empty  Optional. Set fields with 'null' values to empty string in JSON output.")
+        print("                Entries with an empty key are excluded from this processing.")
+        print("                Example: --drop-empty")
         sys.exit(1)
 
-    idx_path = sys.argv[1]
-    db_path = os.path.splitext(idx_path)[0] + ".db"
-    idx_dir = os.path.dirname(idx_path)
+    game_dir = sys.argv[1]
+    export_json_path = sys.argv[2]
+
+    # Parse optional arguments
+    exclude_fields = None
+    drop_empty = False
+    i = 3
+    while i < len(sys.argv):
+        arg = sys.argv[i]
+        if arg == "--exclude" or arg == "-e":
+            if i + 1 >= len(sys.argv):
+                print("Error: --exclude requires a comma-separated list of fields.")
+                sys.exit(1)
+            exclude_fields = [f.strip() for f in sys.argv[i + 1].split(",") if f.strip()]
+            i += 2
+        elif arg == "--drop-empty" or arg == "-d":
+            drop_empty = True
+            i += 1
+        else:
+            print("Error: Unknown argument '" + arg + "'. Use --exclude or --drop-empty.")
+            sys.exit(1)
+
+    dialogue_dir = os.path.join(game_dir, 'data', 'Dialogue')
+    idx_path = os.path.join(dialogue_dir, 'all.idx')
+    db_path = os.path.join(dialogue_dir, 'all.db')
 
     entries = read_all_idx(idx_path)
     if entries is not None:
@@ -424,18 +559,10 @@ if __name__ == '__main__':
         sections = read_all_db(db_path, entries)
         if sections is not None:
             # Combine all.db data with .por file data
-            combined = build_sections(sections, idx_dir)
+            combined = build_sections(sections, dialogue_dir)
             #print_sections(combined)
 
-            if len(sys.argv) >= 3:
-                output_dir = sys.argv[2]
-            else:
-                # Create output directory with current date/time
-                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-                output_dir = os.path.join('.', f'store_{timestamp}')
+            output_dir = os.path.dirname(export_json_path)
             os.makedirs(output_dir, exist_ok=True)
-            print(f"Output directory: {output_dir}")
-            print()
 
-            # Write .por files
-            write_por_files(combined, output_dir)
+            save_combined_to_json(combined, export_json_path, exclude_fields, drop_empty)

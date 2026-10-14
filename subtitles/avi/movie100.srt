@@ -1,0 +1,39 @@
+1
+00:00:00,000 --> 00:00:05,950
+We'll be right back.
+
+2
+00:00:30,000 --> 00:00:33,850
+For New Flan,
+
+3
+00:01:00,000 --> 00:01:03,000
+Your victory comes just in time.
+
+4
+00:01:15,000 --> 00:01:17,000
+Mystra, be praised!
+
+5
+00:01:17,000 --> 00:01:20,000
+The heroes in Myth Drannor.
+
+6
+00:01:20,000 --> 00:01:23,000
+They have accomplished their quest.
+
+7
+00:01:23,000 --> 00:01:26,000
+The pool of Radiance is no more.
+
+8
+00:01:30,000 --> 00:01:37,000
+But what of the heroes now?
+
+9
+00:01:49,160 --> 00:01:51,060
+The passage has closed.
+
+10
+00:01:51,960 --> 00:01:55,500
+Myth Drannor holds surprises for them yet.

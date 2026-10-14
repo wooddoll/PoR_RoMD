@@ -1,0 +1,53 @@
+1
+00:00:00,000 --> 00:00:04,200
+Palendrolar.
+
+2
+00:00:09,000 --> 00:00:11,000
+Child.
+
+3
+00:00:11,000 --> 00:00:15,000
+The pool reached the port at Hillsfar.
+
+4
+00:00:15,000 --> 00:00:18,000
+Can you hear the screams?
+
+5
+00:00:18,000 --> 00:00:21,000
+Something troubles you.
+
+6
+00:00:21,000 --> 00:00:22,000
+Speak.
+
+7
+00:00:22,000 --> 00:00:24,000
+They are not fools.
+
+8
+00:00:24,000 --> 00:00:27,000
+They will send their heroes.
+
+9
+00:00:27,000 --> 00:00:34,000
+They will meet the Mythal, our Mythal, and
+then they will meet you.
+
+10
+00:00:46,800 --> 00:00:53,800
+The cult of the dragon? 
+This is worse than we ever imagined. 
+She must be stopped. But how?
+
+11
+00:00:56,100 --> 00:00:59,820
+Our heroes must seize 
+the power of the Mythal for themselves.
+
+12
+00:01:00,720 --> 00:01:07,720
+Otherwise, the moon sees lost, 
+and the dragon reach, and with them, 
+all our hopes.
