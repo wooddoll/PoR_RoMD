@@ -3,32 +3,32 @@
 Kukir Vyan Ivei, Kukir Nedmet
 
 2
-00:00:04,000 --> 00:00:06,000
+00:00:04,207 --> 00:00:06,627
 Ivei Maratvan Kormantol
 
 3
-00:00:06,000 --> 00:00:09,000
+00:00:06,767 --> 00:00:09,647
 Mythal Selema Horkenet
 
 4
-00:00:09,000 --> 00:00:12,000
+00:00:10,040 --> 00:00:12,000
 Kukir Harkiton
 
 5
-00:00:14,000 --> 00:00:19,000
+00:00:14,820 --> 00:00:18,253
 Annoen attunes the gem of the wave
 
 6
-00:00:19,000 --> 00:00:23,000
+00:00:19,453 --> 00:00:22,786
 But she cannot take command of the Mythal
 
 7
-00:00:23,000 --> 00:00:28,000
+00:00:23,800 --> 00:00:28,000
 Some other force already controls it
 
 8
-00:00:30,000 --> 00:00:37,000
-The Bael Norn told you 
+00:00:35,100 --> 00:00:38,967
+The Bael Norn told you
 he destroyed his Gem of the Weave?
 
 9
@@ -37,5 +37,6 @@ We will see about that.
 
 10
 00:00:41,220 --> 00:00:44,080
-Come, let us talk with Myrit 
+Come, let us talk with Myrit
 and the Silver Blade.
+

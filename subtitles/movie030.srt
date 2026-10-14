@@ -1,53 +1,70 @@
 1
-00:00:00,000 --> 00:00:04,200
+00:00:07,473 --> 00:00:08,967
 Palendrolar.
 
 2
-00:00:09,000 --> 00:00:11,000
+00:00:10,120 --> 00:00:11,787
 Child.
 
 3
-00:00:11,000 --> 00:00:15,000
+00:00:12,840 --> 00:00:15,887
 The pool reached the port at Hillsfar.
 
 4
-00:00:15,000 --> 00:00:18,000
+00:00:16,107 --> 00:00:18,534
 Can you hear the screams?
 
 5
-00:00:18,000 --> 00:00:21,000
-Something troubles you.
-
-6
-00:00:21,000 --> 00:00:22,000
+00:00:19,636 --> 00:00:21,687
+Something troubles you. 
 Speak.
 
-7
-00:00:22,000 --> 00:00:24,000
+6
+00:00:22,940 --> 00:00:24,600
 They are not fools.
 
-8
-00:00:24,000 --> 00:00:27,000
+7
+00:00:24,887 --> 00:00:27,513
 They will send their heroes.
 
+8
+00:00:29,167 --> 00:00:32,664
+They will meet the Mythal, our Mythal,
+
 9
-00:00:27,000 --> 00:00:34,000
-They will meet the Mythal, our Mythal, and
-then they will meet you.
+00:00:33,235 --> 00:00:36,167
+and then they will meet you.
 
 10
-00:00:46,800 --> 00:00:53,800
-The cult of the dragon? 
-This is worse than we ever imagined. 
-She must be stopped. But how?
+00:00:46,800 --> 00:00:48,673
+The cult of the dragon?
 
 11
-00:00:56,100 --> 00:00:59,820
-Our heroes must seize 
-the power of the Mythal for themselves.
+00:00:49,871 --> 00:00:51,761
+This is worse than we ever imagined.
 
 12
-00:01:00,720 --> 00:01:07,720
-Otherwise, the moon sees lost, 
-and the dragon reach, and with them, 
-all our hopes.
+00:00:51,973 --> 00:00:53,757
+She must be stopped.
+
+13
+00:00:54,289 --> 00:00:55,300
+But how?
+
+14
+00:00:56,100 --> 00:01:00,147
+Our heroes must seize
+the power of the Mythal for themselves.
+
+15
+00:01:00,720 --> 00:01:03,333
+Otherwise, the moon sees lost,
+
+16
+00:01:03,357 --> 00:01:05,160
+and the dragon reach,
+
+17
+00:01:05,184 --> 00:01:08,160
+and with them, all our hopes.
+
