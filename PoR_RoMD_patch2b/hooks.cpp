@@ -1,15 +1,24 @@
 #include <windows.h>
+#include <shlwapi.h>
 #include <intrin.h>
 #include <stdint.h>
-
 #include <stdio.h>
+
+#define _LOG_   0
+#if _LOG_
+#define FOPEN(fp, filename, mode)       fopen_s(fp, filename, mode);
+#define PRINT(stream, fmt, ...)         fprintf(stream, "[PoR2] " fmt, ##__VA_ARGS__)
+#else
+#define FOPEN()                         ((void)0)
+#define PRINT(stream, fmt, ...)         ((void)0)
+#endif
 
 const char logFileNmae[] = "hooks.log";
 static FILE* fp_log = stderr;
 void openLogFile()
 {
     if (fp_log == stderr) {
-        fopen_s(&fp_log, logFileNmae, "wt");
+        FOPEN(&fp_log, logFileNmae, "wt");
     }
 }
 
@@ -44,22 +53,22 @@ __forceinline int GetCurrentLoopIndex()
     // 1. WordWrap (0x00444890 ~ 0x00444CAB 부근): ESI가 인덱스
     if (retAddr >= 0x00444890 && retAddr <= 0x00444CAB) {
         __asm { mov idx, esi }
-		fprintf(fp_log, "[GetCurrentLoopIndex] WordWrap: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+        PRINT(fp_log, "[GetCurrentLoopIndex] WordWrap: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
     }
     // 2. DrawTextLines (0x0043BD00 ~ 0x0043BF00 부근): EBX가 인덱스
     else if (retAddr >= 0x0043BD00 && retAddr <= 0x0043BF00) {
         __asm { mov idx, ebx }
-		fprintf(fp_log, "[GetCurrentLoopIndex] DrawTextLines: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+		PRINT(fp_log, "[GetCurrentLoopIndex] DrawTextLines: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
     }
     // 3. CalculateTextExtents: EDI가 인덱스!
     else if (retAddr >= 0x0043BF40 && retAddr <= 0x0043C00F) {
         __asm { mov idx, edi }
-		fprintf(fp_log, "[GetCurrentLoopIndex] CalculateTextExtents: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+		PRINT(fp_log, "[GetCurrentLoopIndex] CalculateTextExtents: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
     }
     // 4. RenderShadow: EDI가 인덱스!
     else if (retAddr >= 0x00444d40 && retAddr <= 0x00445039) {
         __asm { mov idx, edi }
-		fprintf(fp_log, "[GetCurrentLoopIndex] RenderShadow: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+		PRINT(fp_log, "[GetCurrentLoopIndex] RenderShadow: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
     }
     // 5. unknown: EDI가 인덱스!
     else if (retAddr >= 0x00476820 && retAddr <= 0x00476adc) {
@@ -69,7 +78,7 @@ __forceinline int GetCurrentLoopIndex()
     }
     else {
         __asm { mov idx, esi } // 기본값
-		fprintf(fp_log, "[GetCurrentLoopIndex] Default: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+		PRINT(fp_log, "[GetCurrentLoopIndex] Default: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
     }
 
     return idx;
@@ -123,7 +132,7 @@ int __fastcall Hook_GetCharWidth(void* thisPtr, void* /*dummyEDX*/, int charCode
 
     // 테일바이트 위치면 즉시 너비 0 반환!
     if (!CheckAndProcessHangul(currentIdx, charCode, finalCode)) {
-		fprintf(fp_log, "[Hook_GetCharWidth] Tail byte detected at index %d, charCode %d, finalCode %d\n", currentIdx, charCode, finalCode);
+		PRINT(fp_log, "[Hook_GetCharWidth] Tail byte detected at index %d, charCode %d, finalCode %d\n", currentIdx, charCode, finalCode);
         return 0;
     }
 
@@ -132,7 +141,7 @@ int __fastcall Hook_GetCharWidth(void* thisPtr, void* /*dummyEDX*/, int charCode
 
     uintptr_t glyphs = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(thisPtr) + 0x08);
     uintptr_t pGlyph = *reinterpret_cast<uintptr_t*>(glyphs + idx * 4);
-	fprintf(fp_log, "[Hook_GetCharWidth] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
+	PRINT(fp_log, "[Hook_GetCharWidth] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
     return *reinterpret_cast<int*>(pGlyph + 0x0C) - *reinterpret_cast<int*>(pGlyph + 0x04);
 }
 
@@ -147,7 +156,7 @@ int __fastcall Hook_GetCharHeight(void* thisPtr, void* /*dummyEDX*/, int charCod
 
     // 테일바이트 위치면 즉시 높이 0 반환!
     if (!CheckAndProcessHangul(currentIdx, charCode, finalCode)) {
-		fprintf(fp_log, "[Hook_GetCharHeight] Tail byte detected at index %d, charCode %d, finalCode %d\n", currentIdx, charCode, finalCode);
+		PRINT(fp_log, "[Hook_GetCharHeight] Tail byte detected at index %d, charCode %d, finalCode %d\n", currentIdx, charCode, finalCode);
         return 0;
     }
 
@@ -156,7 +165,7 @@ int __fastcall Hook_GetCharHeight(void* thisPtr, void* /*dummyEDX*/, int charCod
 
     uintptr_t glyphs = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(thisPtr) + 0x08);
     uintptr_t pGlyph = *reinterpret_cast<uintptr_t*>(glyphs + idx * 4);
-	fprintf(fp_log, "[Hook_GetCharHeight] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
+	PRINT(fp_log, "[Hook_GetCharHeight] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
     return *reinterpret_cast<int*>(pGlyph + 0x10) - *reinterpret_cast<int*>(pGlyph + 0x08);
 }
 
@@ -175,7 +184,7 @@ RECT* __fastcall Hook_GetCharRect(void* thisPtr, void* /*edx*/, int charCode)
 
     // 테일바이트 위치면 즉시 높이 0 반환!
     if (!CheckAndProcessHangul(currentIdx, charCode, finalCode)) {
-		fprintf(fp_log, "[Hook_GetCharRect] Tail byte detected at index %d, charCode %d, finalCode %d\n", currentIdx, charCode, finalCode);
+		PRINT(fp_log, "[Hook_GetCharRect] Tail byte detected at index %d, charCode %d, finalCode %d\n", currentIdx, charCode, finalCode);
         return &g_dummyZeroRect;
     }
 
@@ -186,7 +195,7 @@ RECT* __fastcall Hook_GetCharRect(void* thisPtr, void* /*edx*/, int charCode)
 
     uintptr_t glyphs = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(thisPtr) + 0x08);
     uintptr_t pGlyph = *reinterpret_cast<uintptr_t*>(glyphs + idx * 4);
-	fprintf(fp_log, "[Hook_GetCharRect] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
+	PRINT(fp_log, "[Hook_GetCharRect] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
     // &pGlyph->x0 주소 반환 (RECT 포인터)
     return reinterpret_cast<RECT*>(pGlyph + 0x04);
 }
@@ -297,11 +306,47 @@ void PatchSprintfMeasure_4ByteRead()
 }
 
 // 1. 새로운 폰트 경로 (길이에 제한 없음!)
-const char g_szNewFontPath[] = ".\\Data\\Fonts_kr\\font%d";
-const char g_szNewDialgouePath[] = ".\\Data\\Dialogue_kr\\%s";
+char g_szNewFontPath[MAX_PATH] = "./Data_kr/Fonts/font%d";
+char g_szNewDialgouePath[MAX_PATH] = "./Data_kr/Dialogue/%s";
+
+
+void ReadIniFilePath() 
+{
+    char exePath[MAX_PATH] = { 0 };
+
+    GetModuleFileNameA(NULL, exePath, MAX_PATH);
+    PathRemoveFileSpecA(exePath); // exe 파일명 제거하여 폴더 경로만 남김
+
+    char iniPath[MAX_PATH] = { 0 };
+    sprintf_s(iniPath, MAX_PATH, "%s/korean.ini", exePath);
+
+    char newFontPath[MAX_PATH] = { 0 };
+    GetPrivateProfileString("Settings", "FontPath", "", newFontPath, MAX_PATH, iniPath);
+    if (strlen(newFontPath) > 0) {
+        if (PathIsRelativeA(newFontPath)) {
+            sprintf_s(g_szNewFontPath, MAX_PATH, "%s/%s/font%%d", exePath, newFontPath);
+        }
+        else {
+            sprintf_s(g_szNewFontPath, MAX_PATH, "%s/%%s", newFontPath);
+        }
+    }
+
+    char newDialgouePath[MAX_PATH] = { 0 };
+    GetPrivateProfileString("Settings", "DialoguePath", "", newDialgouePath, MAX_PATH, iniPath);
+    if (strlen(newDialgouePath) > 0) {
+        if (PathIsRelativeA(newFontPath)) {
+            sprintf_s(g_szNewDialgouePath, MAX_PATH, "%s/%s/%%s", exePath, newDialgouePath);
+        }
+        else {
+            sprintf_s(g_szNewDialgouePath, MAX_PATH, "%s/%%s", newDialgouePath);
+        }
+    }
+}
 
 void PatchResourcePath()
 {
+    ReadIniFilePath();
+
     uintptr_t newPathAddr = reinterpret_cast<uintptr_t>(g_szNewFontPath);
     // 2. 0x0043ffd1 주소의 4바이트 포인터를 문자열 주소로 교체!
     patchBytes(0x0043ffd1, &newPathAddr, 4);
