@@ -10,6 +10,8 @@ Supported conversions:
     .srt -> .json
     .json -> .sbv
     .json -> .srt
+    .sbv -> .srt
+    .srt -> .sbv
 
 JSON format:
 {
@@ -191,6 +193,9 @@ def write_sbv(entries: list) -> str:
         text = entry["text"]
         if isinstance(text, list):
             text = "\n".join(text)
+        # Normalize time format to SBV (H:MM:SS.mmm)
+        start = format_sbv_time(parse_any_time(start))
+        end = format_sbv_time(parse_any_time(end))
         blocks.append(f"{start},{end}\n{text}")
     return "\n\n".join(blocks) + "\n"
 
@@ -204,6 +209,9 @@ def write_srt(entries: list) -> str:
         text = entry["text"]
         if isinstance(text, list):
             text = "\n".join(text)
+        # Normalize time format to SRT (HH:MM:SS,mmm)
+        start = format_srt_time(parse_any_time(start))
+        end = format_srt_time(parse_any_time(end))
         blocks.append(f"{idx}\n{start} --> {end}\n{text}")
     return "\n\n".join(blocks) + "\n"
 
@@ -239,6 +247,16 @@ def save_json(entries: list, filepath: str) -> None:
 # Main conversion logic
 # ---------------------------------------------------------------------------
 
+def parse_any_time(time_str: str) -> float:
+    """Parse time string in either SBV or SRT format to seconds."""
+    time_str = time_str.strip()
+    # Try SRT format first (HH:MM:SS,mmm)
+    if ',' in time_str:
+        return parse_srt_time(time_str)
+    # Otherwise try SBV format (H:MM:SS.mmm)
+    return parse_sbv_time(time_str)
+
+
 def convert(input_path: str, output_path: str = None) -> str:
     """
     Convert between subtitle formats.
@@ -251,6 +269,10 @@ def convert(input_path: str, output_path: str = None) -> str:
         # Auto-generate output path
         if ext == '.json':
             # Can't auto-determine target format, default to .sbv
+            output_path = input_path.with_suffix('.sbv')
+        elif ext == '.sbv':
+            output_path = input_path.with_suffix('.srt')
+        elif ext == '.srt':
             output_path = input_path.with_suffix('.sbv')
         else:
             output_path = input_path.with_suffix('.json')
