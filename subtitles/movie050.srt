@@ -1,81 +1,86 @@
 1
-00:00:00,000 --> 00:00:06,000
-The doors are locked. 
+00:00:00,807 --> 00:00:06,107
+The doors are locked.
 Through the keyhole, you hear voices.
 
 2
-00:00:06,000 --> 00:00:08,000
+00:00:06,487 --> 00:00:08,227
 Still no word from Fulgrim's men?
 
 3
-00:00:08,000 --> 00:00:09,000
+00:00:08,607 --> 00:00:09,140
 No, sir.
 
 4
-00:00:09,000 --> 00:00:11,000
+00:00:09,340 --> 00:00:11,080
 Or Gachette? Or RuPaul?
 
 5
-00:00:11,000 --> 00:00:14,000
-No, sir. She will not be pleased.
+00:00:11,293 --> 00:00:11,741
+No, sir.
 
 6
-00:00:14,000 --> 00:00:16,000
-She must earn patience.
+00:00:12,399 --> 00:00:14,087
+She will not be pleased.
 
 7
-00:00:19,000 --> 00:00:21,000
-What news, Mage Captain?
+00:00:14,340 --> 00:00:16,000
+She must earn patience.
 
 8
-00:00:21,000 --> 00:00:24,000
-The Bail Norn is locked away, Mistress. 
-No one has entered.
+00:00:19,320 --> 00:00:21,000
+What news, Mage Captain?
 
 9
-00:00:24,000 --> 00:00:27,000
-That is well. And the intruders?
+00:00:21,320 --> 00:00:24,000
+The Bail Norn is locked away, Mistress.
+No one has entered.
 
 10
-00:00:27,000 --> 00:00:29,000
-We have not found them yet, but...
+00:00:24,640 --> 00:00:27,000
+That is well. And the intruders?
 
 11
-00:00:29,000 --> 00:00:32,000
-but I grew tired of this.
+00:00:27,573 --> 00:00:29,613
+We have not found them yet, but...
 
 12
-00:00:34,000 --> 00:00:36,000
-You command now.
+00:00:29,807 --> 00:00:32,247
+I grew tired of this.
 
 13
-00:00:36,000 --> 00:00:37,400
-Yes.
+00:00:34,720 --> 00:00:36,293
+You command now.
 
 14
-00:00:38,000 --> 00:00:40,000
-Mistress, an idea.
+00:00:37,007 --> 00:00:37,514
+Yes.
 
 15
-00:00:40,000 --> 00:00:44,000
-With your leave, I will unlock the doors.
+00:00:38,647 --> 00:00:40,000
+Mistress, an idea.
 
 16
-00:00:44,000 --> 00:00:46,000
-And be ready.
+00:00:40,747 --> 00:00:44,387
+With your leave, I will unlock the doors.
 
 17
-00:00:46,000 --> 00:00:50,000
-If you fail, pray that they kill you.
+00:00:44,767 --> 00:00:46,000
+And be ready.
 
 18
-00:00:53,000 --> 00:00:56,000
-Get up, you maggots! Get up, you!
+00:00:46,153 --> 00:00:50,000
+If you fail, pray that they kill you.
 
 19
+00:00:53,760 --> 00:00:56,000
+Get up, you maggots! Get up, you!
+
+20
 00:00:56,000 --> 00:00:58,000
 Get everyone in here! Everyone!
 
-20
+21
 00:00:58,000 --> 00:01:01,500
-Everyone, and you, unlock the doors.
+and you, unlock the doors.
+

@@ -76,6 +76,21 @@ def load_combined_from_json(json_path):
     return combined
 
 
+def is_empty(value):
+    """
+    Checks if a value is considered 'empty' for merge purposes.
+    Treats None, empty string, and the string 'null' (case-insensitive) as empty.
+    """
+    if value is None:
+        return True
+    if isinstance(value, str):
+        if value == '':
+            return True
+        if value.lower() == 'null':
+            return True
+    return False
+
+
 def merge_dialogue_data(base_combined, merge_combined):
     """
     Merges dialogue data from merge_combined into base_combined.
@@ -84,6 +99,7 @@ def merge_dialogue_data(base_combined, merge_combined):
     - Compares 'selections' between base and merge
     - Compares 'dialogue' for each key between base and merge
     - If different, uses the merge data
+    - If merge data is empty (None, '', or 'null'), keeps the base data
 
     Returns a new combined list with merged data.
     """
@@ -111,11 +127,41 @@ def merge_dialogue_data(base_combined, merge_combined):
 
         if merge_section is not None:
             # Compare selections
+            # For each selection, if merge selection is empty, keep base selection
+            # Otherwise, if different, use merge selection
             if merge_section.selections != base_section.selections:
-                new_section.selections = list(merge_section.selections)
-                selection_merge_count += 1
-                print(f"  [SELECTIONS] Section '{base_section.name}': "
-                      f"{len(base_section.selections)} -> {len(merge_section.selections)} items")
+                merged_selections = []
+                selection_changed = False
+                for i, base_sel in enumerate(base_section.selections):
+                    if i < len(merge_section.selections):
+                        merge_sel = merge_section.selections[i]
+                        if is_empty(merge_sel):
+                            # B selection is empty, keep A's selection
+                            merged_selections.append(base_sel)
+                        elif merge_sel != base_sel:
+                            # B selection is non-empty and different, use B
+                            merged_selections.append(merge_sel)
+                            selection_changed = True
+                        else:
+                            # Same, keep A
+                            merged_selections.append(base_sel)
+                    else:
+                        # B has fewer selections, keep A's remaining selections
+                        merged_selections.append(base_sel)
+
+                # If B has more selections than A, add the extra ones
+                if len(merge_section.selections) > len(base_section.selections):
+                    for i in range(len(base_section.selections), len(merge_section.selections)):
+                        merge_sel = merge_section.selections[i]
+                        if not is_empty(merge_sel):
+                            merged_selections.append(merge_sel)
+                            selection_changed = True
+
+                if merged_selections != base_section.selections:
+                    new_section.selections = merged_selections
+                    selection_merge_count += 1
+                    print(f"  [SELECTIONS] Section '{base_section.name}': "
+                          f"{len(base_section.selections)} -> {len(merged_selections)} items")
 
             # Build lookup for merge keys by key bytes
             merge_keys = {}
@@ -126,19 +172,36 @@ def merge_dialogue_data(base_combined, merge_combined):
             for key_entry in base_section.keys:
                 merge_key_entry = merge_keys.get(key_entry.key)
                 if merge_key_entry is not None:
-                    if merge_key_entry.dialogue != key_entry.dialogue:
-                        # Use merge data
+                    # Check if merge dialogue is empty - if so, keep base data
+                    if is_empty(merge_key_entry.dialogue):
+                        # B dialogue is empty, keep A's data
+                        new_section.keys.append(KeyEntry(
+                            key=key_entry.key,
+                            dialogue=key_entry.dialogue,
+                            speaker=key_entry.speaker,
+                            desc=key_entry.desc,
+                        ))
+                    elif merge_key_entry.dialogue != key_entry.dialogue:
+                        # Use merge data for dialogue
+                        # For speaker and desc, use merge data if non-empty, otherwise keep base
+                        speaker = merge_key_entry.speaker
+                        if is_empty(speaker):
+                            speaker = key_entry.speaker
+                        desc = merge_key_entry.desc
+                        if is_empty(desc):
+                            desc = key_entry.desc
+
                         new_section.keys.append(KeyEntry(
                             key=key_entry.key,
                             dialogue=merge_key_entry.dialogue,
-                            speaker=merge_key_entry.speaker,
-                            desc=merge_key_entry.desc,
+                            speaker=speaker,
+                            desc=desc,
                         ))
                         dialogue_merge_count += 1
                         print(f"  [DIALOGUE] Section '{base_section.name}' key '{key_entry.key.decode('latin-1')}': "
                               f"'{key_entry.dialogue[:50]}...' -> '{merge_key_entry.dialogue[:50]}...'")
                     else:
-                        # Same, keep base data
+                        # Same dialogue, keep base data
                         new_section.keys.append(KeyEntry(
                             key=key_entry.key,
                             dialogue=key_entry.dialogue,
