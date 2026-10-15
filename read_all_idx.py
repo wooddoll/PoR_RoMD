@@ -359,7 +359,9 @@ def save_combined_to_json(combined, output_json_path, exclude_fields=None, drop_
         """Returns True if value is None or the string 'null' (case-insensitive)."""
         if value is None:
             return True
-        if isinstance(value, str) and value.lower() == 'null':
+        if isinstance(value, str) and (value.lower() == 'null' or value == ''):
+            return True
+        if not value:
             return True
         return False
 
@@ -390,7 +392,8 @@ def save_combined_to_json(combined, output_json_path, exclude_fields=None, drop_
         if drop_empty:
             for field in list(sec_data.keys()):
                 if field != 'keys' and is_null(sec_data[field]):
-                    sec_data[field] = ''
+                    #sec_data[field] = ''
+                    del sec_data[field]
 
         for key_entry in section.keys:
             # Encode dialogue to euc-kr bytes, then decode as latin-1 to preserve bytes
@@ -408,22 +411,27 @@ def save_combined_to_json(combined, output_json_path, exclude_fields=None, drop_
             }
 
             # Determine if this key entry has an empty key (excluded from drop-empty processing)
-            is_empty_key = (key_entry.key is None or key_entry.key == b'')
-
+            is_empty_key = is_null(key_entry.dialogue)
+            if drop_empty and is_empty_key:
+                continue
+            
             # Apply excluded key-level fields: set to empty string instead of delete
             for field in list(key_data.keys()):
                 if field in exclude_fields:
                     key_data[field] = ''
 
             # Apply drop-empty key-level: set to empty string, only for 'null' values, skip if empty key
-            if drop_empty and not is_empty_key:
-                for field in list(key_data.keys()):
-                    if field != 'key' and is_null(key_data[field]):
-                        key_data[field] = ''
-
+            for field in list(key_data.keys()):
+                if field != 'key' and drop_empty and is_null(key_data[field]):
+                    del key_data[field]
+                    #key_data[field] = ''
+            
             sec_data['keys'].append(key_data)
-
-        data.append(sec_data)
+        
+        if drop_empty and not sec_data.get('selections') and not sec_data['keys']:
+            pass
+        else:
+            data.append(sec_data)
 
     with open(output_json_path, 'w', encoding='latin-1') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)

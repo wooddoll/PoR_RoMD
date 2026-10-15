@@ -314,7 +314,7 @@ def build_all_fonts(game_dir):
     game_dir = os.path.normpath(game_dir)
 
     # Output directory: <game_dir>/data/font_kr
-    output_dir = os.path.join(game_dir, "data/font_kr")
+    output_dir = os.path.join(game_dir, "Data_kr/Fonts")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
