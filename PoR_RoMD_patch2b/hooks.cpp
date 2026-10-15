@@ -4,12 +4,12 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#define _LOG_   0
+#define _LOG_   1
 #if _LOG_
 #define FOPEN(fp, filename, mode)       fopen_s(fp, filename, mode);
-#define PRINT(stream, fmt, ...)         fprintf(stream, "[PoR2] " fmt, ##__VA_ARGS__)
+#define PRINT(stream, fmt, ...)         fprintf_s(stream, "[PoR2] " fmt, ##__VA_ARGS__)
 #else
-#define FOPEN()                         ((void)0)
+#define FOPEN(fp, filename, mode)       ((void)0)
 #define PRINT(stream, fmt, ...)         ((void)0)
 #endif
 
@@ -53,28 +53,29 @@ __forceinline int GetCurrentLoopIndex()
     // 1. WordWrap (0x00444890 ~ 0x00444CAB 부근): ESI가 인덱스
     if (retAddr >= 0x00444890 && retAddr <= 0x00444CAB) {
         __asm { mov idx, esi }
-        PRINT(fp_log, "[GetCurrentLoopIndex] WordWrap: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+        //PRINT(fp_log, "[GetCurrentLoopIndex] WordWrap: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
     }
     // 2. DrawTextLines (0x0043BD00 ~ 0x0043BF00 부근): EBX가 인덱스
     else if (retAddr >= 0x0043BD00 && retAddr <= 0x0043BF00) {
         __asm { mov idx, ebx }
-		PRINT(fp_log, "[GetCurrentLoopIndex] DrawTextLines: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+		//PRINT(fp_log, "[GetCurrentLoopIndex] DrawTextLines: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
     }
     // 3. CalculateTextExtents: EDI가 인덱스!
     else if (retAddr >= 0x0043BF40 && retAddr <= 0x0043C00F) {
         __asm { mov idx, edi }
-		PRINT(fp_log, "[GetCurrentLoopIndex] CalculateTextExtents: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+		//PRINT(fp_log, "[GetCurrentLoopIndex] CalculateTextExtents: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
     }
     // 4. RenderShadow: EDI가 인덱스!
     else if (retAddr >= 0x00444d40 && retAddr <= 0x00445039) {
         __asm { mov idx, edi }
-		PRINT(fp_log, "[GetCurrentLoopIndex] RenderShadow: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
+		//PRINT(fp_log, "[GetCurrentLoopIndex] RenderShadow: retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
     }
     // 5. unknown: EDI가 인덱스!
     else if (retAddr >= 0x00476820 && retAddr <= 0x00476adc) {
         uintptr_t ptrEBP = 0;
         __asm { mov ptrEBP, ebp }
         idx = static_cast<int>(ptrEBP & 0x3FF); // 0~1023 안전 매핑
+        //PRINT(fp_log, "[GetCurrentLoopIndex] Case5(unknown): retAddr=0x%p, idx=%d\n", (void*)retAddr, idx);
     }
     else {
         __asm { mov idx, esi } // 기본값
@@ -141,7 +142,7 @@ int __fastcall Hook_GetCharWidth(void* thisPtr, void* /*dummyEDX*/, int charCode
 
     uintptr_t glyphs = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(thisPtr) + 0x08);
     uintptr_t pGlyph = *reinterpret_cast<uintptr_t*>(glyphs + idx * 4);
-	PRINT(fp_log, "[Hook_GetCharWidth] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
+	//PRINT(fp_log, "[Hook_GetCharWidth] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
     return *reinterpret_cast<int*>(pGlyph + 0x0C) - *reinterpret_cast<int*>(pGlyph + 0x04);
 }
 
@@ -165,7 +166,7 @@ int __fastcall Hook_GetCharHeight(void* thisPtr, void* /*dummyEDX*/, int charCod
 
     uintptr_t glyphs = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(thisPtr) + 0x08);
     uintptr_t pGlyph = *reinterpret_cast<uintptr_t*>(glyphs + idx * 4);
-	PRINT(fp_log, "[Hook_GetCharHeight] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
+	//PRINT(fp_log, "[Hook_GetCharHeight] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
     return *reinterpret_cast<int*>(pGlyph + 0x10) - *reinterpret_cast<int*>(pGlyph + 0x08);
 }
 
@@ -195,7 +196,7 @@ RECT* __fastcall Hook_GetCharRect(void* thisPtr, void* /*edx*/, int charCode)
 
     uintptr_t glyphs = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(thisPtr) + 0x08);
     uintptr_t pGlyph = *reinterpret_cast<uintptr_t*>(glyphs + idx * 4);
-	PRINT(fp_log, "[Hook_GetCharRect] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
+	//PRINT(fp_log, "[Hook_GetCharRect] at index %d, charCode %d, finalCode %d, glyph idx=%d\n", currentIdx, charCode, finalCode, idx);
     // &pGlyph->x0 주소 반환 (RECT 포인터)
     return reinterpret_cast<RECT*>(pGlyph + 0x04);
 }

@@ -157,6 +157,7 @@ static int __stdcall DetourBinkCopyToBuffer(
 static void __stdcall DetourBinkClose(HBINK bink) {
     if (bink) {
         g_SubtitlesMap.erase(bink);
+        SubtitleRenderer::ClearCache(); // 캐시 메모리 정리
     }
     fpBinkClose(bink);
 }
