@@ -1,4 +1,5 @@
 import os
+import sys
 from PIL import Image, ImageFont, ImageDraw
 
 
@@ -49,23 +50,24 @@ def measure_chars(font, char_list, fixed_height, baseline_below, padding_left, p
     return char_data, baseline_above
 
 
-def pack_chars(char_data, fixed_height, max_atlas_width):
-    """가로줄 단위 패킹 알고리즘으로 문자들을 아틀라스에 배치합니다."""
+def pack_chars(char_data, fixed_height, max_atlas_width, gap=1):
+    """가로줄 단위 패킹 알고리즘으로 문자들을 아틀라스에 배치합니다.
+    각 슬롯 사이에 gap(기본 1px) 간격을 둡니다."""
     current_x = 0
     current_y = 0
     packed_chars = []
 
     for data in char_data:
-        # 최대 가로폭을 넘어가면 개행
+        # 최대 가로폭을 넘어가면 개행 (간격 포함)
         if current_x + data["slot_w"] > max_atlas_width:
             current_x = 0
-            current_y += fixed_height
+            current_y += fixed_height + gap
 
         data["x"] = current_x
         data["y"] = current_y
         packed_chars.append(data)
 
-        current_x += data["slot_w"]
+        current_x += data["slot_w"] + gap
 
     atlas_width = max_atlas_width if current_y > 0 else current_x
     atlas_height = current_y + fixed_height if current_x > 0 else current_y
@@ -74,9 +76,10 @@ def pack_chars(char_data, fixed_height, max_atlas_width):
 
 
 def render_atlas(font, packed_chars, atlas_width, atlas_height,
-                 baseline_above, padding_left, bg_color, fg_color):
+                 baseline_above, padding_left, bg_color, fg_color,
+                 draw_boxes=False):
     """문자들을 아틀라스 이미지에 렌더링하고 좌표 메타데이터를 생성합니다."""
-    atlas_img = Image.new("RGB", (atlas_width, atlas_height), bg_color)
+    atlas_img = Image.new("RGBA", (atlas_width, atlas_height), bg_color)
     draw = ImageDraw.Draw(atlas_img)
     draw.fontmode = "1"  # 안티앨리어싱 제거
 
@@ -85,6 +88,11 @@ def render_atlas(font, packed_chars, atlas_width, atlas_height,
         ascent, _ = font.getmetrics()
     except AttributeError:
         ascent = font.size  # 하위 버전 호환용
+
+    # 박스 그리기 옵션: 반투명 핑크색 overlay 생성
+    if draw_boxes:
+        overlay = Image.new("RGBA", atlas_img.size, (0, 0, 0, 0))
+        box_draw = ImageDraw.Draw(overlay)
 
     txt_lines = []
 
@@ -105,10 +113,19 @@ def render_atlas(font, packed_chars, atlas_width, atlas_height,
         x1 = data["x"] + data["slot_w"] - 1
         y1 = data["y"] + data["slot_h"] - 1
 
+        # 박스 그리기 옵션: 슬롯 경계에 반투명 핑크색 사각형 테두리
+        if draw_boxes:
+            pink = (255, 105, 180, 128)
+            box_draw.rectangle([x0, y0, x1, y1], outline=pink, width=1)
+
         # CP949 코드와 좌표를 탭으로 구분해 저장
         cp949char = c.encode("cp949")
         cp949code = int.from_bytes(cp949char, byteorder="big")
-        txt_lines.append(f"{cp949code}\t{x0}\t{y0}\t{x1}\t{y1}")
+        txt_lines.append(f"{cp949code}\t{x0}\t{y0}\t{x1+1}\t{y1+1}")
+
+    # 반투명 박스 overlay를 원본 이미지에 합성
+    if draw_boxes:
+        atlas_img = Image.alpha_composite(atlas_img, overlay)
 
     return atlas_img, txt_lines
 
@@ -131,13 +148,16 @@ def save_outputs(atlas_img, txt_lines, output_image_path, output_txt_path):
 
 
 def generate_custom_bitmap_font(font_path, font_size, char_list, output_image_path, output_txt_path,
-                                padding_left=2, padding_right=2,
+                                padding_left=0, padding_right=1,
                                 fixed_height=16, baseline_below=4,
-                                bg_color=(0, 0, 0), fg_color=(255, 255, 255), max_atlas_width=2048):
+                                bg_color=(0, 0, 0, 255), fg_color=(255, 255, 255, 255), max_atlas_width=2048,
+                                draw_boxes=False, gap=1):
     """
     TTF 폰트를 받아 안티앨리어싱이 없는 단색 비트맵 폰트를 생성합니다.
     세로 크기는 (baseline_above + baseline_below)로 고정되며, 가로 크기는 가변폭으로 대응합니다.
     결과물로 이미지 파일과 단순 좌표 텍스트 파일을 생성합니다.
+    draw_boxes=True 시 각 슬롯 경계에 반투명 핑크색 박스를 그립니다.
+    gap: 슬롯 사이 간격 (기본 1px)
     """
     font = load_font(font_path, font_size)
     if font is None:
@@ -148,12 +168,13 @@ def generate_custom_bitmap_font(font_path, font_size, char_list, output_image_pa
     )
 
     packed_chars, atlas_width, atlas_height = pack_chars(
-        char_data, fixed_height, max_atlas_width
+        char_data, fixed_height, max_atlas_width, gap=gap
     )
 
     atlas_img, txt_lines = render_atlas(
         font, packed_chars, atlas_width, atlas_height,
-        baseline_above, padding_left, bg_color, fg_color
+        baseline_above, padding_left, bg_color, fg_color,
+        draw_boxes=draw_boxes
     )
 
     save_outputs(atlas_img, txt_lines, output_image_path, output_txt_path)
@@ -161,30 +182,32 @@ def generate_custom_bitmap_font(font_path, font_size, char_list, output_image_pa
     print("비트맵 폰트 생성 완료!")
     print(f" - 이미지: {output_image_path} ({atlas_width}x{atlas_height})")
     print(f" - 텍스트 메타데이터: {output_txt_path}")
+    if draw_boxes:
+        print(" - 박스 그리기: 활성화")
 
 
 # --- 사용 예시 ---
-def generate_all_fonts(char_list_file="./cp949_kor2350.txt", output_dir="./font"):
+def generate_all_fonts(char_list_file="./cp949_kor2350.txt", output_dir="./font", draw_boxes=False, gap=1):
     """모든 한글 폰트를 일괄 생성합니다."""
     # 한글 완성형 2,350자 (CP949 인코딩 파일에서 로드)
     hangul_2350 = load_char_list(char_list_file)
 
     # 폰트 설정: [경로, 폰트 크기, 고정 높이, baseline 아래 여백]
     FONTS = {
-        "font0": ["../font/Umdot-ttf/Proportional/Regular/Umdot14.ttf", 13, 19, 4],
-        "font1": ["../font/Umdot-ttf/Proportional/Regular/Umdot12.ttf", 12, 17, 3],
-        "font2": ["../font/Umdot-ttf/Proportional/Bold/Umdot20-Bold.ttf", 20, 29, 6],
+        "font0": ["../font/Umdot-ttf/Proportional/Regular/Umdot14.ttf", 13, 18, 3],
+        "font1": ["../font/Umdot-ttf/Proportional/Regular/Umdot12.ttf", 12, 16, 2],
+        "font2": ["../font/Umdot-ttf/Proportional/Bold/Umdot20-Bold.ttf", 20, 28, 5],
  
-        "font3": ["../font/Galmuri-v2.40.4/Galmuri9.ttf", 10, 14, 3],
-        "font4": ["../font/Galmuri-v2.40.4/Galmuri11.ttf", 12, 16, 3],
+        "font3": ["../font/Galmuri-v2.40.4/Galmuri9.ttf", 10, 13, 2],
+        "font4": ["../font/Galmuri-v2.40.4/Galmuri11.ttf", 12, 15, 2],
     }
 
     # 좌우 여백 설정 (세로는 baseline 옵션으로 고정되므로 좌우만 지정)
     PAD_LEFT = 0
-    PAD_RIGHT = 1
+    PAD_RIGHT = 0
 
-    BACKGROUND_COLOR = (0, 0, 0)    # 검은색 배경
-    FONT_COLOR = (255, 255, 255)    # 흰색 글씨
+    BACKGROUND_COLOR = (0, 0, 0, 255)    # 검은색 배경
+    FONT_COLOR = (255, 255, 255, 255)    # 흰색 글씨
 
     # 출력 디렉토리 생성
     if output_dir and not os.path.exists(output_dir):
@@ -209,7 +232,9 @@ def generate_all_fonts(char_list_file="./cp949_kor2350.txt", output_dir="./font"
                 baseline_below=baseline_below,
                 bg_color=BACKGROUND_COLOR,
                 fg_color=FONT_COLOR,
-                max_atlas_width=1024
+                max_atlas_width=1024,
+                draw_boxes=draw_boxes,
+                gap=gap
             )
             success_count += 1
         except Exception as e:
@@ -219,5 +244,23 @@ def generate_all_fonts(char_list_file="./cp949_kor2350.txt", output_dir="./font"
     return success_count
 
 
+def print_usage():
+    """사용법을 출력합니다."""
+    print("Usage:")
+    print("  python draw_font_sheet.py                          # 모든 폰트 일괄 생성 (기본 동작)")
+    print("  python draw_font_sheet.py --draw-boxes             # 각 슬롯에 반투명 핑크색 박스 그리기")
+    print("  python draw_font_sheet.py --help                   # 도움말 표시")
+
+
 if __name__ == "__main__":
-    generate_all_fonts()
+    args = sys.argv[1:]
+
+    if not args:
+        generate_all_fonts()
+    elif args[0] == '--help' or args[0] == '-h':
+        print_usage()
+    elif args[0] == '--draw-boxes':
+        generate_all_fonts(draw_boxes=True)
+    else:
+        print(f"Error: Unknown option: {args[0]}")
+        print_usage()

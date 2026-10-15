@@ -11,4 +11,12 @@
 - Pool of Radiance/data/Rand/STR/*.str
 
 
+## font
+* Data/Fonts/
+* font.md참고
+
+## dialogue
+* Data/Dialogue/
+* dialogue.md 참고
+
 

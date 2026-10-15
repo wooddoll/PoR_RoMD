@@ -1,6 +1,6 @@
 1
 00:00:59,012 --> 00:01:00,249
-For New Flan,
+For New Phlan,
 
 2
 00:01:00,273 --> 00:01:03,000
@@ -33,4 +33,3 @@ The passage has closed.
 9
 00:01:51,960 --> 00:01:55,500
 Myth Drannor holds surprises for them yet.
-
