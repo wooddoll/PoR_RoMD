@@ -10,19 +10,19 @@ from PIL import Image, ImageDraw
 @dataclass
 class DffData:
     """Data structure for parsed DFF binary file."""
-    header: List[int] = field(default_factory=list)          # 3 values: count, width, height
-    array_5x256: List[List[int]] = field(default_factory=list)  # 256 lines of (index, x0, y0, x1, y1)
-    fair_count: int = 0                                      # fair count value
-    array_2x256: List[List[int]] = field(default_factory=list)  # 256 pairs, actual index values
+    header: List[int] = field(default_factory=list)          # 3 values: font count N, width, height
+    array_5xN: List[List[int]] = field(default_factory=list)  # N lines of (code, x0, y0, x1, y1)
+    fair_count: int = 0                                      # fair count M value
+    array_2xM: List[List[int]] = field(default_factory=list)  # M pairs, actual index values
 
 
 def read_binary_as_int32(file_path):
     """
     Reads a binary file and returns a DffData structure.
-    - header: 3 values (count, width, height)
-    - array_5x256: 256 lines of (index, x0, y0, x1, y1), index starts at 0
+    - header: 3 values (N, width, height)
+    - array_5xN: N lines of (index, x0, y0, x1, y1), index starts at 0
     - fair_count: 1 value
-    - array_2x256: 256 pairs, actual index values
+    - array_2xM: M pairs, actual index values
     """
     try:
         with open(file_path, 'rb') as f:
@@ -48,21 +48,18 @@ def read_binary_as_int32(file_path):
 
     result = DffData()
 
-    # Header: first 3 values (count, width, height)
+    # Header: first 3 values (N, width, height)
     result.header = values[:3]
+    N = result.header[0]
 
-    # array_5x256: next 256 lines, 5 values per line (index, x0, y0, x1, y1)
+    # array_5xN: next N lines, 5 values per line (code, x0, y0, x1, y1)
     pos = 3
-    for _ in range(256):
+    for _ in range(N):
         if pos >= num_ints:
             break
         end = min(pos + 5, num_ints)
         ixy01_5 = values[pos:end]
-        index = ixy01_5[0]
-        # If index is between -1 and -128, add 256
-        if -128 <= index <= -1:
-            ixy01_5[0] += 256
-        result.array_5x256.append(ixy01_5)
+        result.array_5xN.append(ixy01_5)
         pos = end
 
     # fair_count: next 1 value
@@ -70,12 +67,12 @@ def read_binary_as_int32(file_path):
         result.fair_count = values[pos]
         pos += 1
 
-    # array_2x256: next 256 pairs, actual index values
-    for _ in range(256):
+    # array_2xM: next M pairs, actual index values
+    for _ in range(result.fair_count):
         if pos >= num_ints:
             break
         end = min(pos + 2, num_ints)
-        result.array_2x256.append(values[pos:end])
+        result.array_2xM.append(values[pos:end])
         pos = end
 
     # Warn if there are leftover bytes
@@ -91,15 +88,15 @@ def print_dff_data(dff: DffData):
     print("\n=== Header ===")
     print(" ".join(f"{v:10d}" for v in dff.header))
 
-    print("\n=== array_5x256 (index, x0, y0, x1, y1) x 256 lines ===")
-    for i, line in enumerate(dff.array_5x256):
+    print("\n=== array_5xN (code, x0, y0, x1, y1) x N lines ===")
+    for i, line in enumerate(dff.array_5xN):
         print(f"[{i:4d}] " + " ".join(f"{v:10d}" for v in line))
 
     print(f"\n=== fair_count ===")
     print(f"{dff.fair_count}")
 
-    print("\n=== array_2x256 (256 pairs) ===")
-    for i, line in enumerate(dff.array_2x256):
+    print("\n=== array_2xM (M pairs) ===")
+    for i, line in enumerate(dff.array_2xM):
         print(f"[{i:4d}] " + " ".join(f"{v:10d}" for v in line))
 
 
@@ -107,7 +104,7 @@ def draw_boxes_on_bmp(dff, dff_path):
     """
     Reads the DFF file, finds the corresponding BMP file (same name, .bmp extension),
     verifies the BMP dimensions match the header (width, height),
-    draws semi-transparent pink hollow boxes using array_5x256 data,
+    draws semi-transparent pink hollow boxes using array_5xN data,
     and saves the result as a PNG file in the current folder.
     """
     # Determine BMP file path (same name, .bmp extension) and PNG path (current folder)
@@ -143,9 +140,6 @@ def draw_boxes_on_bmp(dff, dff_path):
     else:
         print("BMP dimensions match header.")
 
-    code = int(ord('A'))
-    bbox = (dff.array_5x256[code])
-    baseline = get_font_baseline_offset(img, bbox)
     # Create overlay for semi-transparent pink boxes
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
@@ -153,13 +147,14 @@ def draw_boxes_on_bmp(dff, dff_path):
     # Pink color with semi-transparency (alpha=128)
     pink = (255, 105, 180, 128)
 
-    # Draw hollow boxes using array_5x256 data: (index, x0, y0, x1, y1)
-    for i, box in enumerate(dff.array_5x256):
+    # Draw hollow boxes using array_5xN data: (code, x0, y0, x1, y1)
+    for i, box in enumerate(dff.array_5xN):
         if len(box) < 5:
             continue
-        index, x0, y0, x1, y1 = box[0], box[1], box[2], box[3], box[4]
+        code, x0, y0, x1, y1 = box[0], box[1], box[2], box[3], box[4]
         # Draw hollow rectangle (outline only) from (x0, y0) to (x1, y1)
-        draw.rectangle([x0, y0, x1, y1], outline=pink, width=1)
+        # window bitblit에 사용되는 좌표라서 (x1, y1)는 Exclusive
+        draw.rectangle([x0, y0, x1-1, y1-1], outline=pink, width=1)
 
     # Composite overlay onto original image
     result = Image.alpha_composite(img, overlay)
@@ -170,14 +165,14 @@ def draw_boxes_on_bmp(dff, dff_path):
 
 def analyFontH(dff):
     gr = set()
-    for xyxyi in dff.array_5x256:
-        y0 = xyxyi[2]
-        y1 = xyxyi[4]
-        gr.add((y1-y0) + 1)
+    for cxyxy in dff.array_5xN:
+        y0 = cxyxy[2]
+        y1 = cxyxy[4]
+        gr.add(y1-y0)
     print(f'font heights: {gr}')
 
 def get_font_baseline_offset(image, bbox, is_bg_white=False):
-    index, x0, y0, x1, y1 = bbox
+    code, x0, y0, x1, y1 = bbox
 
     # 바운딩 박스 좌표를 기반으로 가로(w)와 세로(h) 크기 계산
     w = x1 - x0
@@ -230,22 +225,21 @@ def get_font_baseline_offset(image, bbox, is_bg_white=False):
     absolute_top = y0 + min_y
     absolute_bottom = y0 + max_y
 
-    print(f"--- [실제 글자 크기 분석 결과] ---")
-    print(f"   - bbox{w+1, h+1}")
-    print(f"■ 박스 내 상대 좌표 (0,0 기준)")
-    print(f"   - left {min_x}px, right: {max_x}px")
-    print(f"   - upper: {min_y}px, bottom: {max_y}px")
-    print(f"---------------------------------")
-    print(f"💡 실제 글자 순수 폭(Width)  : {actual_width} px")
-    print(f"💡 실제 글자 순수 높이(Height): {actual_height} px")
-    print(f"A 글자 기준: upper padding {min_y} px, right padding {w-max_x} px, bottom padding {h+1-(min_y+actual_height)} px")
-    print(f"💡 상단 시작점으로부터 베이스라인까지의 거리: {max_y + 1} px")
-    print(f"---------------------------------")
+    print(f"\n=== 글자 크기 분석 결과 ===")
+    print(f"  bbox 크기        : {w} x {h} px")
+    print(f"  실제 글자 폭     : {actual_width} px")
+    print(f"  실제 글자 높이   : {actual_height} px")
+    print(f"  좌측 패딩        : {min_x} px")
+    print(f"  우측 패딩        : {w - max_x - 1} px")
+    print(f"  상단 패딩        : {min_y} px")
+    print(f"  하단 패딩        : {h - (min_y + actual_height)} px")
+    print(f"  베이스라인 좌표  : {max_y} px (상단 기준)")
+    print(f"===========================")
 
     return {
         "width": actual_width,
         "height": actual_height,
-        "baseline_offset": max_y + 1,
+        "baseline_offset": max_y,
     }
 
 def process_dff_file(dff_path, output_dir="./font"):
@@ -256,13 +250,13 @@ def process_dff_file(dff_path, output_dir="./font"):
         return False
 
     txt_lines = []
-    for idx, rect in enumerate(dff.array_5x256):
-        asciicode = idx if idx < 128 else idx - 256
+    for rect in dff.array_5xN:
+        code = rect[0]
         x0 = rect[1]
         y0 = rect[2]
         x1 = rect[3]
         y1 = rect[4]
-        txt_lines.append(f"{asciicode}\t{x0}\t{y0}\t{x1}\t{y1}")
+        txt_lines.append(f"{code}\t{x0}\t{y0}\t{x1}\t{y1}")
 
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
@@ -289,20 +283,106 @@ def process_all_fonts(dff_dir, output_dir="./font"):
     return success_count
 
 
+def run_baseline_analysis(dff_path, char_code='A'):
+    """
+    DFF 파일과 동일한 이름의 BMP 파일을 읽어
+    지정된 문자 코드의 베이스라인 오프셋을 분석합니다.
+    """
+    dff = read_binary_as_int32(dff_path)
+    if dff is None:
+        print(f"Error: Failed to read DFF file: {dff_path}")
+        return
+
+    # BMP 파일 경로 결정 (같은 이름, .bmp 확장자)
+    base_name = os.path.splitext(dff_path)[0]
+    bmp_path = base_name + ".bmp"
+
+    if not os.path.exists(bmp_path):
+        print(f"Error: BMP file '{bmp_path}' not found.")
+        return
+
+    try:
+        img = Image.open(bmp_path)
+        img = img.convert("RGBA")
+    except Exception as e:
+        print(f"Error opening BMP file: {e}")
+        return
+
+    # 지정된 문자 코드의 바운딩 박스 찾기
+    code = int(ord(char_code))
+    bbox = None
+    for box in dff.array_5xN:
+        if len(box) >= 5 and box[0] == code:
+            bbox = box
+            break
+
+    if bbox is None:
+        print(f"Error: Character code {code} ('{char_code}') not found in DFF data.")
+        return
+
+    print(f"\n=== Baseline Analysis for '{char_code}' (code {code}) ===")
+    result = get_font_baseline_offset(img, bbox)
+    if result:
+        print(f"Result: {result}")
+
+
+def run_draw_boxes(dff_path):
+    """
+    DFF 파일과 동일한 이름의 BMP 파일을 읽어
+    바운딩 박스를 그린 PNG 파일을 생성합니다.
+    """
+    dff = read_binary_as_int32(dff_path)
+    if dff is None:
+        print(f"Error: Failed to read DFF file: {dff_path}")
+        return
+
+    draw_boxes_on_bmp(dff, dff_path)
+
+
+def print_usage():
+    """사용법을 출력합니다."""
+    print("Usage:")
+    print("  python read_font.py <dff_path>                    # DFF 파일을 TXT로 변환 (기존 동작)")
+    print("  python read_font.py <dff_dir>                     # 디렉토리의 모든 fontX.dff 일괄 처리")
+    print("  python read_font.py --baseline <dff_path> [char]  # 베이스라인 오프셋 분석 (기본 문자: 'A')")
+    print("  python read_font.py --draw <dff_path>             # BMP에 바운딩 박스 그리기 (PNG 저장)")
+    print("  python read_font.py --help                        # 도움말 표시")
+
+
 if __name__ == '__main__':
     # 기본 DFF 소스 디렉토리 (게임 설치 경로)
     DEFAULT_DFF_DIR = "../Pool of Radiance/data/fonts"
 
-    if len(sys.argv) >= 2:
+    args = sys.argv[1:]
+
+    if not args:
+        # 인자 없이 실행 시 모든 폰트 일괄 처리
+        print(f"Batch processing all fonts from: {DEFAULT_DFF_DIR}")
+        process_all_fonts(DEFAULT_DFF_DIR)
+    elif args[0] == '--help' or args[0] == '-h':
+        print_usage()
+    elif args[0] == '--baseline':
+        # --baseline <dff_path> [char]
+        if len(args) < 2:
+            print("Error: --baseline requires a DFF file path.")
+            print_usage()
+        else:
+            dff_path = args[1]
+            char_code = args[2] if len(args) >= 3 else 'A'
+            run_baseline_analysis(dff_path, char_code)
+    elif args[0] == '--draw':
+        # --draw <dff_path>
+        if len(args) < 2:
+            print("Error: --draw requires a DFF file path.")
+            print_usage()
+        else:
+            run_draw_boxes(args[1])
+    else:
         # 단일 파일 처리 (기존 호환)
-        dff_path = sys.argv[1]
+        dff_path = args[0]
         # 디렉토리가 전달되면 해당 디렉토리의 모든 fontX.dff 일괄 처리
         if os.path.isdir(dff_path):
             print(f"Batch processing all fonts from: {dff_path}")
             process_all_fonts(dff_path)
         else:
             process_dff_file(dff_path)
-    else:
-        # 인자 없이 실행 시 모든 폰트 일괄 처리
-        print(f"Batch processing all fonts from: {DEFAULT_DFF_DIR}")
-        process_all_fonts(DEFAULT_DFF_DIR)

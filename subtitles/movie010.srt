@@ -1,10 +1,10 @@
 1
 00:00:02,398 --> 00:00:03,468
-Let us begin
+Let us begin.
 
 2
 00:00:06,493 --> 00:00:08,711
-Nuflan, the year of the Gauntlet.
+New Phlan, the year of the Gauntlet.
 
 3
 00:00:09,766 --> 00:00:14,164
@@ -28,7 +28,7 @@ of harbor balance.
 
 7
 00:00:27,867 --> 00:00:29,046
-Nuflan prospers.
+New Phlan prospers.
 
 8
 00:00:29,703 --> 00:00:32,178
@@ -40,7 +40,7 @@ But evil never dies.
 
 10
 00:01:09,476 --> 00:01:11,819
-Who awakens?
+Who? awakens?
 
 11
 00:01:24,781 --> 00:01:25,601
@@ -67,7 +67,7 @@ A new pool of radiance in Myth Drannor.
 16
 00:01:44,300 --> 00:01:48,100
 I have a band of heroes there already,
-led by Athen.
+led by Athan.
 
 17
 00:01:49,940 --> 00:01:55,200
@@ -91,7 +91,7 @@ defend every passageway,
 21
 00:02:08,300 --> 00:02:15,000
 fight for every inch of your city,
-and pray that Athen fulfills his quest.
+and pray that Athan fulfills his quest.
 
 22
 00:02:15,000 --> 00:02:17,000
