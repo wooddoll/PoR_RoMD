@@ -11,7 +11,7 @@
     },
     {
       "term": "Pool of Radiance",
-      "korean": "광휘의 웅덩이 (풀 오브 래디언스)",
+      "korean": "'광휘의 웅덩이'",
       "category": "Lore / Magic Phenomenon",
       "description": "생명력과 영혼을 흡수하고 변형시키는 고대 비전 마법의 웅덩이. 강력한 언데드를 양산하며, 타락할 경우 도시 전체의 생명을 앗아가는 구렁텅이가 됨.",
       "stt_correction": null
@@ -25,14 +25,14 @@
     },
     {
       "term": "Year of the Gauntlet",
-      "korean": "건틀릿의 해 (1369 DR)",
+      "korean": "'건틀릿의 해'",
       "category": "Lore / Timeline",
       "description": "포가튼 렐름 데일력(Dale Reckoning) 1369년의 공식 명칭. 본 게임의 시대적 배경.",
       "stt_correction": null
     },
     {
       "term": "Harbor Ballads",
-      "korean": "항구의 뱃노래 / 음유시",
+      "korean": "항구의 뱃노래",
       "category": "Phrase",
       "description": "부둣가 선술집이나 뱃사람들 사이에서 흥얼거리는 확인되지 않은 무용담이나 뜬소문을 뜻함.",
       "stt_correction": "harbor balance -> harbor ballads"
@@ -46,7 +46,7 @@
     },
     {
       "term": "Athan",
-      "korean": "아단",
+      "korean": "아산",
       "category": "Character",
       "description": "엘민스터의 신뢰를 받아 '모앤더의 건틀릿'을 챙겨 미스 드라노어로 먼저 파견되었던 영웅 원정대의 대장. 사교도들에게 기습당해 전멸 직전 차원문으로 구조 요청을 보냄.",
       "stt_correction": "Athans -> Athan"
@@ -60,7 +60,7 @@
     },
     {
       "term": "Gauntlets of Moander",
-      "korean": "모앤더의 건틀릿",
+      "korean": "'모앤더의 건틀릿'",
       "category": "Artifact / Item",
       "description": "고대 부패신 모앤더의 힘이 깃든 강력한 유물. 타락한 광휘의 웅덩이를 영구히 파괴할 수 있는 유일한 핵심 도구.",
       "stt_correction": null
@@ -88,28 +88,28 @@
     },
     {
       "term": "The Cult of the Dragon",
-      "korean": "드래곤 교단 (용의 교단)",
+      "korean": "사룡 교단",
       "category": "Organization",
       "description": "죽지 않는 악룡(드라코리치)이 세계를 지배할 것이라는 사교적 교리를 믿으며, 드래곤을 언데드로 만들어 페이룬을 위협하는 비밀 사교 집단.",
       "stt_correction": null
     },
     {
       "term": "Mythal",
-      "korean": "미쌀 (미탈)",
+      "korean": "미쌀",
       "category": "Lore / High Magic",
       "description": "고대 고위 엘프 마법(Elven High Magic)으로 창조된 거대한 영구 결계망. 도시 전체를 보호하거나 마법 법칙을 제어하는 강력한 마법장.",
       "stt_correction": null
     },
     {
       "term": "Moonsea",
-      "korean": "문시 (달바다)",
+      "korean": "문시",
       "category": "Location",
       "description": "뉴 플란, 힐스파, 젠틸 킵 등의 도시들이 둘러싸고 있는 거대한 북부 내해 지역.",
       "stt_correction": "the moon sees lost -> the Moonsea is lost"
     },
     {
       "term": "Dragonreach",
-      "korean": "드래곤리치 (용의 만)",
+      "korean": "드래곤리치",
       "category": "Location",
       "description": "코르만소 숲 남쪽과 내륙 바다를 잇는 전략적으로 중요한 수로/해역.",
       "stt_correction": "the dragon reach -> the Dragonreach"
@@ -123,7 +123,7 @@
     },
     {
       "term": "Mage Captain",
-      "korean": "메이지 캡틴 (마법대장)",
+      "korean": "메이지 캡틴",
       "category": "Title / Military",
       "description": "드래곤 교단 휘하 군대에서 전투 마법사 부대를 통솔하는 장교 계급.",
       "stt_correction": null
@@ -137,7 +137,7 @@
     },
     {
       "term": "Gem of the Weave",
-      "korean": "위브의 보석",
+      "korean": "'위브의 보석'",
       "category": "Artifact / Item",
       "description": "미스 드라노어의 마법 결계인 미쌀(Mythal)을 조율하고 통제하는 데 반드시 필요한 핵심 마법 보석.",
       "stt_correction": "gem of the wave -> Gem of the Weave"
@@ -151,7 +151,7 @@
     },
     {
       "term": "The Weave",
-      "korean": "위브 (마법의 직조망)",
+      "korean": "위브",
       "category": "Lore / Cosmology",
       "description": "마법의 여신 미스트라가 주관하는 포가튼 렐름 세계관의 원초적 마법 그물망. 마법사들은 이 위브의 가닥을 엮어서 주문을 발동함.",
       "stt_correction": null

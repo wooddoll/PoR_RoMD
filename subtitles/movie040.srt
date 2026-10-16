@@ -2,12 +2,14 @@
 00:00:14,473 --> 00:00:17,390
 The gate you summon takes you 
 above ground,
+그대가 불러낸 차원문이 지상으로, 
 
 2
 00:00:17,781 --> 00:00:19,693
 to the heart of Myth Drannor.
+미스 드라노어의 심장부로 인도할 걸세.
 
 3
 00:00:19,980 --> 00:00:21,760
 You have made it up from under.
-
+마침내 지하 던전을 뚫고 지상으로 올라섰다네.

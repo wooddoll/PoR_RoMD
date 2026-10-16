@@ -1,56 +1,72 @@
 1
 00:00:03,513 --> 00:00:06,157
 The life energy of New Phlan
+뉴 플란의 생명력이
 
 2
 00:00:06,181 --> 00:00:09,920
 is being devoured by 
 the pool of radiance in Myth Drannor.
+미스 드라노어에 있는 
+'광휘의 웅덩이'에 집어삼켜지고 있네.
 
 3
 00:00:11,340 --> 00:00:14,356
 You can beat back 
 the undead armies it spawns,
+웅덩이가 뿜어내는 
+언데드 군대는 격퇴할 수는 있을지언정,
 
 4
 00:00:14,786 --> 00:00:18,840
 but you cannot close the passage 
 between the old pool and the new.
+옛 웅덩이와 새로운 웅덩이를 잇는 
+통로를 닫을 수는 없네.
 
 5
 00:00:19,600 --> 00:00:21,980
 But passages run both ways.
+허나 통로란 양방향으로 이어지는 법.
 
 6
 00:00:23,020 --> 00:00:25,620
 From far away, someone opens a gate.
+머나먼 곳에서, 누군가 차원문을 연다네.
 
 7
 00:00:26,087 --> 00:00:29,700
-You parents lost, but let's only help us!
+*All hope is lost..., Someone help us!*
+모두 끝장이다... 제발 누구든 우릴 도와줘!
 
 8
 00:00:29,700 --> 00:00:33,240
 Cries Athans, you leap to his aid.
+...아산이 외치고, 그대는 그를 돕기 위해 뛰어들지.
 
 9
 00:00:36,640 --> 00:00:38,240
 But something is wrong.
+하지만 무언가 잘못되었네.
 
 10
 00:00:39,180 --> 00:00:40,960
 The gate is unsteady.
+차원문이 불안정하군.
 
 11
 00:00:41,820 --> 00:00:43,460
 Time stretches thin.
+시간이 아득히 늘어지고,
 
 12
 00:00:44,320 --> 00:00:48,600
 You reach Myth Drannor,
 the gate collapses behind you.
+마침내 미스 드라노어에 도달하지만,
+그대 뒤로 차원문은 무너져 버리지.
 
 13
 00:00:50,160 --> 00:00:52,273
 Your adventure begins.
-
+이제 그대의 모험이 시작되네.

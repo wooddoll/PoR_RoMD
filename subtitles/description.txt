@@ -3,125 +3,180 @@
 
 - Elminster
 Let us begin.
+이야기를 시작하지.
 New Phlan, the year of the Gauntlet.
+'뉴 플란', '건틀릿의 해(1369 DR)'의 일이었네.
 Ten summers ago, mighty heroes battled evil throughout this city.
+열 번의 여름 전(10년 전), 위대한 영웅들이 이 도시 전역에서 악에 맞서 싸웠지.
 Here, in this cavern, they defeated an awesome foe and destroyed the soul-stealing pool of radiance.
-Today, that tale is the stuff of harbor balance.
+바로 이곳 지하 동굴에서 영웅들은 무시무시한 적을 쓰러뜨리고, 영혼을 집어삼키는 '광휘의 웅덩이(Pool of Radiance)'를 파괴했네.
+Today, that tale is the stuff of harbor ballads.
+오늘날 그 이야기는 부둣가의 노랫거리 정도로 전해질 뿐이지.
 New Phlan prospers.
+'뉴 플란'은 번영을 누리고 있네.
 Sure that the evil it faced is dead.
+자신들이 마주했던 악이 영원히 사라졌다고 믿으면서 말일세.
 But evil never dies.
+하지만 악이란 결코 죽지 않는 법.
 
 ## pool of radiance이 있었으나 파괴된 cavern에서 병사 2명이 잡담중이다. pool of radiance가 은밀히 깨어나 병사 중 한명을 집어삼켜 언데드로 만들고 놀란 병사는 다급히 도망치며 소리친다.
 
 - 병사 
-Who? awakens!
+The pool awakens!
+웅덩이가 깨어났다!
 
 ## New Phlan의 최고 의회의 회의장. 모인 사람들이 웅성거린다.
 
 - 의회 의장
 Silence.
+정숙하시오.
 Elminster speaks.
+엘민스터님께서 말씀하십니다.
 
 - Elminster
 This evil is a maw that has opened, stealing life from your city.
+이 악은 크게 벌어진 아가리처럼, 그대들의 도시에서 생명을 집어삼키고 있네.
 
 - 의회 의원
 Then where does the life go?
+그렇다면 그 생명력은 어디로 가는 것입니까?
 And what does it feed?
+그리고 무엇을 살찌우고 있는 것입니까?
 
 - Elminster
 A new pool of radiance in Myth Drannor.
+미스 드라노어에 생겨난 새로운 '광휘의 웅덩이'라네.
 I have a band of heroes there already, led by Athan.
-They bear the gauntlets of Moander.
+이미 아산(Athan)이 이끄는 일단의 영웅들이 그곳에 가 있네.
+They bear The Gauntlets of Moander.
+그들은 '모앤더의 건틀릿'을 지니고 있지.
 They can destroy the pool.
+그들이라면 웅덩이를 파괴할 수 있을 걸세.
 But time is fleeting, the evil spreads.
+하지만 시간은 촉박하고, 악은 번져가고 있네.
 
 - 의회 의뭔
 What shall we do?
+저희는 어찌해야 합니까?
 
 - Elminster
 Gather your heroes, barricade every street, defend every passageway, fight for every inch of your city and pray that Athan fulfills his quest.
+영웅들을 규합하고, 모든 거리에 방벽을 치며, 모든 길목을 사수하게. 도시의 단 한 치의 땅도 뺏기지 말고, 아산이 그의 사명을 완수하기를 기도하게나.
 
 - 의회 의장
 Assemble the volunteers!
+의용군을 소집하라!
 
 - Elminster
 Destiny calls.
+운명이 부르고 있네.
 What manner of heroes will answer it?
+과연 어떤 영웅들이 그 부름에 답할 것인가?
 
 # 컷신 2
 ## 깊은 동굴 속 사교의 본거지, Kya Mordrayn의 뒤로 어렴풋이 Pelendralaar가 보인다.
 
 - Pelendralaar
 Child.
+아이여.
 
 - Kya Mordrayn
 Yes.
+예.
 
 - Pelendralaar
 They are dead.
+그놈들은 죽었다.
 
 - Kya Mordrayn
 That is good.
+잘되었군요.
 
 # 컷신 3
 ## 소용돌이치는 pool of radiance가 보인다.
 
 - Elminster
 The life energy of New Phlan is being devoured by the pool of radiance in Myth Drannor.
+뉴 플란의 생명력이 미스 드라노어에 있는 '광휘의 웅덩이'에 집어삼켜지고 있네.
 You can beat back the undead armies it spawns,
+웅덩이가 뿜어내는 언데드 군대를 격퇴할 수는 있을지언정,
 But you cannot close the passage between the old pool and the new.
+옛 웅덩이와 새로운 웅덩이를 잇는 통로를 닫을 수는 없지.
 But passages run both ways.
+허나 통로란 양방향으로 이어지는 법.
 From far away, someone opens a gate.
+머나먼 곳에서, 누군가 차원문(게이트)을 연다네.
 
 - 소용돌이 치는 웅덩이에서 들리는 음산한 목소리
-You parents lost, but let's only help us!
+*All hope is lost..., Someone help us!*
+모두 끝장이다... 제발 누구든 우릴 도와줘!
 
 - Elminster
 Cries Athans, you leap to his aid.
+...아산이 외치고, 그대는 그를 돕기 위해 뛰어들지.
 But something is wrong.
+하지만 무언가 잘못되었네.
 The gate is unsteady.
+차원문이 불안정하군.
 Time stretches thin.
+시간이 아득히 늘어지는구나.
 You reach Myth Drannor,
+마침내 '미스 드라노어'에 도달하지만,
 the gate collapses behind you.
+그대 뒤로 차원문은 무너져 버리지.
 Your adventure begins.
+이제 그대의 모험이 시작되네.
 
 # 컷신 3
 ## 깊은 동굴 속 사교의 본거지, Kya Mordrayn가 Pelendralaar에 기대어 누워있다.
 
 - Kya Mordrayn
 Pelendralaar.
+펠렌드랄라.
 
 - Pelendralaar
 Child.
+아이여.
 
 - Kya Mordrayn
 The pool reached the port at Hillsfar.
+웅덩이가 '힐스파(Hillsfar)'의 항구까지 뻗어 나갔습니다.
 Can you hear the screams?
+저 비명소리가 들리시나요?
 Something troubles you. 
+무언가 심려가 있으신가 보군요.
 Speak.
+말씀해 보세요.
 
 - Pelendralaar
 They are not fools.
+놈들은 바보가 아니다.
 They will send their heroes.
+놈들의 영웅들을 보낼 터.
 
 - Kya Mordrayn
 They will meet the Mythal, our Mythal, and then they will meet you.
-
+놈들은 '미쌀(Mythal)'과 마주하게 될 겁니다. 우리의 '미쌀'과 말이죠. 그러고 나면 당신을 대면하게 되겠지요.
 
 ## Elminster와 의원들이 마법 수정을 사용해서 Kya Mordrayn와 Pelendralaar의 대화를 엿듯고 있다. 
 
 - 의원 1
 The cult of the dragon?
+'드래곤 교단(Cult of the Dragon)'이라고?
 This is worse than we ever imagined.
+상상했던 것보다 훨씬 더 끔찍한 상황이군.
 She must be stopped.
+그녀를 반드시 막아야 하오.
 
 - 의원 2
 But how?
+하지만 대체 어떻게 말이오?
 
 - Elminster
 Our heroes must seize the power of the Mythal for themselves.
-Otherwise, the moon sees lost, and the dragon reach, and with them, all our hopes.
+우리의 영웅들이 스스로 미쌀의 힘을 손에 넣어야 하네.
+Otherwise, the Moonsea lost, and the Dragonreach, and with them, all our hopes.
+그렇지 못하면 '문시(Moonsea)'가 함락될 것이고, '드래곤리치(Dragonreach)'마저 무너질 것이며, 그와 함께 우리의 모든 희망도 사라질 걸세.
 
 # 컷신 4
 
@@ -129,7 +184,9 @@ Otherwise, the moon sees lost, and the dragon reach, and with them, all our hope
 
 - Elminster
 The gate you summon takes you above ground, to the heart of Myth Drannor.
+그대가 불러낸 차원문이 그대를 지상으로, '미스 드라노어'의 심장부로 인도할 걸세.
 You have made it up from under.
+마침내 지하 던전을 뚫고 지상으로 올라섰구나.
 
 # 컷신 5
 
@@ -137,66 +194,89 @@ You have made it up from under.
 
 - Elminster
 The doors are locked.
+문은 잠겨 있네.
 Through the keyhole, you hear voices.
+열쇠구멍 너머로 말소리가 들려오는군.
 
 - 장교1
 Still no word from *Fulgrim*'s men?
+아직도 풀그림의 부하들에게선 소식이 없나?
 
 - 병사1
 No, sir.
+없습니다, 대장님.
 
 - 장교1
 Or *Gachette*? Or *RuPaul*?*
+가셰트나 아니면 루폴에게서도?
 
 - 병사1
 No, sir.
+없습니다, 대장님.
 
 - 장교2
 She will not be pleased.
+그분께서 결코 기뻐하지 않으실 텐데.
 
 - 장교3
 She must earn patience.
+그분도 인내심을 좀 배우셔야지.
 
 ## Kya Mordrayn가 차원문을 통해 등장한다.
 
 - Kya Mordrayn
 What news, Mage Captain?
+보고하라, 메이지 캡틴.
 
 - 장교1
 The Baelnorn is locked away, Mistress.
+'베일노른(Baelnorn)'은 가두어 두었습니다, 주인님.
 No one has entered.
+아무도 들어가지 못했습니다.
 
 - Kya Mordrayn
 That is well. And the intruders?
+그건 좋다. 침입자들은 어찌 되었느냐?
 
 - 장교1
 We have not found them yet, but...
+아직 찾아내지는 못했습니다만, 곧...
 
 - Kya Mordrayn
 I grew tired of this.
+이 짓도 이제 지긋지긋하구나.
 
 ## Kya Mordrayn가 마법으로 장교1을 죽인다.
 
 - Kya Mordrayn
 You command now.
+이제부터 네가 지휘한다.
 
 - 장교2
 Yes.
+예. (명령을 받들겠습니다.)
 
 - 장교3
 Mistress, an idea.
+주인님, 제게 좋은 생각이 있습니다.
 With your leave, I will unlock the doors.
+허락해 주신다면 저 문들을 열어두겠습니다.
 And be ready.
+그리고 함정을 파두겠습니다.
 
 - Kya Mordrayn
 If you fail, pray that they kill you.
+실패한다면, 차라리 저 침입자들의 손에 죽기를 기도하는 게 좋을 것이다.
 
 ## Kya Mordrayn가 차원문을 통해 사라진다.
 
 - 장교2
 Get up, you maggots! Get up, you!
+일어나라, 이 구더기 같은 놈들아! 당장 일어나!
 Get everyone in here! Everyone!
+모두 이 안으로 집합시켜! 한 놈도 빠짐없이!
 and you, unlock the doors.
+그리고 너, 저 문을 열어라.
 
 # 컷신 6
 
@@ -209,42 +289,57 @@ Mythal Selema Horkenet
 Kukir Harkiton
 
 - Elminster
-Annorweyn attunes the gem of the wave
+Annorweyn attunes The Gem of the Weave
+아노르웨인이 '위브의 보석(Gem of the Weave)'을 조율하고 있네.
 But she cannot take command of the Mythal
+허나 그녀는 미쌀(결계)을 통제할 수가 없군.
 Some other force already controls it
+이미 다른 강력한 힘이 미쌀을 장악하고 있어.
 
 - Annorweyn Elvensong
 The Baelnorn told you, he destroyed his Gem of the Weave?
+그 베일노른이 자신의 '위브의 보석'을 파괴했다고 하더군요?
 We will see about that.
-Come, let us talk with *Myrit* and the Silver Blade.
+확인해 봐야겠군요.
+Come, let us talk with Miroden Silverblade.
+오세요, 미로덴 실버블레이드와 이야기 해봐야겠어요.
 
 # 컷신 6
 ## 발광하는 수정 옆에서 Mirroden Silverblade가 소리지르며 마법의 힘으로 수정을 내려친다.
+
 - Mirroden Silverblade
 For Myth Drannor!
+미스 드라노어를 위하여!
 
 # 컷신 7
 ## Kya Mordrayn가 괴로워 하다 쓰러진다. 그러자 땅 속에서 기괴한 악마의 손과 불이 솟아 올라 Kya Mordrayn를 붙잡고 지옥으로 끌고간다.
 - Kya Mordrayn
 No! Father! No!
+안 됩니다! 아버지! 안 돼!
 
 # 컷신 8
 ## Elminster가 Ghleanna Stormlake와 함께 괴물들과 싸우고 있다.
 
 - Elminster
 For New Phlan, Your victory comes just in time.
+뉴 플란을 구했구나. 그대들의 승리가 실로 때맞춰 일어났어.
 
 ## 갑자기 괴물들이 쓰러진다.
 
 - Elminster
 Mystra, be praised!
-The heroes in Myth Drannor.
-They have accomplished their quest.
+미스트라시여, 찬미받으소서!
+The heroes in Myth Drannor, they have accomplished their quest.
+미스 드라노어로 떠났던 우리의 영웅들이, 마침내 사명을 완수했구나.
 The pool of Radiance is no more.
+'광휘의 웅덩이'는 이제 사라졌네.
 
-- Ghleanna Stormlake와
+- Ghleanna Stormlake
 But what of the heroes now?
+하지만 그 영웅들은 이제 어찌 되는 겁니까?
 The passage has closed.
+통로가 닫혀 버렸습니다.
 
 - Elminster
 Myth Drannor holds surprises for them yet.
+미스 드라노어는 아직 그들을 위한 놀라움을 품고 있다네.

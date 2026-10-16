@@ -2,85 +2,108 @@
 00:00:00,807 --> 00:00:06,107
 The doors are locked.
 Through the keyhole, you hear voices.
+문은 잠겨 있네.
+열쇠구멍 너머로 말소리가 들려오는군.
 
 2
 00:00:06,487 --> 00:00:08,227
 Still no word from Fulgrim's men?
+아직도 풀그림의 부하들에게선 소식이 없나?
 
 3
 00:00:08,607 --> 00:00:09,140
 No, sir.
+없습니다, 대장님.
 
 4
 00:00:09,340 --> 00:00:11,080
 Or Gachette? Or RuPaul?
+가셰트나 아니면 루폴에게서도?
 
 5
 00:00:11,293 --> 00:00:11,741
 No, sir.
+없습니다, 대장님.
 
 6
 00:00:12,399 --> 00:00:14,087
 She will not be pleased.
+그분께서 결코 기뻐하지 않으실 텐데.
 
 7
 00:00:14,340 --> 00:00:16,000
-She must earn patience.
+She must learn patience.
+그분도 인내심을 좀 배우셔야지.
 
 8
 00:00:19,320 --> 00:00:21,000
 What news, Mage Captain?
+보고하라, 메이지 캡틴?
 
 9
 00:00:21,320 --> 00:00:24,000
-The Bail Norn is locked away, Mistress.
+The Baelnorn is locked away, Mistress.
 No one has entered.
+베일노른은 가두어 두었습니다, 주인님.
+아무도 들어가지 못했습니다.
 
 10
 00:00:24,640 --> 00:00:27,000
 That is well. And the intruders?
+그건 좋다. 침입자들은 어찌 되었느냐?
 
 11
 00:00:27,573 --> 00:00:29,613
 We have not found them yet, but...
+아직 찾아내지는 못했습니다만, 곧...
 
 12
 00:00:29,807 --> 00:00:32,247
 I grew tired of this.
+이 짓도 이제 지긋지긋하구나.
 
 13
 00:00:34,720 --> 00:00:36,293
 You command now.
+이제부터 네가 지휘한다.
 
 14
 00:00:37,007 --> 00:00:37,514
 Yes.
+예.
 
 15
 00:00:38,647 --> 00:00:40,000
 Mistress, an idea.
+주인님, 제게 좋은 생각이 있습니다.
 
 16
 00:00:40,747 --> 00:00:44,387
 With your leave, I will unlock the doors.
+허락해 주신다면 저 문들을 열어두겠습니다.
 
 17
 00:00:44,767 --> 00:00:46,000
 And be ready.
+그리고 함정을 파두겠습니다.
 
 18
 00:00:46,153 --> 00:00:50,000
 If you fail, pray that they kill you.
+실패한다면, 차라리 저 침입자들의 손에 
+죽기를 기도하는 게 좋을 것이다.
 
 19
 00:00:53,760 --> 00:00:56,000
 Get up, you maggots! Get up, you!
+일어나라, 이 구더기 같은 놈들아! 당장 일어나!
 
 20
 00:00:56,000 --> 00:00:58,000
 Get everyone in here! Everyone!
+모두 이 안으로 집합시켜! 한 놈도 빠짐없이!
 
 21
 00:00:58,000 --> 00:01:01,500
 and you, unlock the doors.
-
+그리고 너, 문을 열어라.
