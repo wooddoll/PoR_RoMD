@@ -1,0 +1,321 @@
+/ 컷신 1
+- Elminster
+Let us begin.
+이야기를 시작하지.
+New Phlan, the year of the Gauntlet.
+뉴 플란, '건틀릿의 해(1369 DR)'의 일이었네.
+Ten summers ago, mighty heroes battled evil throughout this city.
+열 번의 여름 전(10년 전), 위대한 영웅들이 이 도시 전역에서 악에 맞서 싸웠지.
+Here, in this cavern, they defeated an awesome foe and destroyed the soul-stealing pool of radiance.
+바로 이곳 지하 동굴에서 영웅들은 무시무시한 적을 쓰러뜨리고, 영혼을 집어삼키는 '광휘의 웅덩이(Pool of Radiance)'를 파괴했네.
+Today, that tale is the stuff of harbor balance.
+오늘날 그 이야기는 부둣가의 노랫거리 정도로 전해질 뿐이지.
+(※ 원문 음성은 harbor ballads(항구의 뱃노래/음유시)입니다.)
+New Phlan prospers.
+뉴 플란은 번영을 누리고 있네.
+Sure that the evil it faced is dead.
+자신들이 마주했던 악이 영원히 사라졌다고 믿으면서 말일세.
+But evil never dies.
+하지만 악이란 결코 죽지 않는 법.
+- 병사
+Who? awakens!
+웅덩이가 깨어났다!
+(※ 원문 음성은 급박하게 도망치며 외치는 "The pool awakens!"(웅덩이가 깨어났다!)입니다. 들린 대로 직역할 경우: "누구냐? 깨어나고 있어!")
+- 의회 의장
+Silence.
+정숙하시오.
+Elminster speaks.
+엘민스터 대현자께서 말씀하신다.
+- Elminster
+This evil is a maw that has opened, stealing life from your city.
+이 악은 크게 벌어진 아가리처럼, 그대들의 도시에서 생명을 집어삼키고 있네.
+- 의회 의원
+Then where does the life go?
+그렇다면 그 생명력은 어디로 가는 것입니까?
+And what does it feed?
+그리고 무엇을 살찌우고 있는 것입니까?
+- Elminster
+A new pool of radiance in Myth Drannor.
+미스 드라노어에 생겨난 새로운 '광휘의 웅덩이'라네.
+I have a band of heroes there already, led by Athan.
+이미 아단(Athan)이 이끄는 일단의 영웅들이 그곳에 가 있네.
+They bear the gauntlets of Moander.
+그들은 '모앤더의 건틀릿'을 지니고 있지.
+(※ Moander: 포가튼 렐름의 고대 부패와 파멸의 신)
+They can destroy the pool.
+그들이라면 웅덩이를 파괴할 수 있을 걸세.
+But time is fleeting, the evil spreads.
+하지만 시간은 촉박하고, 악은 번져가고 있네.
+- 의회 의원
+What shall we do?
+저희는 어찌해야 합니까?
+- Elminster
+Gather your heroes, barricade every street, defend every passageway, fight for every inch of your city and pray that Athan fulfills his quest.
+영웅들을 규합하고, 모든 거리에 방벽을 치며, 모든 길목을 사수하게. 도시의 단 한 치의 땅을 위해서도 싸우고, 아단이 그의 사명을 완수하기를 기도하게나.
+- 의회 의장
+Assemble the volunteers!
+의용군을 소집하라!
+- Elminster
+Destiny calls.
+운명이 부르고 있네.
+What manner of heroes will answer it?
+과연 어떤 영웅들이 그 부름에 답할 것인가?
+/ 컷신 2
+- Pelendralaar (드라코리치)
+Child.
+아이여. (혹은 '그대여.')
+- Kya Mordrayn (사교도 마법사)
+Yes.
+예.
+- Pelendralaar
+They are dead.
+그놈들은 죽었다.
+- Kya Mordrayn
+That is good.
+잘되었군요.
+/ 컷신 3
+- Elminster
+The life energy of New Phlan is being devoured by the pool of radiance in Myth Drannor.
+뉴 플란의 생명력이 미스 드라노어에 있는 광휘의 웅덩이에 집어삼켜지고 있네.
+You can beat back the undead armies it spawns,
+웅덩이가 뿜어내는 언데드 군대를 격퇴할 수는 있을지언정,
+But you cannot close the passage between the old pool and the new.
+옛 웅덩이와 새로운 웅덩이를 잇는 통로를 닫을 수는 없지.
+But passages run both ways.
+허나 통로란 양방향으로 이어지는 법.
+From far away, someone opens a gate.
+머나먼 곳에서, 누군가 차원문(게이트)을 연다네.
+- 소용돌이 치는 웅덩이에서 들리는 음산한 목소리
+You parents lost, but let's only help us!
+"우리 일행은 쓰러졌다... 오직 당신들만이 우릴 도울 수 있다!"
+*(※ 실제 대사 원문은 차원문 너머에서 아단이 외치는 **"Our party is lost... only you can help us!"*입니다. 바로 뒤이어 엘민스터가 "아단이 외치고..."라며 말을 잇는 문맥입니다. 기록된 텍스트대로 직역하면: "부모를 잃었으나, 우리를 도울 뿐이다!")
+- Elminster
+Cries Athans, you leap to his aid.
+...아단이 외치고, 그대는 그를 돕기 위해 뛰어들지.
+(※ 앞서 차원문에서 들린 구조 요청에 이어지는 문장: "...!" cries Athan, as you leap to his aid.)
+But something is wrong.
+하지만 무언가 잘못되었네.
+The gate is unsteady.
+차원문이 불안정하군.
+Time stretches thin.
+시간이 아득히 늘어지는구나.
+You reach Myth Drannor,
+마침내 미스 드라노어에 도달하지만,
+the gate collapses behind you.
+그대 뒤로 차원문은 무너져 버리지.
+Your adventure begins.
+이제 그대의 모험이 시작되네.
+
+
+Whisper 같은 AI 음성 인식(STT) 모델의 대표적인 고질병 중 하나가 바로 "배경 음악(BGM), 마법 효과음(에코/리버브), 비명이나 괴성"이 섞인 음성을 들었을 때 완전히 엉뚱한 단어를 환각(Hallucination)해내는 현상입니다. 실제로 원본과 전혀 딴판인 문장이 튀어나오는 경우가 아주 흔합니다.
+사용자분께서 **"듣기에는 뭔가 저주 같다"**고 느끼신 데는 명확하고 타당한 이유가 있습니다.
+1. 왜 저주나 악령의 소리처럼 들릴까?
+2001년 당시 게임의 음향 효과 (포탈 왜곡):
+이 장면은 평범한 대화가 아니라 '마법의 웅덩이/차원문 너머 수백 마일 떨어진 곳'에서 전해지는 음성입니다. 그래서 성우 음성에 강한 플랜저(Flanger), 리버브(울림), 피치 왜곡 효과가 잔뜩 들어가 있어 소리가 쇳소리처럼 갈라지고 기괴하게 들립니다.
+사투와 고통 속의 절규:
+원정대장 아단(Athan)은 현재 드래곤 교단과 언데드들에게 기습당해 동료들이 몰살당하고 본인도 죽기 직전인 극한의 상황입니다. 비명에 가까운 고함과 신음이 섞여 나오기 때문에, 인간의 목소리라기보다는 망령(Wraith)의 비명이나 악령의 저주처럼 그로테스크하게 들릴 수밖에 없습니다.
+2. 그런데 왜 "아단의 외침"일까? (영어 대본의 문법적 단서)
+그럼에도 이 대사가 아단의 구조 요청인 결정적인 이유는, 바로 뒤에 이어지는 엘민스터의 대사 문법 때문입니다.
+[웅덩이 속 목소리] (비명/외침)
+- Elminster: "..., cries Athan, as you leap to his aid."
+영어 소설이나 대본에서 "대사...!" cries [인물 이름], as [상황] 구문은
+**"..."라고 [인물]이 외치자, [상황]이 벌어진다**는 완벽한 문장 세트(직접인용 도치구문)입니다.
+즉, 엘민스터가 성우 연출로 왜곡된 저 괴기스러운 비명이 사실 **"아단이 내지른 외침(cries Athan)"**이며, 그 소리를 듣고 주인공들이 **"그를 구하기 위해 차원문으로 뛰어든다(you leap to his aid)"**라고 상황을 해설해 주는 구조입니다.
+3. 그렇다면 원래 진짜 대사는 무엇이었을까?
+Whisper가 엉뚱하게 You parents lost, but let's only help us!라고 잘못 알아들을 정도로 뭉개진 소리라면, 실제 배우가 녹음한 대사는 포가튼 렐름 상황상 다음과 같은 외침이었을 가능성이 매우 높습니다.
+"All hope is lost... Gods, help us!"
+(모든 희망이 사라졌다... 신들이시여, 우릴 도우소서!)
+→ All hope is lost 발음이 뭉개지면 Whisper가 You parents lost로 오인하기 아주 쉽습니다.
+"Our party is lost... Someone help us!"
+(우리 일행은 끝났다... 제발 누구든 우릴 도와줘!)
+"All is lost... You must help us!"
+(모두 끝장이다... 제발 우리를 도와다오!)
+4. 자막/번역 작업 시 추천 팁
+만약 영상 자막을 제작 중이시라면, 웅덩이의 음산하고 절망적인 분위기와 뒤이어지는 엘민스터의 대사를 매끄럽게 잇기 위해 다음과 같이 처리하시는 것을 추천합니다.
+추천 번역 (상황과 뉘앙스를 살린 자연스러운 처리):
+[소용돌이치는 웅덩이 너머의 처절한 비명]
+"모든 게 끝났다... 제발 우릴 구해줘...!"
+(또는: "모든 희망이 사라졌다... 제발 누구든 도와다오...!")
+- Elminster
+"...아단이 그렇게 절규하자, 그대는 그를 돕기 위해 뛰어들지."
+이렇게 번역하시면 음산하고 절망적인 오디오 톤도 그대로 살리면서, 뒤따라 나오는 엘민스터의 대사 및 오프닝 스토리와도 완벽하게 맞아떨어집니다.
+
+======================================================================
+
+/ 컷신 4
+- Kya Mordrayn
+Pelendralaar.
+펠렌드랄라.
+- Pelendralaar
+Child.
+아이여. (또는 '그대여.')
+- Kya Mordrayn
+The pool reached the port at Hillsfar.
+웅덩이가 힐스파(Hillsfar)의 항구까지 뻗어 나갔습니다.
+(※ Hillsfar: 문시 남쪽에 위치한 포가튼 렐름의 주요 항구 도시)
+Can you hear the screams?
+저 비명소리가 들리시나요?
+Something troubles you.
+무언가 심려가 있으신가 보군요.
+Speak.
+말씀해 보세요.
+- Pelendralaar
+They are not fools.
+놈들은 바보가 아니다.
+They will send their heroes.
+놈들의 영웅들을 보낼 터.
+- Kya Mordrayn
+They will meet the Mythal, our Mythal, and then they will meet you.
+놈들은 미쌀(Mythal)과 마주하게 될 겁니다. '우리의' 미쌀과 말이죠. 그러고 나면 당신을 대면하게 되겠지요.
+(※ Mythal: 미스 드라노어를 감싸고 있는 고대 엘프들의 거대한 결계 마법)
+- 의원 1
+The cult of the dragon?
+드래곤 교단(Cult of the Dragon)이라고?
+This is worse than we ever imagined.
+상상했던 것보다 훨씬 더 끔찍한 상황이군.
+She must be stopped.
+그녀를 반드시 막아야 하오.
+- 의원 2
+But how?
+하지만 대체 어떻게 말이오?
+- Elminster
+Our heroes must seize the power of the Mythal for themselves.
+우리의 영웅들이 스스로 미쌀의 힘을 손에 넣어야 하네.
+Otherwise, the moon sees lost, and the dragon reach, and with them, all our hopes.
+그렇지 못하면 **문시(Moonsea)**가 함락될 것이고, **드래곤리치(Dragonreach)**마저 무너질 것이며, 그와 함께 우리의 모든 희망도 사라질 걸세.
+(※ STT 오인식: the moon sees lost → the Moonsea is lost, the dragon reach → the Dragonreach. 둘 다 포가튼 렐름의 핵심 해역/지명입니다.)
+/ 컷신 5
+- Elminster
+The gate you summon takes you above ground, to the heart of Myth Drannor.
+그대가 불러낸 차원문이 그대를 지상으로, 미스 드라노어의 심장부로 인도할 걸세.
+You have made it up from under.
+마침내 지하 던전을 뚫고 지상으로 올라섰구나.
+(※ 'up from under'는 깊고 어두운 지하(under) 미궁에서 마침내 지상(above)으로 살아 나왔음을 뜻하는 표현이며, 동명의 공식 소설 1장의 제목이기도 합니다.)번역했습니다.
+
+====================================================================
+
+컷신 6의 대사 번역입니다. 사교도(드래곤 교단) 내부의 위계질서, 카이아 모르드레인의 잔혹한 성격, 그리고 D&D 세계관 고유 용어인 **베일노른(Baelnorn)**의 설정을 살려 
+포가튼 렐름(Forgotten Realms) 세계관의 고유명사(지명, 단체, 마법 등)와 인물들의 성격 및 대화의 뉘앙스를 반영하여 번역했습니다.
+이번에도 Whisper STT 특성상 포가튼 렐름의 유명 지명인 **문시(Moonsea, 달바다)**가 the moon sees로, **드래곤리치(Dragonreach)**가 the dragon reach로 잘못 표기된 부분이 있어 이를 바로잡아 반영했습니다.
+(※ 이번에도 Whisper STT 특성상 판타지 인명이나 일부 표현이 살짝 변형된 것으로 보이며, 이에 대한 설명도 함께 주석으로 달아두었습니다.)
+/ 컷신 6
+- Elminster
+The doors are locked.
+문은 잠겨 있네.
+Through the keyhole, you hear voices.
+열쇠구멍 너머로 말소리가 들려오는군.
+- 장교 1
+Still no word from Fulgrim's men?
+아직도 풀그림(Fulgrim)의 부하들에게선 소식이 없는가?
+Or Gachette? Or RuPaul?
+가셰트에게서도? 아니면 루폴에게서도?
+(※ D&D 판타지 인명이나 분대장 이름이 STT 과정에서 유사한 발음으로 변환된 것으로 보입니다.)
+- 병사 1
+No, sir.
+없습니다, 대장님.
+- 장교 2
+She will not be pleased.
+그분(여주인님)께서 결코 기뻐하지 않으실 텐데.
+- 장교 3
+She must earn patience.
+그분도 인내심을 좀 배우셔야지.
+(※ 원문 음성은 She must learn patience(인내심을 길러야지/배워야지)일 가능성이 높습니다.)
+- Kya Mordrayn
+What news, Mage Captain?
+보고하라, 마법대장(메이지 캡틴).
+- 장교 1
+The Baelnorn is locked away, Mistress.
+베일노른(Baelnorn)은 가두어 두었습니다, 여주인님.
+(※ Baelnorn: 가문과 엘프 성소를 영원히 수호하기 위해 스스로 언데드가 된 고결한 엘프 리치)
+No one has entered.
+아무도 들어가지 못했습니다.
+- Kya Mordrayn
+That is well. And the intruders?
+그건 좋다. 침입자들은 어찌 되었느냐?
+- 장교 1
+We have not found them yet, but...
+아직 찾아내지는 못했습니다만, 곧...
+- Kya Mordrayn
+I grew tired of this.
+이 짓도 이제 지긋지긋하구나.
+(※ 원문: "I grow tired of this.")
+- Kya Mordrayn
+You command now.
+이제부터 네가 지휘한다.
+- 장교 2
+Yes.
+예. (명령을 받들겠습니다.)
+- 장교 3
+Mistress, an idea.
+여주인님, 제게 좋은 생각이 있습니다.
+With your leave, I will unlock the doors.
+허락해 주신다면 저 문들을 열어두겠습니다.
+And be ready.
+그리고 만반의 준비를 갖추겠습니다(함정을 파두겠습니다).
+- Kya Mordrayn
+If you fail, pray that they kill you.
+실패한다면, 차라리 저 침입자들의 손에 죽기를 기도하는 게 좋을 것이다.
+(※ 실패해서 내 손에 떨어지면 그보다 훨씬 끔찍한 고통을 겪게 될 것이라는 협박)
+- 장교 2
+Get up, you maggots! Get up, you!
+일어나라, 이 구더기 같은 놈들아! 당장 일어나!
+Get everyone in here! Everyone!
+모두 이 안으로 집합시켜! 한 놈도 빠짐없이!
+and you, unlock the doors.
+그리고 넌, 저 문을 열어라.
+
+==========================================================================
+
+컷신 7부터 10까지의 대사 번역입니다. D&D 세계관의 핵심 설정인 위브(The Weave, 마법의 직조망), 미스트라(Mystra, 마법의 여신), 그리고 베일노른인 미로덴 실버블레이드의 고유명사를 바로잡아 번역했습니다.
+/ 컷신 7
+- Annorweyn Elvensong (고대 엘프 사제)
+Kukir Vyan Ivei, Kukir Nedmet...
+(고대 엘프어 주문 영창: 미쌀의 결계와 코르만톨의 마법을 깨우는 의식 주문이므로 음차 그대로 자막 처리하는 것이 자연스럽습니다.)
+- Elminster
+Annorweyn attunes the gem of the wave
+아노르웨인이 '위브의 보석(Gem of the Weave)'을 조율하고 있네.
+(※ STT 오인식: gem of the wave → Gem of the Weave. 포가튼 렐름 마법의 근원인 '위브(The Weave)'의 힘을 담은 핵심 퀘스트 아이템입니다.)
+But she cannot take command of the Mythal
+허나 그녀는 미쌀(결계)을 통제할 수가 없군.
+Some other force already controls it
+이미 다른 강력한 힘이 미쌀을 장악하고 있어.
+- Annorweyn Elvensong
+The Baelnorn told you, he destroyed his Gem of the Weave?
+그 베일노른이 자신의 '위브의 보석'을 파괴했다고 하더군요?
+We will see about that.
+그 말이 사실인지 확인해 봐야겠군요.
+Come, let us talk with Myrit and the Silver Blade.
+오세요, **미로덴 실버블레이드(Miroden Silverblade)**와 담판을 지으러 갑시다.
+(※ STT 오인식: Myrit and the Silver Blade → Miroden Silverblade. 앞서 감금되어 있던 엘프 베일노른의 본명입니다.)
+/ 컷신 8
+- Mirroden Silverblade (베일노른)
+For Myth Drannor!
+미스 드라노어를 위하여!
+/ 컷신 9
+- Kya Mordrayn (최후를 맞이하며 지옥으로 끌려가는 사교도 마녀)
+No! Father! No!
+안 돼! 아버지! 안 됩니다!
+(※ 자신이 섬기던 악마적 군주/지옥의 존재에게 파멸 직전 영혼을 회수당하며 지르는 비명)
+/ 컷신 10 (엔딩)
+- Elminster
+For New Phlan, Your victory comes just in time.
+뉴 플란을 구했구나. 그대들의 승리가 실로 때맞춰 일어났어.
+- Elminster
+Mystra, be praised!
+미스트라시여, 찬미받으소서!
+(※ 마법의 여신 미스트라에게 올리는 감사의 찬사이자, 엘민스터의 시그니처 대사)
+The heroes in Myth Drannor.
+미스 드라노어로 떠났던 우리의 영웅들이,
+They have accomplished their quest.
+마침내 사명을 완수했구나.
+The pool of Radiance is no more.
+'광휘의 웅덩이'는 이제 영원히 사라졌네.
+- Ghleanna Stormlake
+But what of the heroes now?
+하지만 그 영웅들은 이제 어찌 되는 겁니까?
+The passage has closed.
+통로가 닫혀 버렸는데 말입니다.
+- Elminster
+Myth Drannor holds surprises for them yet.
+미스 드라노어는 아직 그들을 위한 놀라움을 품고 있다네.
+(※ 위험한 고대 유적지 미스 드라노어에 남겨졌지만, 그들에게는 여전히 탐험할 경이와 새로운 모험이 기다리고 있음을 암시하는 엘민스터다운 결말 대사)
