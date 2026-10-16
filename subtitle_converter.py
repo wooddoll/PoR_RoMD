@@ -222,7 +222,7 @@ def write_srt(entries: list) -> str:
 
 def load_json(filepath: str) -> list:
     """Load JSON file. Accepts either a list of entries or a dict with entries."""
-    with open(filepath, 'r', encoding='utf-8') as f:
+    with open(filepath, 'r', encoding='euc-kr') as f:
         data = json.load(f)
 
     if isinstance(data, list):
@@ -282,7 +282,7 @@ def convert(input_path: str, output_path: str = None) -> str:
     out_ext = output_path.suffix.lower()
 
     # Read input
-    with open(input_path, 'r', encoding='utf-8') as f:
+    with open(input_path, 'r', encoding='euc-kr') as f:
         content = f.read()
 
     # Parse to entries

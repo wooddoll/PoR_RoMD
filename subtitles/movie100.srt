@@ -1,35 +1,44 @@
 1
 00:00:59,012 --> 00:01:00,249
 For New Phlan,
-
+뉴 플란을 구했구나.
 2
 00:01:00,273 --> 00:01:03,000
 Your victory comes just in time.
+그대들의 승리가 실로 때맞춰 일어났어.
 
 3
 00:01:15,000 --> 00:01:17,000
 Mystra, be praised!
+미스트라시여, 찬미받으소서!
 
 4
 00:01:17,000 --> 00:01:20,000
 The heroes in Myth Drannor.
+미스 드라노어로 떠났던 영웅들이, 
 
 5
 00:01:20,000 --> 00:01:23,000
 They have accomplished their quest.
+마침내 사명을 완수했구나.
 
 6
 00:01:23,000 --> 00:01:26,000
 The pool of Radiance is no more.
+'광휘의 웅덩이'는 이제 사라졌네.
 
 7
 00:01:47,449 --> 00:01:49,403
 But what of the heroes now?
+하지만 그 영웅들은 이제 어찌 되는 겁니까?
 
 8
 00:01:49,587 --> 00:01:51,060
 The passage has closed.
+통로가 닫혀 버렸습니다.
 
 9
 00:01:51,960 --> 00:01:55,500
 Myth Drannor holds surprises for them yet.
+미스 드라노어는 아직 
+그들을 위한 놀라움을 품고 있다네.

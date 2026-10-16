@@ -16,27 +16,31 @@ Kukir Harkiton
 
 5
 00:00:14,820 --> 00:00:18,253
-Annorweyn attunes the gem of the wave
+Annorweyn attunes the Gem of the Weave
+아노르웨인이 '위브의 보석'을 조율하고 있네.
 
 6
 00:00:19,453 --> 00:00:22,786
 But she cannot take command of the Mythal
+허나 그녀는 미쌀을 통제하지 못하고 있다네.
 
 7
 00:00:23,800 --> 00:00:28,000
 Some other force already controls it
+이미 다른 힘이 미쌀을 장악하고 있어.
 
 8
 00:00:35,100 --> 00:00:38,967
 The Baelnorn told you
 he destroyed his Gem of the Weave?
+그 베일노른이 자신의 '위브의 보석'을 파괴했다고요?
 
 9
 00:00:39,160 --> 00:00:40,720
 We will see about that.
+확인해 봐야겠군요.
 
 10
 00:00:41,220 --> 00:00:44,080
-Come, let us talk with Myrit
-and the Silver Blade.
-
+Come, let us talk with Miroden the Silver Blade.
+오세요, 미로덴 실버블레이드와 이야기 해봐야겠어요.
