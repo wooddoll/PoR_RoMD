@@ -9,7 +9,7 @@ DWORD WINAPI PatchThread(LPVOID lpParam){
     return 0;
 }
 
-DWORD WINAPI InitHookThread(LPVOID lpParam) {
+DWORD WINAPI InitBinkHookThread(LPVOID lpParam) {
     UNREFERENCED_PARAMETER(lpParam);
     InstallBinkHooks();
     return 0;
@@ -25,7 +25,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
         openLogFile();
         CreateThread(NULL, 0, PatchThread, NULL, 0, NULL);
-        CreateThread(NULL, 0, InitHookThread, NULL, 0, NULL);
+        CreateThread(NULL, 0, InitBinkHookThread, NULL, 0, NULL);
         break;
 	case DLL_PROCESS_DETACH:
         closeLogFile();
