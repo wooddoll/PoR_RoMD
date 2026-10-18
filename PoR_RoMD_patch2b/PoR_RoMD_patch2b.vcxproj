@@ -107,6 +107,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+      <DisableSpecificWarnings>4828</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -155,6 +157,7 @@
   <ItemGroup>
     <ClCompile Include="bink_hook.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="help_util.cpp" />
     <ClCompile Include="hooks.cpp" />
     <ClCompile Include="proxy_version.cpp" />
     <ClCompile Include="sbv_parser.cpp" />
@@ -164,7 +167,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bink_hook.h" />
+    <ClInclude Include="help_util.h" />
     <ClInclude Include="hooks.h" />
+    <ClInclude Include="por2.h" />
     <ClInclude Include="sbv_parser.h" />
     <ClInclude Include="subtitle_renderer.h" />
   </ItemGroup>

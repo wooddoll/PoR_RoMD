@@ -30,6 +30,9 @@
     <ClCompile Include="proxy_version.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="help_util.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="sbv_parser.h">
@@ -42,6 +45,12 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="hooks.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="por2.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="help_util.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
