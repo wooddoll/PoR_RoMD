@@ -180,11 +180,19 @@ void InstallBinkHooks() {
     FARPROC pClose = GetBinkProc(hBink, "BinkClose", "_BinkClose@4");
 
     if (MH_Initialize() == MH_OK) {
-        if (pOpen) MH_CreateHook(pOpen, &DetourBinkOpen, (LPVOID*)&fpBinkOpen);
-        if (pCopy) MH_CreateHook(pCopy, &DetourBinkCopyToBuffer, (LPVOID*)&fpBinkCopyToBuffer);
-        if (pClose) MH_CreateHook(pClose, &DetourBinkClose, (LPVOID*)&fpBinkClose);
+        if (pOpen) 
+            MH_CreateHook(pOpen, &DetourBinkOpen, (LPVOID*)&fpBinkOpen);
+        
+        if (pCopy) 
+            MH_CreateHook(pCopy, &DetourBinkCopyToBuffer, (LPVOID*)&fpBinkCopyToBuffer);
+        
+        if (pClose) 
+            MH_CreateHook(pClose, &DetourBinkClose, (LPVOID*)&fpBinkClose);
+        
         MH_EnableHook(MH_ALL_HOOKS);
     }
+
+    OutputDebugStringW(L"[binkw32.dll] function hooked.\n");
 }
 
 void RemoveBinkHooks() {

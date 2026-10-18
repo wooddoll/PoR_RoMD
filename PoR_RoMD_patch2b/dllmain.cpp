@@ -1,19 +1,23 @@
 ﻿#include <windows.h>
 #include "bink_hook.h"
 #include "hooks.h"
+#include "help_util.h"
 #include <string>
 
-DWORD WINAPI PatchThread(LPVOID lpParam){
+DWORD WINAPI InitHookThread(LPVOID lpParam)
+{
     UNREFERENCED_PARAMETER(lpParam);
+
+    LoadOriginalDll();
+    InstallBinkHooks();
+
+    //LoadSettings(L"korean.ini");
+
     ApplyMemoryPatches();
+
     return 0;
 }
 
-DWORD WINAPI InitBinkHookThread(LPVOID lpParam) {
-    UNREFERENCED_PARAMETER(lpParam);
-    InstallBinkHooks();
-    return 0;
-}
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
@@ -21,14 +25,14 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     {
     case DLL_PROCESS_ATTACH:
         DisableThreadLibraryCalls(hModule);
-        LoadOriginalDll();
-
-        openLogFile();
-        CreateThread(NULL, 0, PatchThread, NULL, 0, NULL);
-        CreateThread(NULL, 0, InitBinkHookThread, NULL, 0, NULL);
+        {
+            HANDLE hThread = CreateThread(NULL, 0, InitHookThread, NULL, 0, NULL);
+            if (hThread)
+                CloseHandle(hThread); // 핸들 누수 방지
+        }
         break;
 	case DLL_PROCESS_DETACH:
-        closeLogFile();
+        RemoveBinkHooks();
 		break;
     }
     return TRUE;
