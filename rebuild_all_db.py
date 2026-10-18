@@ -12,13 +12,11 @@ from read_all_idx import (
     read_all_idx,
     read_all_db,
     build_sections,
-    Section,
-    KeyEntry,
     save_combined_to_json
 )
 
 
-def serialize_section(section: Section) -> bytes:
+def serialize_section(section) -> bytes:
     """
     Serializes a Section object into the all.db binary format.
 
@@ -33,21 +31,21 @@ def serialize_section(section: Section) -> bytes:
     - Key: strings joined with '\r\n' + trailing '\r\n'
     """
     # Direction: raw bytes
-    direction = section.direction
+    direction = base64.b64decode(section['direction'])
 
     # Selection: strings joined with '\r\n' + trailing '\r\n'
     selection_bytes = b''
-    if section.selections:
-        selection_bytes = b'\r\n'.join(s.encode('euc-kr', errors='replace') for s in section.selections)
+    if section['selections']:
+        selection_bytes = b'\r\n'.join(s.encode('euc-kr', errors='replace') for s in section['selections'])
         selection_bytes += b'\r\n'
 
     # Key: check if key is 7 bytes, if so add ':' (0x3A) to make it 8 bytes
     key_bytes_list = []
-    for key_entry in section.keys:
-        key = key_entry.key
-        if len(key) == 7:
-            key = key + b':'
-        key_bytes_list.append(key)
+    for key_name, key_entry in section['keys'].items():
+        key_name = key_name.encode('latin-1')
+        if len(key_name) == 7:
+            key_name = key_name + b':'
+        key_bytes_list.append(key_name)
 
     key_bytes = b''
     if key_bytes_list:
@@ -75,25 +73,24 @@ def rebuild_all_db(combined, output_db_path):
         return None
 
     # Calculate sequential addresses
-    sections_data = []
+    sections_data = {}
     current_offset = 0
 
-    for section in combined:
-        data = serialize_section(section)
+    for section_name, section_data in combined.items():
+        data = serialize_section(section_data)
         new_address = current_offset
-        sections_data.append({
-            'section': section.name,
-            'original_address': section.address,
+        sections_data[section_name] = {
+            'original_address': section_data['address'],
             'new_address': new_address,
             'size': len(data),
             'data': data,
-        })
+        }
         current_offset += len(data)
 
     # Write all.db
     with open(output_db_path, 'wb') as f:
-        for sec in sections_data:
-            f.write(sec['data'])
+        for sec_name, sec_data in sections_data.items():
+            f.write(sec_data['data'])
 
     print(f"Rebuilt DB file: {output_db_path}")
     print(f"Total size: {current_offset} bytes")
@@ -115,15 +112,17 @@ def write_address_verification(sections_data, output_path):
         f.write(f"{'Index':<6} {'Section':<20} {'Original Addr':<16} {'New Addr':<16} {'Size':<10} {'Match':<6}\n")
         f.write("-" * 80 + "\n")
 
-        for i, sec in enumerate(sections_data):
-            orig = sec['original_address']
-            new = sec['new_address']
+        i = 0
+        for sec_name, sec_data in sections_data.items():
+            orig = sec_data['original_address']
+            new = sec_data['new_address']
             match = "YES" if orig == new else "NO"
-            f.write(f"{i:<6} {sec['section']:<20} 0x{orig:08X}      0x{new:08X}      {sec['size']:<10} {match:<6}\n")
-
+            f.write(f"{i:<6} {sec_name:<20} 0x{orig:08X}      0x{new:08X}      {sec_data['size']:<10} {match:<6}\n")
+            i += 1
+            
         f.write("\n")
         f.write("=== Summary ===\n")
-        matches = sum(1 for s in sections_data if s['original_address'] == s['new_address'])
+        matches = sum(1 for s in sections_data.values() if s['original_address'] == s['new_address'])
         f.write(f"Addresses matching original: {matches}/{len(sections_data)}\n")
         f.write(f"Addresses different: {len(sections_data) - matches}/{len(sections_data)}\n")
 
@@ -140,13 +139,13 @@ def write_all_idx(sections_data, output_idx_path):
     - 4 bytes: little-endian address
     """
     with open(output_idx_path, 'wb') as f:
-        for sec in sections_data:
-            name_bytes = (sec['section'] + '.all').encode('ascii')
+        for sec_name, sec_data in sections_data.items():
+            name_bytes = (sec_name + '.all').encode('ascii')
             f.write(name_bytes)
 
             # 8 bytes: 4 zero bytes + 4-byte little-endian address
             f.write(b'\x00\x00\x00\x00')
-            f.write(struct.pack('<I', sec['new_address']))
+            f.write(struct.pack('<I', sec_data['new_address']))
 
     print(f"Rebuilt idx file: {output_idx_path}")
 
@@ -165,39 +164,7 @@ def load_combined_from_json(json_path):
         raw_data = f.read()
 
     # Read as latin-1 to preserve all bytes, then parse JSON
-    data = json.loads(raw_data.decode('latin-1'))
-
-    combined = []
-    for sec_data in data:
-        # Decode selections from euc-kr
-        selections = []
-        for sel in sec_data['selections']:
-            try:
-                selections.append(sel.encode('latin-1').decode('euc-kr'))
-            except (UnicodeDecodeError, UnicodeEncodeError):
-                selections.append(sel)
-
-        section = Section(
-            name=sec_data['name'],
-            address=sec_data['address'],
-            direction=base64.b64decode(sec_data['direction']),
-            selections=selections,
-        )
-        for key_data in sec_data['keys']:
-            # Decode dialogue from euc-kr
-            dialogue = key_data['dialogue']
-            try:
-                dialogue = dialogue.encode('latin-1').decode('euc-kr')
-            except (UnicodeDecodeError, UnicodeEncodeError):
-                pass
-
-            section.keys.append(KeyEntry(
-                key=key_data['key'].encode('latin-1'),
-                dialogue=dialogue,
-                speaker=key_data['speaker'],
-                desc=key_data['desc'],
-            ))
-        combined.append(section)
+    combined = json.loads(raw_data.decode('utf-8'))
 
     print(f"Combined data loaded from JSON: {json_path}")
     print(f"Total sections: {len(combined)}")
@@ -254,15 +221,16 @@ def write_por_files(sections, output_dir):
 
     os.makedirs(output_dir, exist_ok=True)
 
-    for section in sections:
-        por_name = section.name + ".por"
+    for sect_name, sec_data in sections.items():
+        por_name = sect_name + ".por"
         por_path = os.path.join(output_dir, por_name)
 
         lines = []
-        for key_entry in section.keys:
-            parts = [key_entry.key, key_entry.dialogue.encode('euc-kr', errors='replace'),
-                     key_entry.speaker.encode('ascii', errors='replace'),
-                     key_entry.desc.encode('ascii', errors='replace')]
+        for key_name, key_entry in sec_data['keys'].items():
+            parts = [key_name.encode('latin-1', errors='replace'), 
+                     key_entry['dialogue'].encode('euc-kr', errors='replace'),
+                     key_entry['speaker'].encode('ascii', errors='replace'),
+                     key_entry['desc'].encode('ascii', errors='replace')]
             line = b'\t'.join(parts)
             lines.append(line)
 

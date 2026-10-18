@@ -8,23 +8,15 @@ from dataclasses import dataclass, field
 from typing import List
 
 
-@dataclass
-class KeyEntry:
-    """Dialogue key entry with associated data."""
-    key: bytes = b''
-    dialogue: str = ''
-    speaker: str = ''
-    desc: str = ''
-
-
-@dataclass
-class Section:
-    """Combined section structure."""
-    name: str = ''
-    address: int = 0
-    direction: bytes = b''
-    selections: List[str] = field(default_factory=list)
-    keys: List[KeyEntry] = field(default_factory=list)
+def is_null(value):
+    """Returns True if value is None or the string 'null' (case-insensitive)."""
+    if value is None:
+        return True
+    if not value:
+        return True
+    if isinstance(value, str) and value.lower() == 'null':
+        return True
+    return False
 
 
 def check_non_ascii(data, label, context=''):
@@ -84,11 +76,11 @@ def read_all_idx(file_path):
             text_bytes.append(b)
             pos += 1
 
-        text = text_bytes.decode('ascii', errors='replace')
+        sec_name = text_bytes.decode('ascii', errors='replace')
         # Check for non-ASCII characters in section name (str type)
-        check_non_ascii(text, f"Section name (entry {entry_index})", text)
+        check_non_ascii(sec_name, f"Section name (entry {entry_index})", sec_name)
         #check text ends '.all'abs
-        if not text.endswith('.all'):
+        if not sec_name.endswith('.all'):
             print(f"Warning: Incomplete text ends with .all")
             break
 
@@ -109,7 +101,7 @@ def read_all_idx(file_path):
 
         entries.append({
             'index': entry_index,
-            'section': text[:-4],
+            'section': sec_name[:-4],
             'address': lo_bytes,
         })
         entry_index += 1
@@ -140,11 +132,15 @@ def read_all_db(db_path, idx_entries):
 
     print(f"[all.db] File size: {len(data)} bytes")
 
-    sections = []
+    sections = {}
     for i, entry in enumerate(idx_entries):
+        index = entry['index']
         address = entry['address']
         section_name = entry['section']
 
+        if i != int(index):
+            print(f"Warning: Section '{section_name}' index {index} is not match.")
+            
         # Determine section range: from this address to the next section's address
         if i + 1 < len(idx_entries):
             next_address = idx_entries[i + 1]['address']
@@ -201,7 +197,7 @@ def read_all_db(db_path, idx_entries):
             print(f"Warning: Section '{section_name}' Selection is out of bounds.")
             continue
         _selections = parse_strings(selection_start, selection_end)
-        selections = [b.decode('ascii', errors='replace') for b in _selections]
+        selections = [b.decode('euc-kr', errors='replace') for b in _selections]
         # Check for non-ASCII characters in selections (str type)
         for sel_idx, sel_str in enumerate(selections):
             check_non_ascii(sel_str, f"Selection[{sel_idx}] (section '{section_name}')")
@@ -214,19 +210,23 @@ def read_all_db(db_path, idx_entries):
             continue
         key_bytes_list = parse_strings(key_start, key_end)
 
+        key_names = {}
         # Clean up keys: remove trailing ':' (0x3A) if present
-        for idx, key in enumerate(key_bytes_list):
+        for key in key_bytes_list:
             if key.endswith(b':'):
-                key_bytes_list[idx] = key[:-1]
+                key_str = key[:-1].decode('latin-1', errors='replace')
+            else:
+                key_str = key.decode('latin-1', errors='replace')
+            
+            key_names[key_str] = {}
 
-        sections.append({
-            'section': section_name,
+        sections[section_name] = {
             'address': address,
             'header': header,
-            'direction': direction,
+            'direction': base64.b64encode(direction).decode('ascii'),
             'selections': selections,
-            'keys': key_bytes_list,
-        })
+            'keys': key_names,
+        }
 
     return sections
 
@@ -252,7 +252,7 @@ def read_por_file(por_path, keys):
     # Split by lines (each line ends with \r\n) - keep as bytes
     lines = data.split(b'\r\n')
 
-    entries = []
+    entries = {}
     for line in lines:
         if not line:
             continue
@@ -261,7 +261,7 @@ def read_por_file(por_path, keys):
         if len(parts) < 2:
             continue
 
-        key = parts[0]
+        key = parts[0].decode('latin-1', errors='replace')
         dialogue = parts[1] if len(parts) > 1 else b''
         speaker = parts[2] if len(parts) > 2 else b''
         desc = parts[3] if len(parts) > 3 else b''
@@ -270,16 +270,18 @@ def read_por_file(por_path, keys):
         if key in keys:
             # Check for non-ASCII characters in .por file data (str type only)
             # key, dialogue, speaker, desc are bytes type - decode to str for checking
-            check_non_ascii(dialogue.decode('ascii', errors='replace'), f"POR dialogue (section '{os.path.basename(por_path)}')")
-            check_non_ascii(speaker.decode('ascii', errors='replace'), f"POR speaker (section '{os.path.basename(por_path)}')")
-            check_non_ascii(desc.decode('ascii', errors='replace'), f"POR desc (section '{os.path.basename(por_path)}')")
+            _dialogue = dialogue.decode('euc-kr', errors='replace')
+            _speaker = speaker.decode('ascii', errors='replace')
+            _desc = desc.decode('ascii', errors='replace')
+            check_non_ascii(_dialogue, f"POR dialogue (section '{os.path.basename(por_path)}')")
+            check_non_ascii(_speaker, f"POR speaker (section '{os.path.basename(por_path)}')")
+            check_non_ascii(_desc, f"POR desc (section '{os.path.basename(por_path)}')")
 
-            entries.append({
-                'key': key,
-                'dialogue': dialogue,
-                'speaker': speaker,
-                'desc': desc,
-            })
+            entries[key] = {
+                'dialogue': _dialogue,
+                'speaker': _speaker,
+                'desc': _desc,
+            }
 
     return entries
 
@@ -289,45 +291,25 @@ def build_sections(sections, idx_dir):
     Combines all.db section data with .por file data into a single Section structure.
     """
     por_count = 0
-    result = []
-    for section in sections:
-        sec = Section(
-            name=section['section'],
-            address=section['address'],
-            direction=section['direction'],
-            selections=section['selections'],
-        )
-
+    result = {}
+    for section_name, section_info in sections.items():
         # Load .por file for this section
-        por_name = section['section'] + ".por"
+        por_name = section_name + ".por"
         por_path = os.path.join(idx_dir, por_name)
-        por_entries = read_por_file(por_path, section['keys'])
+        por_entries = read_por_file(por_path, section_info['keys'].keys())
 
         if por_entries is not None:
             por_count += 1
             # Create KeyEntry for each key
-            for key_bytes in section['keys']:
+            section_keys = section_info['keys']
+
+            for key_name in section_keys.keys():
                 # Find matching por entry
-                matching = next((e for e in por_entries if e['key'] == key_bytes), None)
+                matching = next((e for e in por_entries.keys() if e == key_name), None)
                 if matching:
-                    # Check for non-ASCII characters in final KeyEntry data (str type only)
-                    dialogue_str = matching['dialogue'].decode('ascii', errors='replace')
-                    speaker_str = matching['speaker'].decode('ascii', errors='replace')
-                    desc_str = matching['desc'].decode('ascii', errors='replace')
-                    check_non_ascii(dialogue_str, f"KeyEntry dialogue (section '{section['section']}')")
-                    check_non_ascii(speaker_str, f"KeyEntry speaker (section '{section['section']}')")
-                    check_non_ascii(desc_str, f"KeyEntry desc (section '{section['section']}')")
+                    section_info['keys'][matching].update(por_entries[matching])
 
-                    sec.keys.append(KeyEntry(
-                        key=key_bytes,
-                        dialogue=dialogue_str,
-                        speaker=speaker_str,
-                        desc=desc_str,
-                    ))
-                else:
-                    sec.keys.append(KeyEntry(key=key_bytes))
-
-        result.append(sec)
+        result[section_name] = section_info
     
     print(f"Imported {por_count} [.por] files")
     print()
@@ -355,134 +337,56 @@ def save_combined_to_json(combined, output_json_path, exclude_fields=None, drop_
     else:
         exclude_fields = set(exclude_fields)
 
-    def is_null(value):
-        """Returns True if value is None or the string 'null' (case-insensitive)."""
-        if value is None:
-            return True
-        if isinstance(value, str) and (value.lower() == 'null' or value == ''):
-            return True
-        if not value:
-            return True
-        return False
-
-    data = []
-    for section in combined:
-        # Encode selections to euc-kr bytes, then decode as latin-1 to preserve bytes
-        selections = []
-        for sel in section.selections:
-            try:
-                selections.append(sel.encode('euc-kr').decode('latin-1'))
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                selections.append(sel)
-
-        sec_data = {
-            'name': section.name,
-            'address': section.address,
-            'direction': base64.b64encode(section.direction).decode('ascii'),
-            'selections': selections,
-            'keys': [],
-        }
-
+    sections = {}
+    for sec_name, sec_data in combined.items():
+        section = {}
         # Apply excluded top-level fields: set to empty string instead of delete
-        for field in list(sec_data.keys()):
-            if field in exclude_fields:
-                sec_data[field] = ''
-
-        # Apply drop-empty top-level: set to empty string, only for 'null' values
-        if drop_empty:
-            for field in list(sec_data.keys()):
-                if field != 'keys' and is_null(sec_data[field]):
-                    #sec_data[field] = ''
-                    del sec_data[field]
-
-        for key_entry in section.keys:
-            # Encode dialogue to euc-kr bytes, then decode as latin-1 to preserve bytes
-            dialogue = key_entry.dialogue
-            try:
-                dialogue = dialogue.encode('euc-kr').decode('latin-1')
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                pass
-
-            key_data = {
-                'key': key_entry.key.decode('latin-1'),
-                'dialogue': dialogue,
-                'speaker': key_entry.speaker,
-                'desc': key_entry.desc,
-            }
-
-            # Determine if this key entry has an empty key (excluded from drop-empty processing)
-            is_empty_key = is_null(key_entry.dialogue)
-            if drop_empty and is_empty_key:
+        for field, payload in sec_data.items():
+            if field == 'keys':
                 continue
             
-            # Apply excluded key-level fields: set to empty string instead of delete
-            for field in list(key_data.keys()):
-                if field in exclude_fields:
-                    key_data[field] = ''
+            if field in exclude_fields:
+                payload = ''
+            if drop_empty and is_null(payload):
+                pass
+            else:
+                section[field] = payload
 
-            # Apply drop-empty key-level: set to empty string, only for 'null' values, skip if empty key
-            for field in list(key_data.keys()):
-                if field != 'key' and drop_empty and is_null(key_data[field]):
-                    del key_data[field]
-                    #key_data[field] = ''
+        keys = sec_data.get('keys')
+        if keys and 'keys' not in exclude_fields:
+            new_keys = {}
+            for key_name, key_data in keys.items():
+                new_keys[key_name] = {}
+                for field, payload in key_data.items():
+                    if field in exclude_fields:
+                        payload = ''
+                    if drop_empty and is_null(payload):
+                        pass
+                    else:
+                        new_keys[key_name][field] = payload
+                
+                if drop_empty and is_null(new_keys[key_name].get('dialogue')):
+                    del new_keys[key_name]
             
-            sec_data['keys'].append(key_data)
+            if drop_empty and is_null(new_keys):
+                pass
+            else:
+                section['keys'] = new_keys
         
-        if drop_empty and not sec_data.get('selections') and not sec_data['keys']:
+        if drop_empty and is_null(section.get('keys')) and is_null(section.get('selections')):
             pass
         else:
-            data.append(sec_data)
-
-    with open(output_json_path, 'w', encoding='latin-1') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+            sections[sec_name] = section
+        
+    with open(output_json_path, 'w', encoding='utf-8') as f:
+        json.dump(sections, f, ensure_ascii=False, indent=2)
 
     print(f"Combined data saved to JSON: {output_json_path}")
-    print(f"Total sections: {len(data)}")
+    print(f"Total sections: {len(sections)}")
     if exclude_fields:
         print(f"Excluded fields: {', '.join(sorted(exclude_fields))} (set to empty)")
     if drop_empty:
         print("Null fields set to empty: True")
-
-def write_por_files(sections, output_dir):
-    """
-    Writes .por files for each section to the specified output directory.
-
-    .por file format (repeated):
-    [dialogue key][tab][dialogue text][tab][speaker key][tab][date/scene description][tab][0x0D, 0x0A]
-    The last field (date/scene description) may be absent.
-    """
-    if not sections:
-        print("No sections to write.")
-        return
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    for section in sections:
-        por_name = section.name + ".por"
-        por_path = os.path.join(output_dir, por_name)
-
-        lines = []
-        for key_entry in section.keys:
-            parts = [key_entry.key, key_entry.dialogue.encode('euc-kr', errors='replace'),
-                     key_entry.speaker.encode('ascii', errors='replace'),
-                     key_entry.desc.encode('ascii', errors='replace')]
-            # Remove trailing empty fields
-            #while parts and not parts[-1]:
-            #    parts.pop()
-            line = b'\t'.join(parts)
-            lines.append(line)
-
-        content = b'\r\n'.join(lines)
-        if content:
-            content += b'\r\n'
-
-        with open(por_path, 'wb') as f:
-            f.write(content)
-
-        #print(f"  Written: {por_path}")
-
-    print(f"Total .por files written: {len(sections)}")
-
 
 def print_sections(sections):
     """Print the combined Section structures in a readable format."""

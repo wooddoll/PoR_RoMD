@@ -1,18 +1,15 @@
 import sys
 import os
-import struct
+import copy
 import json
-import base64
-from dataclasses import dataclass, field
-from typing import List
 
 # Reuse functions from read_all_idx.py and rebuild_all_db.py
 from read_all_idx import (
     read_all_idx,
     read_all_db,
     build_sections,
-    Section,
-    KeyEntry,
+    is_null,
+    save_combined_to_json,
 )
 from rebuild_all_db import (
     serialize_section,
@@ -20,310 +17,176 @@ from rebuild_all_db import (
     write_all_idx,
     write_por_files,
     write_address_verification,
+    load_combined_from_json,
+    restore_from_combined,
 )
 
-
-def load_combined_from_json(json_path):
-    """
-    Loads combined Section data from a JSON file.
-
-    Decoding:
-    - key: latin-1 decoded to bytes
-    - direction: base64 decoded to bytes
-    - selections, dialogue: euc-kr decoded to str
-    """
-    with open(json_path, 'rb') as f:
-        raw_data = f.read()
-
-    # Read as latin-1 to preserve all bytes, then parse JSON
-    data = json.loads(raw_data.decode('latin-1'))
-
-    combined = []
-    for sec_data in data:
-        # Decode selections from euc-kr
-        selections = []
-        for sel in sec_data['selections']:
-            try:
-                selections.append(sel.encode('latin-1').decode('euc-kr'))
-            except (UnicodeDecodeError, UnicodeEncodeError):
-                selections.append(sel)
-
-        section = Section(
-            name=sec_data['name'],
-            address=sec_data['address'],
-            direction=base64.b64decode(sec_data['direction']),
-            selections=selections,
-        )
-        for key_data in sec_data['keys']:
-            # Decode dialogue from euc-kr
-            dialogue = key_data['dialogue']
-            try:
-                dialogue = dialogue.encode('latin-1').decode('euc-kr')
-            except (UnicodeDecodeError, UnicodeEncodeError):
-                pass
-
-            section.keys.append(KeyEntry(
-                key=key_data['key'].encode('latin-1'),
-                dialogue=dialogue,
-                speaker=key_data['speaker'],
-                desc=key_data['desc'],
-            ))
-        combined.append(section)
-
-    print(f"Combined data loaded from JSON: {json_path}")
-    print(f"Total sections: {len(combined)}")
-
-    return combined
-
-
-def is_empty(value):
-    """
-    Checks if a value is considered 'empty' for merge purposes.
-    Treats None, empty string, and the string 'null' (case-insensitive) as empty.
-    """
-    if value is None:
-        return True
-    if isinstance(value, str):
-        if value == '':
-            return True
-        if value.lower() == 'null':
-            return True
-    return False
 
 
 def merge_dialogue_data(base_combined, merge_combined):
     """
-    Merges dialogue data from merge_combined into base_combined.
+    base_combined를 기준으로 merge_combined의 'selections'와 'dialogue'만 병합합니다.
 
-    For each section:
-    - Compares 'selections' between base and merge
-    - Compares 'dialogue' for each key between base and merge
-    - If different, uses the merge data
-    - If merge data is empty (None, '', or 'null'), keeps the base data
-
-    Returns a new combined list with merged data.
+    - merge_combined 쪽 값이 없거나 비어있는 경우: base 유지
+    - merge_combined 쪽 값이 유효한 경우: 업데이트
+    - speaker, desc, header, address 등 나머지 필드는 원본 그대로 유지
     """
-    # Build lookup dict for merge data by section name
-    merge_by_name = {}
-    for section in merge_combined:
-        merge_by_name[section.name] = section
+    # 원본 데이터 보호를 위해 깊은 복사
+    merged = copy.deepcopy(base_combined)
 
-    merged = []
-    merge_count = 0
-    selection_merge_count = 0
-    dialogue_merge_count = 0
+    total_sections = len(base_combined)
+    selection_updated_sections = 0
+    dialogue_updated_keys = 0
 
-    for base_section in base_combined:
-        # Create a copy of the base section
-        new_section = Section(
-            name=base_section.name,
-            address=base_section.address,
-            direction=base_section.direction,
-            selections=list(base_section.selections),
-        )
+    for sec_key, base_sec in merged.items():
+        # merge_combined에 해당 섹션이 없으면 통과
+        merge_sec = merge_combined.get(sec_key)
+        if not merge_sec:
+            continue
 
-        # Find matching merge section
-        merge_section = merge_by_name.get(base_section.name)
+        # ---------------------------------------------------------
+        # 1. 'selections' 병합 ([str] 리스트)
+        # ---------------------------------------------------------
+        merge_selections = merge_sec.get('selections')
+        if isinstance(merge_selections, list) and len(merge_selections) > 0:
+            base_selections = base_sec.get('selections', [])
+            updated_selections = list(base_selections)
+            selection_changed = False
 
-        if merge_section is not None:
-            # Compare selections
-            # For each selection, if merge selection is empty, keep base selection
-            # Otherwise, if different, use merge selection
-            if merge_section.selections != base_section.selections:
-                merged_selections = []
-                selection_changed = False
-                for i, base_sel in enumerate(base_section.selections):
-                    if i < len(merge_section.selections):
-                        merge_sel = merge_section.selections[i]
-                        if is_empty(merge_sel):
-                            # B selection is empty, keep A's selection
-                            merged_selections.append(base_sel)
-                        elif merge_sel != base_sel:
-                            # B selection is non-empty and different, use B
-                            merged_selections.append(merge_sel)
+            for i, m_sel in enumerate(merge_selections):
+                if not is_null(m_sel):
+                    if i < len(updated_selections):
+                        # 기존 항목이 있고 값이 다르면 업데이트
+                        if updated_selections[i] != m_sel:
+                            updated_selections[i] = m_sel
                             selection_changed = True
-                        else:
-                            # Same, keep A
-                            merged_selections.append(base_sel)
                     else:
-                        # B has fewer selections, keep A's remaining selections
-                        merged_selections.append(base_sel)
+                        # base보다 merge 쪽에 더 많은 selection 항목이 있는 경우 추가
+                        updated_selections.append(m_sel)
+                        selection_changed = True
 
-                # If B has more selections than A, add the extra ones
-                if len(merge_section.selections) > len(base_section.selections):
-                    for i in range(len(base_section.selections), len(merge_section.selections)):
-                        merge_sel = merge_section.selections[i]
-                        if not is_empty(merge_sel):
-                            merged_selections.append(merge_sel)
-                            selection_changed = True
+            if selection_changed:
+                base_sec['selections'] = updated_selections
+                selection_updated_sections += 1
 
-                if merged_selections != base_section.selections:
-                    new_section.selections = merged_selections
-                    selection_merge_count += 1
-                    print(f"  [SELECTIONS] Section '{base_section.name}': "
-                          f"{len(base_section.selections)} -> {len(merged_selections)} items")
+        # ---------------------------------------------------------
+        # 2. 'keys' 내부의 'dialogue' 병합
+        # ---------------------------------------------------------
+        merge_keys = merge_sec.get('keys')
+        base_keys = base_sec.get('keys')
 
-            # Build lookup for merge keys by key bytes
-            merge_keys = {}
-            for key_entry in merge_section.keys:
-                merge_keys[key_entry.key] = key_entry
+        if isinstance(merge_keys, dict) and isinstance(base_keys, dict):
+            for k_name, b_key_entry in base_keys.items():
+                m_key_entry = merge_keys.get(k_name)
+                if not m_key_entry or not isinstance(m_key_entry, dict):
+                    continue
 
-            # Compare dialogue for each key
-            for key_entry in base_section.keys:
-                merge_key_entry = merge_keys.get(key_entry.key)
-                if merge_key_entry is not None:
-                    # Check if merge dialogue is empty - if so, keep base data
-                    if is_empty(merge_key_entry.dialogue):
-                        # B dialogue is empty, keep A's data
-                        new_section.keys.append(KeyEntry(
-                            key=key_entry.key,
-                            dialogue=key_entry.dialogue,
-                            speaker=key_entry.speaker,
-                            desc=key_entry.desc,
-                        ))
-                    elif merge_key_entry.dialogue != key_entry.dialogue:
-                        # Use merge data for dialogue
-                        # For speaker and desc, use merge data if non-empty, otherwise keep base
-                        speaker = merge_key_entry.speaker
-                        if is_empty(speaker):
-                            speaker = key_entry.speaker
-                        desc = merge_key_entry.desc
-                        if is_empty(desc):
-                            desc = key_entry.desc
+                m_dialogue = m_key_entry.get('dialogue')
+                b_dialogue = b_key_entry.get('dialogue')
 
-                        new_section.keys.append(KeyEntry(
-                            key=key_entry.key,
-                            dialogue=merge_key_entry.dialogue,
-                            speaker=speaker,
-                            desc=desc,
-                        ))
-                        dialogue_merge_count += 1
-                        print(f"  [DIALOGUE] Section '{base_section.name}' key '{key_entry.key.decode('latin-1')}': "
-                              f"'{key_entry.dialogue[:50]}...' -> '{merge_key_entry.dialogue[:50]}...'")
-                    else:
-                        # Same dialogue, keep base data
-                        new_section.keys.append(KeyEntry(
-                            key=key_entry.key,
-                            dialogue=key_entry.dialogue,
-                            speaker=key_entry.speaker,
-                            desc=key_entry.desc,
-                        ))
-                else:
-                    # Key not in merge, keep base data
-                    new_section.keys.append(KeyEntry(
-                        key=key_entry.key,
-                        dialogue=key_entry.dialogue,
-                        speaker=key_entry.speaker,
-                        desc=key_entry.desc,
-                    ))
-        else:
-            # No merge section, keep all base data
-            for key_entry in base_section.keys:
-                new_section.keys.append(KeyEntry(
-                    key=key_entry.key,
-                    dialogue=key_entry.dialogue,
-                    speaker=key_entry.speaker,
-                    desc=key_entry.desc,
-                ))
+                # merge 쪽 dialogue가 비어있지 않고 원본과 다르면 업데이트
+                if not is_null(m_dialogue) and m_dialogue != b_dialogue:
+                    b_key_entry['dialogue'] = m_dialogue
+                    dialogue_updated_keys += 1
 
-        merged.append(new_section)
-        merge_count += 1
-
-    print()
-    print(f"=== Merge Summary ===")
-    print(f"Total sections processed: {merge_count}")
-    print(f"Sections with selection changes: {selection_merge_count}")
-    print(f"Keys with dialogue changes: {dialogue_merge_count}")
+    print("=== Merge Summary ===")
+    print(f"Total sections: {total_sections}")
+    print(f"Sections with updated selections: {selection_updated_sections}")
+    print(f"Keys with updated dialogue: {dialogue_updated_keys}")
 
     return merged
 
 
-def save_combined_to_json(combined, output_json_path):
+def check_keys_a_in_b(combined_a, combined_b, show_details=True):
     """
-    Saves the combined Section data to a JSON file.
+    A를 기준으로 B에 누락된 섹션 키 및 내부 대사 키(keys)가 있는지 검사합니다.
 
-    Encoding:
-    - key: latin-1 encoded string
-    - direction: base64 encoded string
-    - selections, dialogue: euc-kr encoded (stored as latin-1 in file)
-    - speaker, desc: plain strings
+    :param combined_a: 기준이 되는 딕셔너리 (A)
+    :param combined_b: 검증 대상 딕셔너리 (B)
+    :param show_details: 누락된 키 상세 목록 출력 여부
+    :return: 검증 결과 요약 딕셔너리
     """
-    data = []
-    for section in combined:
-        # Encode selections to euc-kr bytes, then decode as latin-1 to preserve bytes
-        selections = []
-        for sel in section.selections:
-            try:
-                selections.append(sel.encode('euc-kr').decode('latin-1'))
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                selections.append(sel)
+    missing_sections = []
+    missing_inner_keys = {}  # { sec_key: [missing_key1, missing_key2, ...] }
 
-        sec_data = {
-            'name': section.name,
-            'address': section.address,
-            'direction': base64.b64encode(section.direction).decode('ascii'),
-            'selections': selections,
-            'keys': [],
+    total_a_sections = len(combined_a)
+    total_a_inner_keys = 0
+    total_missing_inner_keys = 0
+
+    # 1. A의 섹션 순회
+    for sec_key, sec_data_a in combined_a.items():
+        keys_a = sec_data_a.get("keys", {}) if isinstance(sec_data_a, dict) else {}
+        total_a_inner_keys += len(keys_a)
+
+        # B에 해당 섹션 자체가 없는 경우
+        if sec_key not in combined_b:
+            missing_sections.append(sec_key)
+            total_missing_inner_keys += len(keys_a)
+            continue
+
+        # 2. B에 섹션은 있으나 내부 keys 딕셔너리 비교
+        sec_data_b = combined_b[sec_key]
+        keys_b = sec_data_b.get("keys", {}) if isinstance(sec_data_b, dict) else {}
+
+        # A에는 있지만 B에는 없는 내부 대사 키 추출
+        diff_keys = [k for k in keys_a if k not in keys_b]
+        if diff_keys:
+            missing_inner_keys[sec_key] = diff_keys
+            total_missing_inner_keys += len(diff_keys)
+
+    # 모든 키 존재 여부 (완전 일치 여부)
+    is_all_present = (len(missing_sections) == 0 and total_missing_inner_keys == 0)
+
+    # ---------------------------------------------------------
+    # 결과 출력
+    # ---------------------------------------------------------
+    print("=" * 50)
+    print("           [ Key Comparison: A -> B ]")
+    print("=" * 50)
+    print(f"기준 A 섹션 수         : {total_a_sections}")
+    print(f"B에 누락된 섹션 수     : {len(missing_sections)}")
+    print(f"기준 A 대사 키 총합    : {total_a_inner_keys}")
+    print(f"B에 누락된 대사 키 총합: {total_missing_inner_keys}")
+    print("-" * 50)
+
+    if is_all_present:
+        print(">> [PASS] A의 모든 섹션 및 내부 대사 키가 B에 존재합니다!")
+    else:
+        print(">> [FAIL] B에 일부 키가 누락되어 있습니다.")
+
+        if show_details:
+            if missing_sections:
+                print("\n[누락된 섹션 목록]")
+                for sec in missing_sections:
+                    print(f"  - {sec}")
+
+            if missing_inner_keys:
+                print("\n[섹션 내 누락된 대사 키 목록]")
+                for sec, keys in missing_inner_keys.items():
+                    print(f"  - 섹션 '{sec}' (누락 {len(keys)}개): {keys[:5]}" + ("..." if len(keys) > 5 else ""))
+
+    print("=" * 50)
+
+    return {
+        "is_all_present": is_all_present,
+        "missing_sections": missing_sections,
+        "missing_inner_keys": missing_inner_keys,
+        "stats": {
+            "total_a_sections": total_a_sections,
+            "missing_sections_count": len(missing_sections),
+            "total_a_inner_keys": total_a_inner_keys,
+            "missing_inner_keys_count": total_missing_inner_keys
         }
-        for key_entry in section.keys:
-            # Encode dialogue to euc-kr bytes, then decode as latin-1 to preserve bytes
-            dialogue = key_entry.dialogue
-            try:
-                dialogue = dialogue.encode('euc-kr').decode('latin-1')
-            except (UnicodeEncodeError, UnicodeDecodeError):
-                pass
-
-            sec_data['keys'].append({
-                'key': key_entry.key.decode('latin-1'),
-                'dialogue': dialogue,
-                'speaker': key_entry.speaker,
-                'desc': key_entry.desc,
-            })
-        data.append(sec_data)
-
-    with open(output_json_path, 'w', encoding='latin-1') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-
-    print(f"Combined data saved to JSON: {output_json_path}")
-    print(f" Total sections: {len(data)}")
-
-
-def restore_from_combined(combined, output_dir):
-    """
-    Restores all.db, all.idx, and .por files from combined Section data.
-    """
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Step 1: Rebuild all.db
-    print("=== Restoring all.db ===")
-    output_db_path = os.path.join(output_dir, 'all.db')
-    sections_data = rebuild_all_db(combined, output_db_path)
-    if sections_data is None:
-        print("Failed to rebuild all.db")
-        return False
-    print()
-
-    # Step 2: Write new all.idx
-    print("=== Restoring all.idx ===")
-    output_idx_path = os.path.join(output_dir, 'all.idx')
-    write_all_idx(sections_data, output_idx_path)
-    print()
-
-    # Step 3: Write .por files
-    print("=== Restoring .por files ===")
-    write_por_files(combined, output_dir)
-    print()
-
-    ## Step 4: Write address verification list
-    #print("=== Writing address verification list ===")
-    #verification_path = os.path.join(output_dir, 'address_verification.txt')
-    #write_address_verification(sections_data, verification_path)
-    #print()
-
-    return True
-
+    }
 
 if __name__ == '__main__':
+    ##========================
+    #json_A = load_combined_from_json("dump/dump.json")
+    #json_B = load_combined_from_json("dump/to_merge_fixed.json")
+    #check_keys_a_in_b(json_B, json_A)
+    #exit()
+    ##==========================
+        
     if len(sys.argv) < 3:
         print("Usage: python merge_dialogue.py <game_dir> <to_merge.json>")
         print("  <game_dir>     - Path to the game directory (e.g., '../Pool of Radiance')")
@@ -334,8 +197,8 @@ if __name__ == '__main__':
     merge_json_path = sys.argv[2]
 
     # Paths
-    dialogue_dir = os.path.join(game_dir, 'data', 'Dialogue')
-    output_dir = os.path.join(game_dir, 'data', 'Dialogue_kr')
+    dialogue_dir = os.path.join(game_dir, 'Data', 'Dialogue')
+    output_dir = os.path.join(game_dir, 'Data_kr', 'Dialogue')
 
     idx_path = os.path.join(dialogue_dir, 'all.idx')
     db_path = os.path.join(dialogue_dir, 'all.db')
