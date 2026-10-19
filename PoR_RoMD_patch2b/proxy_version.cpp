@@ -1,5 +1,7 @@
 #include <windows.h>
-#include <shlwapi.h>
+#include <mutex>
+
+#include "help_util.h"
 
 // 1. 원본 함수의 타입(원형) 정의
 typedef BOOL(WINAPI* pfnGetFileVersionInfoA)(LPCSTR, DWORD, DWORD, LPVOID);
@@ -19,42 +21,77 @@ pfnGetFileVersionInfoW     Original_GetFileVersionInfoW = nullptr;
 pfnGetFileVersionInfoSizeW Original_GetFileVersionInfoSizeW = nullptr;
 pfnVerQueryValueW          Original_VerQueryValueW = nullptr;
 
-HMODULE hOriginalDll = nullptr;
 
-// 시스템 디렉터리에서 진짜 version.dll을 찾아 이름으로 주소를 로드
-void LoadOriginalDll() 
+template <typename T>
+bool LoadProc(HMODULE module, const char* name, T& outFunc)
 {
-    if (hOriginalDll != nullptr)
-        return;
+    outFunc = reinterpret_cast<T>(GetProcAddress(module, name));
 
-    char sysPath[MAX_PATH];
-    GetSystemDirectoryA(sysPath, MAX_PATH);
-    strcat_s(sysPath, MAX_PATH, "\\version.dll");
-
-    HMODULE hOriginalDll = LoadLibraryA(sysPath);
-
-    if (hOriginalDll != nullptr) 
-    {
-        // 이름(String)을 기반으로 원본 함수의 주소를 동적으로 획득
-        // ANSI (A) 함수 주소 획득
-        Original_GetFileVersionInfoA = (pfnGetFileVersionInfoA)GetProcAddress(hOriginalDll, "GetFileVersionInfoA");
-        Original_GetFileVersionInfoSizeA = (pfnGetFileVersionInfoSizeA)GetProcAddress(hOriginalDll, "GetFileVersionInfoSizeA");
-        Original_VerQueryValueA = (pfnVerQueryValueA)GetProcAddress(hOriginalDll, "VerQueryValueA");
-
-        // Unicode (W) 함수 주소 획득
-        Original_GetFileVersionInfoW = (pfnGetFileVersionInfoW)GetProcAddress(hOriginalDll, "GetFileVersionInfoW");
-        Original_GetFileVersionInfoSizeW = (pfnGetFileVersionInfoSizeW)GetProcAddress(hOriginalDll, "GetFileVersionInfoSizeW");
-        Original_VerQueryValueW = (pfnVerQueryValueW)GetProcAddress(hOriginalDll, "VerQueryValueW");
+    if (outFunc == nullptr) {
+        OutputDebugStringA("[version.dll proxy] GetProcAddress failed: ");
+        OutputDebugStringA(name);
+        OutputDebugStringA("\n");
+        return false;
     }
 
-    OutputDebugStringW(L"[version.dll] original dll Loaded.\n");
+    return true;
 }
+
+static std::once_flag g_LoadOriginalDllFlag;
+static HMODULE hOriginalDll = nullptr;
+
+// 시스템 디렉터리에서 진짜 version.dll을 찾아 이름으로 주소를 로드
+void LoadOriginalDll()
+{
+    if (hOriginalDll != nullptr) {
+        return;
+    }
+
+    wchar_t sysPath[MAX_PATH] = {};
+    UINT len = GetSystemDirectoryW(sysPath, MAX_PATH);
+
+    if (len == 0 || len >= MAX_PATH) {
+        OutputDebugStringA("[version.dll proxy] GetSystemDirectoryW failed.\n");
+        return;
+    }
+
+    if (wcscat_s(sysPath, MAX_PATH, L"\\version.dll") != 0) {
+        OutputDebugStringA("[version.dll proxy] wcscat_s failed.\n");
+        return;
+    }
+
+    hOriginalDll = LoadLibraryW(sysPath);
+
+    if (hOriginalDll == nullptr) {
+        OutputDebugStringA("[version.dll proxy] LoadLibraryW failed: system version.dll\n");
+        return;
+    }
+
+    bool ok = true;
+
+    ok &= LoadProc(hOriginalDll, "GetFileVersionInfoA",     Original_GetFileVersionInfoA);
+    ok &= LoadProc(hOriginalDll, "GetFileVersionInfoSizeA", Original_GetFileVersionInfoSizeA);
+    ok &= LoadProc(hOriginalDll, "VerQueryValueA",          Original_VerQueryValueA);
+
+    ok &= LoadProc(hOriginalDll, "GetFileVersionInfoW",     Original_GetFileVersionInfoW);
+    ok &= LoadProc(hOriginalDll, "GetFileVersionInfoSizeW", Original_GetFileVersionInfoSizeW);
+    ok &= LoadProc(hOriginalDll, "VerQueryValueW",          Original_VerQueryValueW);
+
+    if (ok) {
+        OutputDebugStringA("[version.dll proxy] original version.dll loaded successfully.\n");
+    }
+    else {
+        OutputDebugStringA("[version.dll proxy] original version.dll loaded, but some functions failed.\n");
+    }
+}
+
+
 
 // 3. 게임이 호출할 대리 함수 (받아서 원본으로 그대로 넘겨줌)
 // 대리 함수 - ANSI (A)
 extern "C" BOOL WINAPI GetFileVersionInfoA(LPCSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData)
 {
-    LoadOriginalDll();
+    std::call_once(g_LoadOriginalDllFlag, LoadOriginalDll);
     if (Original_GetFileVersionInfoA) 
         return Original_GetFileVersionInfoA(lptstrFilename, dwHandle, dwLen, lpData);
     return FALSE;
@@ -62,7 +99,7 @@ extern "C" BOOL WINAPI GetFileVersionInfoA(LPCSTR lptstrFilename, DWORD dwHandle
 
 extern "C" DWORD WINAPI GetFileVersionInfoSizeA(LPCSTR lptstrFilename, LPDWORD lpdwHandle)
 {
-    LoadOriginalDll();
+    std::call_once(g_LoadOriginalDllFlag, LoadOriginalDll);
     if (Original_GetFileVersionInfoSizeA) 
         return Original_GetFileVersionInfoSizeA(lptstrFilename, lpdwHandle);
     return 0;
@@ -70,7 +107,7 @@ extern "C" DWORD WINAPI GetFileVersionInfoSizeA(LPCSTR lptstrFilename, LPDWORD l
 
 extern "C" BOOL WINAPI VerQueryValueA(LPCVOID pBlock, LPCSTR lpSubBlock, LPVOID* lplpBuffer, PUINT puLen)
 {
-    LoadOriginalDll();
+    std::call_once(g_LoadOriginalDllFlag, LoadOriginalDll);
     if (Original_VerQueryValueA) 
         return Original_VerQueryValueA(pBlock, lpSubBlock, lplpBuffer, puLen);
     return FALSE;
@@ -79,6 +116,7 @@ extern "C" BOOL WINAPI VerQueryValueA(LPCVOID pBlock, LPCSTR lpSubBlock, LPVOID*
 // 대리 함수 - Unicode (W)
 extern "C" BOOL WINAPI GetFileVersionInfoW(LPCWSTR lptstrFilename, DWORD dwHandle, DWORD dwLen, LPVOID lpData)
 {
+    std::call_once(g_LoadOriginalDllFlag, LoadOriginalDll);
     if (Original_GetFileVersionInfoW) 
         return Original_GetFileVersionInfoW(lptstrFilename, dwHandle, dwLen, lpData);
     return FALSE;
@@ -86,7 +124,7 @@ extern "C" BOOL WINAPI GetFileVersionInfoW(LPCWSTR lptstrFilename, DWORD dwHandl
 
 extern "C"  DWORD WINAPI GetFileVersionInfoSizeW(LPCWSTR lptstrFilename, LPDWORD lpdwHandle)
 {
-    LoadOriginalDll();
+    std::call_once(g_LoadOriginalDllFlag, LoadOriginalDll);
     if (Original_GetFileVersionInfoSizeW) 
         return Original_GetFileVersionInfoSizeW(lptstrFilename, lpdwHandle);
     return 0;
@@ -94,7 +132,7 @@ extern "C"  DWORD WINAPI GetFileVersionInfoSizeW(LPCWSTR lptstrFilename, LPDWORD
 
 extern "C"  BOOL WINAPI VerQueryValueW(LPCVOID pBlock, LPCWSTR lpSubBlock, LPVOID* lplpBuffer, PUINT puLen)
 {
-    LoadOriginalDll();
+    std::call_once(g_LoadOriginalDllFlag, LoadOriginalDll);
     if (Original_VerQueryValueW) 
         return Original_VerQueryValueW(pBlock, lpSubBlock, lplpBuffer, puLen);
     return FALSE;
