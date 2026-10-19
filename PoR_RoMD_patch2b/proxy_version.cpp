@@ -28,9 +28,10 @@ bool LoadProc(HMODULE module, const char* name, T& outFunc)
     outFunc = reinterpret_cast<T>(GetProcAddress(module, name));
 
     if (outFunc == nullptr) {
-        OutputDebugStringA("[version.dll proxy] GetProcAddress failed: ");
-        OutputDebugStringA(name);
-        OutputDebugStringA("\n");
+        //OutputDebugStringA("[version.dll proxy] GetProcAddress failed: ");
+        //OutputDebugStringA(name);
+        //OutputDebugStringA("\n");
+        PLOG_ERROR << "[version.dll proxy] GetProcAddress failed: " << name;
         return false;
     }
 
@@ -51,19 +52,22 @@ void LoadOriginalDll()
     UINT len = GetSystemDirectoryW(sysPath, MAX_PATH);
 
     if (len == 0 || len >= MAX_PATH) {
-        OutputDebugStringA("[version.dll proxy] GetSystemDirectoryW failed.\n");
+        //OutputDebugStringA("[version.dll proxy] GetSystemDirectoryW failed.\n");
+		PLOG_ERROR << "[version.dll proxy] GetSystemDirectoryW failed.";
         return;
     }
 
     if (wcscat_s(sysPath, MAX_PATH, L"\\version.dll") != 0) {
-        OutputDebugStringA("[version.dll proxy] wcscat_s failed.\n");
+        //OutputDebugStringA("[version.dll proxy] wcscat_s failed.\n");
+		PLOG_ERROR << "[version.dll proxy] wcscat_s failed.";
         return;
     }
 
     hOriginalDll = LoadLibraryW(sysPath);
 
     if (hOriginalDll == nullptr) {
-        OutputDebugStringA("[version.dll proxy] LoadLibraryW failed: system version.dll\n");
+        //OutputDebugStringA("[version.dll proxy] LoadLibraryW failed: system version.dll\n");
+		PLOG_ERROR << "[version.dll proxy] LoadLibraryW failed: system version.dll";
         return;
     }
 
@@ -78,10 +82,12 @@ void LoadOriginalDll()
     ok &= LoadProc(hOriginalDll, "VerQueryValueW",          Original_VerQueryValueW);
 
     if (ok) {
-        OutputDebugStringA("[version.dll proxy] original version.dll loaded successfully.\n");
+        //OutputDebugStringA("[version.dll proxy] original version.dll loaded successfully.\n");
+		PLOG_DEBUG << "[version.dll proxy] original version.dll loaded successfully.";
     }
     else {
-        OutputDebugStringA("[version.dll proxy] original version.dll loaded, but some functions failed.\n");
+        //OutputDebugStringA("[version.dll proxy] original version.dll loaded, but some functions failed.\n");
+		PLOG_ERROR << "[version.dll proxy] original version.dll loaded, but some functions failed.";
     }
 }
 

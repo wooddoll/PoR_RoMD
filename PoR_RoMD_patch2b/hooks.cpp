@@ -7,9 +7,9 @@
 #include "por2.h"
 #include "help_util.h"
 
-#define _LOG_   0
+#define _LOG_   1
 #if _LOG_
-#define CHECK(charcode) do { OutputDebugStringA(__func__); GetCurrentCall(charcode); } while(0)
+#define CHECK(charcode) do { PLOG_DEBUG << "Caller" << __func__; GetCurrentCall(charcode); } while(0)
 #else
 #define CHECK(charcode) ((void)0)
 #endif
@@ -24,26 +24,32 @@ __forceinline void GetCurrentCall(int charCode)
 
     // 1. WordWrap (0x00444890 ~ 0x00444CAB 부근): ESI가 인덱스
     if (retAddr >= 0x00444890 && retAddr <= 0x00444CAB) {
-        OutputDebugStringFormat("[WordWrap] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        //OutputDebugStringFormat("[WordWrap] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+		PLOG_DEBUG << "[WordWrap] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
     }
     // 2. DrawTextLines (0x0043BD00 ~ 0x0043BF00 부근): EBX가 인덱스
     else if (retAddr >= 0x0043BD00 && retAddr <= 0x0043BF00) {
-        OutputDebugStringFormat("[DrawTextLines] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        //OutputDebugStringFormat("[DrawTextLines] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+		PLOG_DEBUG << "[DrawTextLines] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
     }
     // 3. CalculateTextExtents: EDI가 인덱스!
     else if (retAddr >= 0x0043BF40 && retAddr <= 0x0043C00F) {
-        OutputDebugStringFormat("[CalculateTextExtents] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        //OutputDebugStringFormat("[CalculateTextExtents] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+		PLOG_DEBUG << "[CalculateTextExtents] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
     }
     // 4. RenderShadow: EDI가 인덱스!
     else if (retAddr >= 0x00444d40 && retAddr <= 0x00445039) {
-        OutputDebugStringFormat("[RenderShadow] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        //OutputDebugStringFormat("[RenderShadow] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+		PLOG_DEBUG << "[RenderShadow] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
     }
     // 5. unknown: EDI가 인덱스!
     else if (retAddr >= 0x00476820 && retAddr <= 0x00476adc) {
-        OutputDebugStringFormat("[Case5(unknown)] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        //OutputDebugStringFormat("[Case5(unknown)] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+		PLOG_DEBUG << "[Case5(unknown)] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
     }
     else {
-        OutputDebugStringFormat("[!!!ELSE!!!] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        //OutputDebugStringFormat("[!!!ELSE!!!] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+		PLOG_DEBUG << "[!!!ELSE!!!] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
     }
 }
 
@@ -112,6 +118,7 @@ thread_local HangulChannelState g_chanRect;
 int __fastcall Hook_GetCharWidth(cFont* thisPtr, void* /*dummyEDX*/, int charCode)
 {
 	CHECK(charCode);
+
     int finalCode = 0;
     int type = g_chanWidth.Process(charCode, finalCode);
 
@@ -139,6 +146,7 @@ int __fastcall Hook_GetCharWidth(cFont* thisPtr, void* /*dummyEDX*/, int charCod
 int __fastcall Hook_GetCharHeight(cFont* thisPtr, void* /*dummyEDX*/, int charCode)
 {
     CHECK(charCode);
+
     int finalCode = 0;
     int type = g_chanHeight.Process(charCode, finalCode);
 
@@ -168,10 +176,6 @@ static RECT g_dummyZeroRect = { 0, 0, 0, 0 };
 RECT* __fastcall Hook_GetCharRect(cFont* thisPtr, void* /*edx*/, int charCode)
 {
     CHECK(charCode);
-    uintptr_t retAddr = reinterpret_cast<uintptr_t>(_ReturnAddress());
-    if (retAddr == 0x004388FF && charCode == 0x00000041) {
-        charCode = 0x0000A2BB;
-	}
 
     int finalCode = 0;
     int type = g_chanRect.Process(charCode, finalCode);
@@ -229,7 +233,8 @@ void PatchWordWrap_4ByteRead()
     // 4. 공백 스킵 GetCharWidth 호출부 (0x00444a89)
     patchBytes(0x00444a89, patch, sizeof(patch));
 
-    OutputDebugStringW(L"[Patch] WordWrap() patched.\n");
+    //OutputDebugStringW(L"[Patch] WordWrap() patched.\n");
+    PLOG_DEBUG << "[Patch] WordWrap() patched.";
 }
 
 // ============================================================
@@ -251,7 +256,8 @@ void PatchCalculateTextExtents_4ByteRead()
     // 2. GetCharWidth 호출부 (0x0043bfa7)
     patchBytes(0x0043bfa7, patch, sizeof(patch));
 
-    OutputDebugStringW(L"[Patch] CalculateTextExtents() patched.\n");
+    //OutputDebugStringW(L"[Patch] CalculateTextExtents() patched.\n");
+	PLOG_DEBUG << "[Patch] CalculateTextExtents() patched.";
 }
 
 // ============================================================
@@ -275,7 +281,8 @@ void PatchDrawTextLines_4ByteRead()
     const unsigned char patch2[] = { 0x8B };
     patchBytes(0x0043be72, patch2, sizeof(patch2));
 
-    OutputDebugStringW(L"[Patch] DrawTextLines() patched.\n");
+    //OutputDebugStringW(L"[Patch] DrawTextLines() patched.\n");
+	PLOG_DEBUG << "[Patch] DrawTextLines() patched.";
 }
 
 // ============================================================
@@ -291,7 +298,8 @@ void PatchRenderShadow_4ByteRead()
     const unsigned char patch2[] = { 0x8B };
     patchBytes(0x00444f3e, patch2, sizeof(patch2));
 
-    OutputDebugStringW(L"[Patch] RenderShadow() patched.\n");
+    //OutputDebugStringA("[Patch] RenderShadow() patched.\n");
+    PLOG_DEBUG << "[Patch] RenderShadow() patched.";
 }
 
 // ============================================================
@@ -304,7 +312,8 @@ void PatchSprintfMeasure_4ByteRead()
     const unsigned char patch[] = { 0x8B, 0x45, 0x00 };
     patchBytes(0x004769a5, patch, sizeof(patch));
 
-	OutputDebugStringW(L"[Patch] SprintfMeasure() patched.\n");
+	//OutputDebugStringA("[Patch] SprintfMeasure() patched.\n");
+    PLOG_DEBUG << "[Patch] SprintfMeasure() patched.";
 }
 
 // 1. 새로운 폰트 경로 (길이에 제한 없음!)
@@ -381,7 +390,8 @@ void ApplyHooks()
     // 3. GetCharRect (0x00435E60) -> Hook_GetCharRect 점프
     HookFunction(0x00435E60, reinterpret_cast<uintptr_t>(Hook_GetCharRect));
 
-    OutputDebugStringW(L"[Patch] font functions hooked.\n");
+    //OutputDebugStringA("[Patch] font functions hooked.\n");
+	PLOG_DEBUG << "[Patch] font functions hooked.";
 }
 //////////////////============================================================
 

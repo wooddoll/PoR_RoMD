@@ -1,5 +1,8 @@
 #pragma once
 
+#include <plog/Log.h>
+#include <plog/Initializers/RollingFileInitializer.h>
+
 #include <map>
 #include <vector>
 #include <string>

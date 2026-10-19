@@ -202,10 +202,12 @@ static HBINK __stdcall DetourBinkOpen(const char* name, uint32_t flags)
             g_SubtitlesMap[bink] = std::move(entries);
         }
         // 디버깅용 로그 (필요시 OutputDebugString으로 확인 가능)
-        OutputDebugStringW((L"[Subtitle] Loaded: " + sbvPath + L"\n").c_str());
+        //OutputDebugStringW((L"[Subtitle] Loaded: " + sbvPath + L"\n").c_str());
+        PLOG_DEBUG << "[Subtitle] Loaded: " << sbvPath;
     }
     else {
-        OutputDebugStringW((L"[Subtitle] Not found: " + sbvPath + L"\n").c_str());
+        //OutputDebugStringW((L"[Subtitle] Not found: " + sbvPath + L"\n").c_str());
+        PLOG_ERROR << "[Subtitle] Not found: " << sbvPath;
     }
 
     return bink;
@@ -222,7 +224,8 @@ void InstallBinkHooks()
 
     hBinkOriginalDll = GetModuleHandleA("binkw32.dll");
     if (!hBinkOriginalDll) {
-        OutputDebugStringW(L"[binkw32.dll] module not loaded yet.\n");
+        //OutputDebugStringA("[binkw32.dll] module not loaded yet.\n");
+        PLOG_ERROR << "[binkw32.dll] module not loaded yet.";
         return;
     }
 
@@ -232,7 +235,8 @@ void InstallBinkHooks()
 
     MH_STATUS initStatus = MH_Initialize();
     if (initStatus != MH_OK && initStatus != MH_ERROR_ALREADY_INITIALIZED) {
-        OutputDebugStringW(L"[binkw32.dll] MH_Initialize() fail.\n");
+        //OutputDebugStringA("[binkw32.dll] MH_Initialize() fail.\n");
+        PLOG_ERROR << "[binkw32.dll] MH_Initialize() fail.";
         return;
     }
 
@@ -240,7 +244,8 @@ void InstallBinkHooks()
     if (pOpen) {
         MH_STATUS st = MH_CreateHook(pOpen, &DetourBinkOpen, (LPVOID*)&fpBinkOpen);
         if (st != MH_OK) {
-            OutputDebugStringA("[binkw32.dll] BinkOpen hook failed.\n");
+            //OutputDebugStringA("[binkw32.dll] BinkOpen hook failed.\n");
+            PLOG_ERROR << "[binkw32.dll] BinkOpen hook failed.";
         }
         if (pOpen) {
             MH_EnableHook(pOpen);
@@ -250,7 +255,8 @@ void InstallBinkHooks()
     if (pCopy) {
         MH_STATUS st = MH_CreateHook(pCopy, &DetourBinkCopyToBuffer, (LPVOID*)&fpBinkCopyToBuffer);
         if (st != MH_OK) {
-            OutputDebugStringA("[binkw32.dll] BinkCopyToBuffer hook failed.\n");
+            //OutputDebugStringA("[binkw32.dll] BinkCopyToBuffer hook failed.\n");
+            PLOG_ERROR << "[binkw32.dll] BinkCopyToBuffer hook failed.";
         }
         if (pCopy) {
             MH_EnableHook(pCopy);
@@ -260,7 +266,8 @@ void InstallBinkHooks()
     if (pClose) {
         MH_STATUS st = MH_CreateHook(pClose, &DetourBinkClose, (LPVOID*)&fpBinkClose);
         if (st != MH_OK) {
-            OutputDebugStringA("[binkw32.dll] BinkClose hook failed.\n");
+            //OutputDebugStringA("[binkw32.dll] BinkClose hook failed.\n");
+            PLOG_ERROR << "[binkw32.dll] BinkClose hook failed.";
         }
         if (pClose) {
             MH_EnableHook(pClose);
@@ -269,7 +276,8 @@ void InstallBinkHooks()
 
     g_BinkHookInitialized = true;
 
-    OutputDebugStringW(L"[binkw32.dll] function hooked.\n");
+    //OutputDebugStringA("[binkw32.dll] function hooked.\n");
+    PLOG_DEBUG << "[binkw32.dll] function hooked.";
 }
 
 void RemoveBinkHooks() 
