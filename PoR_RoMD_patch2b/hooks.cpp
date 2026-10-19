@@ -311,42 +311,36 @@ void PatchSprintfMeasure_4ByteRead()
 char g_szNewFontPath[MAX_PATH] = "./Data_kr/Fonts/font%d";
 char g_szNewDialgouePath[MAX_PATH] = "./Data_kr/Dialogue/%s";
 
-//
-//void ReadIniFilePath() 
-//{
-//    char exePath[MAX_PATH] = { 0 };
-//
-//    GetModuleFileNameA(NULL, exePath, MAX_PATH);
-//    PathRemoveFileSpecA(exePath); // exe 파일명 제거하여 폴더 경로만 남김
-//
-//    char iniPath[MAX_PATH] = { 0 };
-//    sprintf_s(iniPath, MAX_PATH, "%s/korean.ini", exePath);
-//
-//    char newFontPath[MAX_PATH] = { 0 };
-//    GetPrivateProfileString("Settings", "FontPath", "", newFontPath, MAX_PATH, iniPath);
-//    if (strlen(newFontPath) > 0) {
-//        if (PathIsRelativeA(newFontPath)) {
-//            sprintf_s(g_szNewFontPath, MAX_PATH, "%s/%s/font%%d", exePath, newFontPath);
-//        }
-//        else {
-//            sprintf_s(g_szNewFontPath, MAX_PATH, "%s/%%s", newFontPath);
-//        }
-//    }
-//
-//    char newDialgouePath[MAX_PATH] = { 0 };
-//    GetPrivateProfileString("Settings", "DialoguePath", "", newDialgouePath, MAX_PATH, iniPath);
-//    if (strlen(newDialgouePath) > 0) {
-//        if (PathIsRelativeA(newFontPath)) {
-//            sprintf_s(g_szNewDialgouePath, MAX_PATH, "%s/%s/%%s", exePath, newDialgouePath);
-//        }
-//        else {
-//            sprintf_s(g_szNewDialgouePath, MAX_PATH, "%s/%%s", newDialgouePath);
-//        }
-//    }
-//}
+
+void ReadIniFilePath() 
+{
+    std::wstring fullSubPath;
+
+    std::wstring fontFolder = g_Config.GetString(L"Settings", L"FontPath", L"./Data_kr/Fonts");
+    if (PathIsRelativeW(fontFolder.c_str())) {
+        fullSubPath = CombinePath(g_Config.currentExePath, fontFolder);
+    }
+    else {
+        fullSubPath = fontFolder;
+    }
+    fontFolder = CombinePath(fullSubPath, L"font%d");
+	WideCharToMultiByte(CP_UTF8, 0, fontFolder.c_str(), -1, g_szNewFontPath, sizeof(g_szNewFontPath), NULL, NULL);
+
+    std::wstring dialogueFolder = g_Config.GetString(L"Settings", L"DialoguePath", L"./Data_kr/Dialogue");
+    if (PathIsRelativeW(dialogueFolder.c_str())) {
+        fullSubPath = CombinePath(g_Config.currentExePath, dialogueFolder);
+    }
+    else {
+        fullSubPath = dialogueFolder;
+    }
+    dialogueFolder = CombinePath(fullSubPath, L"%s");
+    WideCharToMultiByte(CP_UTF8, 0, dialogueFolder.c_str(), -1, g_szNewDialgouePath, sizeof(g_szNewDialgouePath), NULL, NULL);
+}
 
 void PatchResourcePath()
 {
+    ReadIniFilePath();
+
     uintptr_t newPathAddr = reinterpret_cast<uintptr_t>(g_szNewFontPath);
     // 2. 0x0043ffd1 주소의 4바이트 포인터를 문자열 주소로 교체!
     patchBytes(0x0043ffd1, &newPathAddr, 4);

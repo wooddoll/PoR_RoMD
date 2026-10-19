@@ -3,7 +3,7 @@
 #include <shlwapi.h> // PathFindFileNameA 등을 사용하기 위해 포함 (필요시 shlwapi.lib 링크)
 #pragma comment(lib, "Shlwapi.lib")
 
-//#include <filesystem>
+#include <filesystem>
 #include "help_util.h"
 
 
@@ -128,22 +128,14 @@ std::wstring GetExeDirectory()
     return std::wstring(exePath);
 }
 
-std::wstring CombinePath(const std::wstring& dir, const std::wstring& file)
-{
-    if (dir.empty()) {
-        return file;
-    }
+std::wstring CombinePath(const std::wstring& dir, const std::wstring& file) {
+    // std::filesystem::path가 /, \, ./, ../ 등을 알아서 올바르게 결합합니다.
+    std::filesystem::path pathDir(dir);
+    std::filesystem::path pathFile(file);
 
-    if (file.empty()) {
-        return dir;
-    }
-
-    if (dir.back() == L'\\' || dir.back() == L'/') {
-        return dir + file;
-    }
-
-    return dir + L"\\" + file;
+    return (pathDir / pathFile).wstring();
 }
+
 
 bool LoadSettings(const wchar_t* filePath)
 {

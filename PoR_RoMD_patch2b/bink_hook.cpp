@@ -277,9 +277,7 @@ void RemoveBinkHooks()
     if(!g_BinkHookInitialized)
         return;
 
-    MH_DisableHook(pClose);
-    MH_DisableHook(pCopy);
-    MH_DisableHook(pOpen);
+    MH_DisableHook(MH_ALL_HOOKS);
 
     fpBinkOpen = nullptr;
     fpBinkCopyToBuffer = nullptr;
@@ -291,6 +289,7 @@ void RemoveBinkHooks()
     }
 
     SubtitleRenderer::ClearCache();
+    MH_Uninitialize();
 
     g_BinkHookInitialized = false;
 }
