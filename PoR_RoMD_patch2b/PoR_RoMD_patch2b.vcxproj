@@ -157,6 +157,7 @@
   <ItemGroup>
     <ClCompile Include="bink_hook.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="dummy.cpp" />
     <ClCompile Include="help_util.cpp" />
     <ClCompile Include="hooks.cpp" />
     <ClCompile Include="proxy_version.cpp" />
