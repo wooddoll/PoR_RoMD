@@ -169,7 +169,7 @@ RECT* __fastcall Hook_GetCharRect(cFont* thisPtr, void* /*edx*/, int charCode)
 {
     CHECK(charCode);
     uintptr_t retAddr = reinterpret_cast<uintptr_t>(_ReturnAddress());
-    if (retAddr = 0x004388FF && charCode == 0x41) {
+    if (retAddr == 0x004388FF && charCode == 0x00000041) {
         charCode = 0x0000A2BB;
 	}
 

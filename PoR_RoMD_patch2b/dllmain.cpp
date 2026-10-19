@@ -1,7 +1,5 @@
 ﻿#include <windows.h>
-#include "bink_hook.h"
 #include "hooks.h"
-#include "help_util.h"
 #include <string>
 
 DWORD WINAPI InitHookThread(LPVOID lpParam)
@@ -11,7 +9,12 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
     LoadOriginalDll();
     InstallBinkHooks();
 
-    //LoadSettings(L"korean.ini");
+    if (LoadSettings(L"korean.ini")) {
+        OutputDebugStringA("[version.dll proxy] korean.ini loaded.\n");
+    }
+    else {
+        OutputDebugStringA("[version.dll proxy] korean.ini load failed.\n");
+    }
 
     ApplyMemoryPatches();
 
@@ -33,6 +36,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         break;
 	case DLL_PROCESS_DETACH:
         RemoveBinkHooks();
+        MH_Uninitialize();
 		break;
     }
     return TRUE;
