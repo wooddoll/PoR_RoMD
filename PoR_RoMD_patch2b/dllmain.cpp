@@ -4,6 +4,7 @@
 #include "hooks.h"
 #include "help_util.h"
 
+
 #include <string>
 
 DWORD WINAPI InitHookThread(LPVOID lpParam)
@@ -13,12 +14,17 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
     LoadOriginalDll();
     InstallBinkHooks();
 
+    plog::init(plog::debug, "korean.log"); // Step2: initialize the logger
+
     if (LoadSettings(L"korean.ini")) {
-        OutputDebugStringA("[version.dll proxy] korean.ini loaded.\n");
+        //OutputDebugStringA("[version.dll proxy] korean.ini loaded.\n");
+        PLOG_DEBUG << "[version.dll proxy] korean.ini loaded.";
     }
     else {
-        OutputDebugStringA("[version.dll proxy] korean.ini load failed.\n");
+        //OutputDebugStringA("[version.dll proxy] korean.ini load failed.\n");
+        PLOG_ERROR << "[version.dll proxy] korean.ini load failed.";
     }
+    
 
     ApplyMemoryPatches();
 
