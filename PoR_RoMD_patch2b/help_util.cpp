@@ -1,71 +1,172 @@
 #include <windows.h>
 #include <iostream>
 #include <shlwapi.h> // PathFindFileNameA 등을 사용하기 위해 포함 (필요시 shlwapi.lib 링크)
-#include <filesystem>
+#pragma comment(lib, "Shlwapi.lib")
+
+//#include <filesystem>
 #include "help_util.h"
 
 
 IniConfig g_Config; // 실제 전역 객체 할당
 
-bool LoadAllIniSettings(const std::wstring& filePath) {
-    g_Config.data.clear();
+bool LoadAllIniSettings(const std::wstring& filePath)
+{
+    if (g_Config.isLoaded && g_Config.loadedFilePath == filePath) {
+        return true;
+    }
 
-    const DWORD BUFFER_SIZE = 32768; // 32KB 충분한 버퍼 공간
-    std::vector<wchar_t> sectionBuffer(BUFFER_SIZE, 0);
+    if (filePath.empty()) {
+        return false;
+    }
 
-    // 1. 모든 섹션 이름 가져오기 (lpAppName에 NULL 전달)
-    DWORD sectionLen = GetPrivateProfileStringW(NULL, NULL, L"", sectionBuffer.data(), BUFFER_SIZE, filePath.c_str());
-    if (sectionLen == 0) return false;
+    DWORD attr = GetFileAttributesW(filePath.c_str());
+    if (attr == INVALID_FILE_ATTRIBUTES || (attr & FILE_ATTRIBUTE_DIRECTORY)) {
+        return false;
+    }
 
-    // 섹션 버퍼 순회 (\0으로 구분되어 있고 맨 끝은 \0\0으로 끝남)
+    std::map<std::wstring, std::map<std::wstring, std::wstring>> tempData;
+
+    const DWORD BUFFER_SIZE = 8192;
+    std::vector<wchar_t> sectionBuffer(BUFFER_SIZE, L'\0');
+
+    DWORD sectionLen = GetPrivateProfileStringW(
+        NULL,
+        NULL,
+        L"",
+        sectionBuffer.data(),
+        BUFFER_SIZE,
+        filePath.c_str()
+    );
+
+    if (sectionLen == 0) {
+        return false;
+    }
+
+    if (sectionLen >= BUFFER_SIZE - 2) {
+        return false;
+    }
+
     wchar_t* pSection = sectionBuffer.data();
+
     while (*pSection != L'\0') {
         std::wstring sectionName(pSection);
-        std::vector<wchar_t> keyBuffer(BUFFER_SIZE, 0);
 
-        // 2. 해당 섹션의 모든 키 이름 가져오기 (lpKeyName에 NULL 전달)
-        DWORD keyLen = GetPrivateProfileStringW(sectionName.c_str(), NULL, L"", keyBuffer.data(), BUFFER_SIZE, filePath.c_str());
+        std::vector<wchar_t> keyBuffer(BUFFER_SIZE, L'\0');
 
-        wchar_t* pKey = keyBuffer.data();
-        while (*pKey != L'\0') {
-            std::wstring keyName(pKey);
-            std::vector<wchar_t> valBuffer(BUFFER_SIZE, 0);
+        DWORD keyLen = GetPrivateProfileStringW(
+            sectionName.c_str(),
+            NULL,
+            L"",
+            keyBuffer.data(),
+            BUFFER_SIZE,
+            filePath.c_str()
+        );
 
-            // 3. 실제 값(Value) 가져오기
-            GetPrivateProfileStringW(sectionName.c_str(), keyName.c_str(), L"", valBuffer.data(), BUFFER_SIZE, filePath.c_str());
-            std::wstring valueStr(valBuffer.data());
-
-            // 전역 구조체에 저장
-            g_Config.data[sectionName][keyName] = valueStr;
-
-            pKey += keyName.length() + 1; // 다음 키로 이동
+        if (keyLen >= BUFFER_SIZE - 2) {
+            return false;
         }
 
-        pSection += sectionName.length() + 1; // 다음 섹션으로 이동
+        wchar_t* pKey = keyBuffer.data();
+
+        while (*pKey != L'\0') {
+            std::wstring keyName(pKey);
+
+            std::vector<wchar_t> valBuffer(BUFFER_SIZE, L'\0');
+
+            DWORD valueLen = GetPrivateProfileStringW(
+                sectionName.c_str(),
+                keyName.c_str(),
+                L"",
+                valBuffer.data(),
+                BUFFER_SIZE,
+                filePath.c_str()
+            );
+
+            if (valueLen >= BUFFER_SIZE - 1) {
+                return false;
+            }
+
+            std::wstring valueStr(valBuffer.data());
+
+            tempData[sectionName][keyName] = valueStr;
+
+            pKey += keyName.length() + 1;
+        }
+
+        pSection += sectionName.length() + 1;
     }
+
+    g_Config.data = std::move(tempData);
+    g_Config.loadedFilePath = filePath;
+    g_Config.isLoaded = true;
 
     return true;
 }
 
-// 게임 실행 폴더(exe가 있는 경로) 가져오기
-static std::wstring GetGameDirectory() 
+bool ReloadAllIniSettings(const std::wstring& filePath)
+{
+    g_Config.isLoaded = false;
+    g_Config.loadedFilePath.clear();
+    g_Config.data.clear();
+
+    return LoadAllIniSettings(filePath);
+}
+
+// 실행 파일(exe)이 있는 폴더 경로 가져오기
+std::wstring GetExeDirectory()
 {
     wchar_t exePath[MAX_PATH] = { 0 };
-    GetModuleFileNameW(NULL, exePath, MAX_PATH);
-    PathRemoveFileSpecW(exePath); // exe 파일명 제거하여 폴더 경로만 남김
+
+    DWORD len = GetModuleFileNameW(NULL, exePath, MAX_PATH);
+
+    if (len == 0 || len >= MAX_PATH) {
+        return L"";
+    }
+
+    PathRemoveFileSpecW(exePath);
+
     return std::wstring(exePath);
 }
 
-bool LoadSettings(const wchar_t* filePath) 
+std::wstring CombinePath(const std::wstring& dir, const std::wstring& file)
 {
-    std::wstring gameDir = GetGameDirectory();
-    std::wstring iniPath = gameDir + filePath;
+    if (dir.empty()) {
+        return file;
+    }
+
+    if (file.empty()) {
+        return dir;
+    }
+
+    if (dir.back() == L'\\' || dir.back() == L'/') {
+        return dir + file;
+    }
+
+    return dir + L"\\" + file;
+}
+
+bool LoadSettings(const wchar_t* filePath)
+{
+    if (filePath == nullptr || filePath[0] == L'\0') {
+        return false;
+    }
+
+    std::wstring currDir = GetExeDirectory();
+
+    if (currDir.empty()) {
+        return false;
+    }
+
+    g_Config.currentExePath = currDir;
+
+    std::wstring iniPath = CombinePath(currDir, filePath);
 
     return LoadAllIniSettings(iniPath);
 }
 
 char _eucKrStr_[3];
-const char* OutputEucKrChar(unsigned char byte1, unsigned char byte2) {
+const char* OutputEucKrChar(unsigned char byte1, unsigned char byte2) 
+{
     // 2바이트 데이터와 문자열의 끝을 알리는 널 문자(\0)를 포함한 배열 생성
     _eucKrStr_[0] = static_cast<char>(byte1);
     _eucKrStr_[1] = static_cast<char>(byte2);
