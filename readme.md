@@ -1,8 +1,9 @@
 # Pool of Radiance: Ruins of Myth Drannor
 ## 한글화 테스트
 
-- windows xp  // ?
-- directx8.0a // dgVoodoo2 
+* DxWnd에서 가장 잘 돌아가는 것 같다.
+- windows xp
+- directx8.0a
 
 * font관련은 Pool of Radiance/data/fonts/font%d.bmp / .idx
 * dialogue관련은 Pool of Radiance/data/Dialogue/* // test. 파일들 제외
@@ -11,11 +12,11 @@
 - Pool of Radiance/data/Rand/STR/*.str
 
 
-## font
+## Font
 * Data/Fonts/
 * font.md참고
 
-## dialogue
+## Dialogue
 * Data/Dialogue/
 * dialogue.md 참고
 
@@ -31,6 +32,18 @@
 1. 번역한 내용을 다시 자막 파일로 옮기고 SubtitleEdit로 적절한 위치에 올라갔는지 확인
 
 ## 자막 출력 패치
-1. proxy version.dll에서 binkw32에 대한 hook(PoR_RoMD_patch2b\bink_hook.cpp)을 만들어서 
+1. proxy version.dll에서 binkw32.dll에 대한 hook(PoR_RoMD_patch2b\bink_hook.cpp)을 만들어서 
     1. DetourBinkOpen()을 가로채서 .bik을 로딩할 때 자막 파일도 로딩
     1. DetourBinkCopyToBuffer()을 가로채서 프레임을 복사할 때 자막을 렌더링
+
+## voice 
+1. data/Sound/voice/*.wav 파일이 있다.
+    1. 파일명은 read_all_idx.py로 생성한 .json의 key와 일치함. 
+    1. 소문자로 변환해야함
+    1. 일부 안맞는 파일이 있긴 한데 대사를 잘 들어보면 .json어딘가에 있기는 하다.
+    1. speaker별로 그룹을 만들것.
+    1. gather_sound_info.py로 .wav-speaker 정보 생성
+1. 있는 목소리로 학습해서 유사한 톤으로 음성을 생성하는 방법에 대해 gemini가 'XTTS v2'를 추천해서 설치하고 테스트
+    1. 옛날 버전이라 버전 맞추느라 설치하는데 많은 애로사항이 있음
+* Anorweyn이 젤 처음에 나오게 되는데, 원래 귀신톤임(유령이니까). 한국말로 바꾸면... 톤을 잘 이해못하는지 이상한 목소리..
+* 일단 포기하고 나중에 다른 툴을 사용해 보던지 할 것.
