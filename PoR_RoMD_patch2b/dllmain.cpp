@@ -1,5 +1,9 @@
 ﻿#include <windows.h>
+
+#include "bink_hook.h"
 #include "hooks.h"
+#include "help_util.h"
+
 #include <string>
 
 DWORD WINAPI InitHookThread(LPVOID lpParam)
@@ -36,7 +40,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
         break;
 	case DLL_PROCESS_DETACH:
         RemoveBinkHooks();
-        MH_Uninitialize();
 		break;
     }
     return TRUE;
