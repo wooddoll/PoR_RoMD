@@ -9,8 +9,8 @@
 
 bool LoadSettings(const wchar_t* filePath);
 
-bool LoadAllIniSettings(const std::wstring& filePath)
-bool ReloadAllIniSettings(const std::wstring& filePath)
+bool LoadAllIniSettings(const std::wstring& filePath);
+bool ReloadAllIniSettings(const std::wstring& filePath);
 
 void OutputDebugStringFormat(const char* format, ...);
 const char* OutputEucKrChar(unsigned char byte1, unsigned char byte2);
