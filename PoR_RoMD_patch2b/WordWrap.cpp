@@ -28,7 +28,7 @@ static void PushLineValue(int** ppArr, int nLineCount, int value)
 /*  WordWrap 객체                                                       */
 /*  원본: BOOL __thiscall (원본 함수) 을 위해 __fastcall + dummy edx        */
 /* ------------------------------------------------------------------ */
-#define TEXT (self->m_pszText)
+#define _Text (self->m_pszText)
 
 BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
 {
@@ -45,7 +45,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
     self->m_nMaxLineWidth = 0;
     self->m_nTotalHeight = 0;
 
-    int chCode = getCharCode(TEXT, charIdx);
+    int chCode = getCharCode(_Text, charIdx);
     if (chCode != '\0')
     {
         do {
@@ -66,7 +66,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                 // 문장의 처음이거나 이전 문자가 공백인 경우
                 if (!IsSpaceCh(chCode)) {
                     if (charIdx == 0 ||
-                        (0 < charIdx && IsSpaceCh(TEXT[charIdx - 1])))
+                        (0 < charIdx && IsSpaceCh(_Text[charIdx - 1])))
                     {
                         nLastWordIdx = charIdx;
                     }
@@ -103,12 +103,12 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                                 nCurrentLineWidth -= self->m_pFont->GetCharWidth(chCode);
                                 --charIdx;
                                 if (0 < charIdx) { // 이전 글자가 2바이트 문자인지 검사
-                                    uint8_t c1 = static_cast<uint8_t>(TEXT[charIdx - 1]);
-                                    uint8_t c2 = static_cast<uint8_t>(TEXT[charIdx]);
+                                    uint8_t c1 = static_cast<uint8_t>(_Text[charIdx - 1]);
+                                    uint8_t c2 = static_cast<uint8_t>(_Text[charIdx]);
                                     if (IsHangul(c1, c2))   // 2바이트 중의 테일바이트이면 한바이트 더 이동
                                         --charIdx;
                                 }
-                                chCode = getCharCode(TEXT, charIdx);
+                                chCode = getCharCode(_Text, charIdx);
                             } while (nLastWordIdx <= charIdx);
                         }   
                         // nCharIdx는 nLastWordIdx보다 1바이트 앞을 가르킴. 
@@ -119,7 +119,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                             do {
                                 nCurrentLineWidth -= self->m_pFont->GetCharWidth(chCode);
                                 --charIdx; // 공백문자는 1바이트라서 2바이트 이동이 아님
-                                chCode = getCharCode(TEXT, charIdx);
+                                chCode = getCharCode(_Text, charIdx);
                             } while (IsSpaceCh(chCode));
                         }
 
@@ -139,7 +139,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                     charIdx += (0xFF < chCode) ? 2 : 1;   // 2바이트면 +2, 아니면 +1
                 }
             }
-            chCode = getCharCode(TEXT, charIdx);
+            chCode = getCharCode(_Text, charIdx);
         } while (chCode != '\0');
 
         if (nMaxWidth < nCurrentLineWidth)
@@ -147,7 +147,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
     }
 
     /* 마지막 줄 확정 (끝 인덱스 = strlen) */
-    PushLineValue(&self->m_pLineEndIndices, nLineCount, (int)strlen(TEXT));
+    PushLineValue(&self->m_pLineEndIndices, nLineCount, (int)strlen(_Text));
 
     self->m_nMaxLineWidth = nMaxWidth;
     self->m_nLineHeight = nMaxLineHeight;
@@ -169,4 +169,4 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
 
     return TRUE;
 }
-#undef TEXT
+#undef _Text

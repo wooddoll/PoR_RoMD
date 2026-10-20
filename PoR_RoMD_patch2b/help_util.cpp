@@ -206,3 +206,53 @@ void patchBytes(uintptr_t targetAddr, const void* data, size_t bytes)
         FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), bytes);
     }
 }
+
+
+#define _LOG_   1
+#if _LOG_
+#define CHECK(charcode) do { GetCurrentCall(charcode, reinterpret_cast<uintptr_t>(_ReturnAddress())); } while(0)
+#else
+#define CHECK(charcode) ((void)0)
+#endif
+
+
+void GetCurrentCall(const int charCode, const uintptr_t retAddr)
+{
+    uint8_t c1 = static_cast<uint8_t>(charCode & 0xFF);        // 현재 바이트
+    uint8_t c2 = static_cast<uint8_t>((charCode >> 8) & 0xFF); // 다음 바이트 (4바이트 읽기)
+
+
+    // 1. WordWrap (0x00444890 ~ 0x00444CAB 부근): ESI가 인덱스
+    if (retAddr >= 0x00444890 && retAddr <= 0x00444CAB) {
+        //OutputDebugStringFormat("[WordWrap] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        PLOG_DEBUG << "[WordWrap] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
+    }
+    // 2. DrawTextLines (0x0043BD00 ~ 0x0043BF00 부근): EBX가 인덱스
+    else if (retAddr >= 0x0043BD00 && retAddr <= 0x0043BF00) {
+        //OutputDebugStringFormat("[DrawTextLines] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        PLOG_DEBUG << "[DrawTextLines] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
+    }
+    // 3. CalculateTextExtents: EDI가 인덱스!
+    else if (retAddr >= 0x0043BF40 && retAddr <= 0x0043C00F) {
+        //OutputDebugStringFormat("[CalculateTextExtents] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        PLOG_DEBUG << "[CalculateTextExtents] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
+    }
+    // 4. RenderShadow: EDI가 인덱스!
+    else if (retAddr >= 0x00444d40 && retAddr <= 0x00445039) {
+        //OutputDebugStringFormat("[RenderShadow] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        PLOG_DEBUG << "[RenderShadow] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
+    }
+    // 5. unknown: EDI가 인덱스!
+    else if (retAddr >= 0x00476820 && retAddr <= 0x00476adc) {
+        //OutputDebugStringFormat("[SprintfMeasure] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        PLOG_DEBUG << "[SprintfMeasure] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
+    }
+    else if (retAddr >= 0x00438830 && retAddr <= 0x00438b0f) {
+        //OutputDebugStringFormat("[check_FUN_00438830] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        PLOG_DEBUG << "[check_FUN_00438830] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
+    }
+    else {
+        //OutputDebugStringFormat("[!!!ELSE!!!] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+        PLOG_FATAL << "[!!!ELSE!!!] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
+    }
+}

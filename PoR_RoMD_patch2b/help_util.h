@@ -9,7 +9,6 @@
 #include <cwctype>     // std::towlower
 #include <stdexcept>   // std::invalid_argument, std::out_of_range
 
-
 bool LoadSettings(const wchar_t* filePath);
 
 bool LoadAllIniSettings(const std::wstring& filePath);

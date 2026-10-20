@@ -1,10 +1,20 @@
 #pragma once
 
+#include <intrin.h>
 #include <cstdint>
 #define WIN32_LEAN_AND_MEAN // 불필요한 Windows 헤더 제외 (선택 사항)
 #include <windows.h>
 #include <ddraw.h>          // IDirectDrawSurface7 및 DirectDraw 핵심 헤더
 
+
+
+#define _LOG_   0
+#if _LOG_
+void GetCurrentCall(const int charCode, const uintptr_t caller);
+#define CHECK(charcode) do { GetCurrentCall(charcode, reinterpret_cast<uintptr_t>(_ReturnAddress())); } while(0)
+#else
+#define CHECK(charcode) ((void)0)
+#endif
 /* ------------------------------------------------------------------ */
 /*  내부 함수 (원본 CRT/할당자를 그대로 써야 한다)                      */
 /* ------------------------------------------------------------------ */
@@ -102,6 +112,7 @@ struct cFont {
 	int atlasHeight;                // +0x28
 
     int GetCharHeight(int chCode) {
+        CHECK(chCode);
         int idx = this->pCharMap->FindGlyphIndex(chCode);
         if (idx < 0)
             return 0;
@@ -109,6 +120,7 @@ struct cFont {
         return rect.bottom - rect.top;
     }
     int GetCharWidth(int chCode) {
+        CHECK(chCode);
         int idx = this->pCharMap->FindGlyphIndex(chCode);
         if (idx < 0)
             return 0;
@@ -116,6 +128,7 @@ struct cFont {
         return rect.right - rect.left;
     }
     RECT* GetCharRect(int chCode) {
+        CHECK(chCode);
         int idx = this->pCharMap->FindGlyphIndex(chCode);
         if (idx < 0)
             return &g_dummyZeroRect;
@@ -143,7 +156,7 @@ struct cTextLayout {
     int    m_nTotalHeight;          // +0x148
     int    m_nLineHeight;           // +0x14C
     WORD   m_wTextColor;            // +0x150  원본 픽셀이 0xFFFF 일 때 대체할 색
-    char   pad_152[2];              // +0x152
+    WORD   unknown_152;              // +0x152
     WORD   m_wShadowColor;          // +0x154
     char   pad_156[0x0E];           // +0x156 ~ +0x163
     BYTE   m_bShadow;               // +0x164  그림자 사용 여부
@@ -158,21 +171,37 @@ struct cTextLayout {
     }
 };
 
+struct cSpriteBase {            // 폭/높이를 가진 계열 (이름 임시)
+    void* vftable;              // +0x00  vtable +0x54 : 서피스 반환
+    char  pad_004[0x124];       // +0x04
+    int   m_nWidth;             // +0x128
+    int   m_nHeight;            // +0x12C
+    /* ... */
+    IDirectDrawSurface7* GetTargetSurface() {   /* vtable +0x54 : 그려 넣을 대상 서피스 반환 (포인터 전체 32bit) */
+        typedef IDirectDrawSurface7* (__thiscall* tFn)(void*);
+        return ((tFn)(*(void***)this)[0x54 / 4])(this);
+    }
+};
+
 struct cTextManager {
     void*  vftable;             // +0x000
-    int    unknown_004[78];     // +0x004 ~ +0x13B
+    char   pad_004[0x124];      // +0x004
+    int    m_nWidth;            // +0x128
+    int    m_nHeight;           // +0x12C
+    char   pad_130[0x0C];       // +0x130
     int    m_nLineCountB;       // +0x13C   to Calculate
     int    m_nLineHeight;       // +0x140  가장 큰 글자 높이        (출력)
     int    m_nBoxWidth;         // +0x144  가장 긴 줄 폭 + 여백     (출력)
     int    m_nTotalHeight;      // +0x148  m_nLineCount * 줄 높이   (출력)
-    int    unknown_14C[15];     // +0x14C ~ +0x18B
+    int    unknown_14C[16];     // +0x14C ~ +0x18B
     char** m_ppLinesA;          // +0x18C  to Draw
     int    m_nLineCountA;       // +0x190  to Draw
     int    unknown_194;         // +0x194
     char** m_ppLinesB;          // +0x198  to Calculate
     int    unknown_19C;         // +0x19C 
     cFont* m_pFont;             // +0x1A0
-    int    unknown_1A4[7];      // +0x1A4 ~ +0x1BF
-    cTextLayout* m_pTarget;     // +0x1C0
+    char   pad_1A4[0x10];       // +0x1A4
+    cSpriteBase* m_pPart[3];    // +0x1B4, +0x1B8, +0x1BC
+    cSpriteBase* m_pTarget;     // +0x1C0
 };
 

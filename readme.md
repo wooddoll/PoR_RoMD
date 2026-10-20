@@ -35,6 +35,9 @@
 1. proxy version.dll에서 binkw32.dll에 대한 hook(PoR_RoMD_patch2b\bink_hook.cpp)을 만들어서 
     1. DetourBinkOpen()을 가로채서 .bik을 로딩할 때 자막 파일도 로딩
     1. DetourBinkCopyToBuffer()을 가로채서 프레임을 복사할 때 자막을 렌더링
+    1. bink_hook.cpp; binkw32 후킹
+    1. sdv_parser.cpp; .sbv자막 로드
+    1. subtitle_renderer.h; 자막 출력
 
 ## voice 
 1. data/Sound/voice/*.wav 파일이 있다.
