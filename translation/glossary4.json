@@ -1,0 +1,197 @@
+{
+  "Elminster": {
+    "korean": "엘민스터",
+    "category": "Character",
+    "description": "포가튼 렐름을 상징하는 전설적인 대현자이자 마법의 여신 미스트라의 수석 초즌(Chosen of Mystra). 게임 오프닝과 결말의 내레이터 역할을 맡음."
+  },
+  "Pool of Radiance": {
+    "korean": "광휘의 샘",
+    "category": "Lore / Magic Phenomenon",
+    "description": "생명력과 영혼을 흡수하고 변형시키는 고대 비전 마법의 웅덩이. 강력한 언데드를 양산하며, 타락할 경우 도시 전체의 생명을 앗아가는 구렁텅이가 됨."
+  },
+  "New Phlan": {
+    "korean": "뉴 플란",
+    "category": "Location",
+    "description": "문시(Moonsea) 북부 해안에 위치한 도시. 1988년작 전작에서 영웅들에 의해 해방되었으나, 10년 후 미스 드라노어의 웅덩이와 연결되어 생명력을 빼앗기는 위기에 처함."
+  },
+  "Year of the Gauntlet": {
+    "korean": "건틀릿의 해",
+    "category": "Lore / Timeline",
+    "description": "포가튼 렐름 데일력(Dale Reckoning) 1369년의 공식 명칭. 본 게임의 시대적 배경."
+  },
+  "Harbor Ballads": {
+    "korean": "항구의 뱃노래",
+    "category": "Phrase",
+    "description": "부둣가 선술집이나 뱃사람들 사이에서 흥얼거리는 확인되지 않은 무용담이나 뜬소문을 뜻함."
+  },
+  "Myth Drannor": {
+    "korean": "미스 드라노어",
+    "category": "Location",
+    "description": "코르만소(Cormanthor) 숲 깊은 곳에 위치한 고대 엘프 제국의 찬란했던 수도. 대재앙으로 멸망한 후 현재는 위험한 괴물과 사교도들이 도사리는 마경(유적)이 됨."
+  },
+  "Athan": {
+    "korean": "아산",
+    "category": "Character",
+    "description": "엘민스터의 신뢰를 받아 '모앤더의 건틀릿'을 챙겨 미스 드라노어로 먼저 파견되었던 영웅 원정대의 대장. 사교도들에게 기습당해 전멸 직전 차원문으로 구조 요청을 보냄."
+  },
+  "Moander": {
+    "korean": "모앤더",
+    "category": "Lore / Deity",
+    "description": "포가튼 렐름의 고대 부패, 파멸, 썩어가는 식물성 오물의 신(Abomination)."
+  },
+  "Gauntlets of Moander": {
+    "korean": "모앤더의 건틀릿",
+    "category": "Artifact / Item",
+    "description": "고대 부패신 모앤더의 힘이 깃든 강력한 유물. 타락한 광휘의 웅덩이를 영구히 파괴할 수 있는 유일한 핵심 도구."
+  },
+  "Pelendralaar": {
+    "korean": "펠렌드랄라",
+    "category": "Character / Monster",
+    "description": "드래곤 교단을 이끄는 고대 언데드 드래곤(드라코리치, Dracolich). 카이아 모르드레인의 뒤에 도사린 흑막이자 최종 보스."
+  },
+  "Kya Mordrayn": {
+    "korean": "카이아 모르드레인",
+    "category": "Character",
+    "description": "미스 드라노어의 고대 결계(미쌀)를 장악하여 페이룬 정복을 노리는 드래곤 교단의 사악하고 잔혹한 인간 소서리스."
+  },
+  "Hillsfar": {
+    "korean": "힐스파",
+    "category": "Location",
+    "description": "문시(Moonsea) 남부 연안의 부유하고 방어벽이 견고한 대표적인 도시국가. 광휘의 웅덩이의 악한 손길이 이곳 항구까지 침투함."
+  },
+  "The Cult of the Dragon": {
+    "korean": "사룡 교단",
+    "category": "Organization",
+    "description": "죽지 않는 악룡(드라코리치)이 세계를 지배할 것이라는 사교적 교리를 믿으며, 드래곤을 언데드로 만들어 페이룬을 위협하는 비밀 사교 집단."
+  },
+  "Mythal": {
+    "korean": "미쌀",
+    "category": "Lore / High Magic",
+    "description": "고대 고위 엘프 마법(Elven High Magic)으로 창조된 거대한 영구 결계망. 도시 전체를 보호하거나 마법 법칙을 제어하는 강력한 마법장."
+  },
+  "Moonsea": {
+    "korean": "문시",
+    "category": "Location",
+    "description": "뉴 플란, 힐스파, 젠틸 킵 등의 도시들이 둘러싸고 있는 거대한 북부 내해 지역."
+  },
+  "Dragonreach": {
+    "korean": "드래곤리치",
+    "category": "Location",
+    "description": "코르만소 숲 남쪽과 내륙 바다를 잇는 전략적으로 중요한 수로/해역."
+  },
+  "Baelnorn": {
+    "korean": "베일노른",
+    "category": "Creature / Undead",
+    "description": "일반적인 사악한 리치와 달리, 가문이나 성소, 지식을 영원히 수호하기 위해 신의 축복과 의식을 통해 스스로 불사의 존재가 된 선한(Good) 성향의 엘프 언데드."
+  },
+  "Mage Captain": {
+    "korean": "메이지 캡틴",
+    "category": "Title / Military",
+    "description": "드래곤 교단 휘하 군대에서 전투 마법사 부대를 통솔하는 장교 계급."
+  },
+  "Annorweyn Elvensong": {
+    "korean": "아노르웨인 엘븐송",
+    "category": "Character",
+    "description": "미스 드라노어의 멸망 당시 목숨을 잃고 영혼(유령)으로 남아 미스트라 여신을 모시는 고대 엘프 여사제."
+  },
+  "Gem of the Weave": {
+    "korean": "'위브의 보석'",
+    "category": "Artifact / Item",
+    "description": "미스 드라노어의 마법 결계인 미쌀(Mythal)을 조율하고 통제하는 데 반드시 필요한 핵심 마법 보석."
+  },
+  "Miroden Silverblade": {
+    "korean": "미로덴 실버블레이드",
+    "category": "Character",
+    "description": "위브의 보석과 영적으로 결속되어 있던 베일노른 엘프. 교단에 감금당해 속임을 겪음."
+  },
+  "The Weave": {
+    "korean": "위브",
+    "category": "Lore / Cosmology",
+    "description": "마법의 여신 미스트라가 주관하는 포가튼 렐름 세계관의 원초적 마법 그물망. 마법사들은 이 위브의 가닥을 엮어서 주문을 발동함."
+  },
+  "Mystra": {
+    "korean": "미스트라",
+    "category": "Lore / Deity",
+    "description": "마법의 여신(Goddess of Magic). 엘민스터의 주신이자 위브를 관장하는 최고신 중 하나."
+  },
+  "Ghleanna Stormlake": {
+    "korean": "글레아나 스톰레이크",
+    "category": "Character",
+    "description": "엘민스터와 함께 뉴 플란 방어에 참전한 하프엘프 마법사이자, 선발대로 떠났던 영웅 아단(Athan)의 여동생."
+  },
+  "Anorrwyn": {
+    "korean": "아노르윈",
+    "category": "Character",
+    "description": "미스 드라노어의 신전에 뼈와 영혼이 묶여 있던 엘프 유령이자 여사제. 시간의 경계에서 과거와 현재를 오가며 주인공에게 도움을 줌."
+  },
+  "Cormanthyr": {
+    "korean": "코르만소르",
+    "category": "Location",
+    "description": "포가튼 렐름의 고대 엘프 왕국. 미스 드라노어가 속해 있던 거대한 숲이자 제국."
+  },
+  "Weeping Wars": {
+    "korean": "통곡의 전쟁",
+    "category": "Lore / Event",
+    "description": "미스 드라노어의 멸망을 불러온 악의 군대와의 대규모 전쟁."
+  },
+  "Serpentspires": {
+    "korean": "서펜트스파이어",
+    "category": "Location",
+    "description": "고대 미스 드라노어에 존재했던 아름다운 건축물 또는 장소."
+  },
+  "Glim-gardens": {
+    "korean": "글림 정원",
+    "category": "Location",
+    "description": "고대 미스 드라노어에 존재했던 찬란한 정원."
+  },
+  "Sapphire of the Weave": {
+    "korean": "위브의 사파이어",
+    "category": "Item",
+    "description": "미쌀과 결속되어 있으며, 미로덴이 미쌀을 조율하고 수리하는 데 사용하는 보석."
+  },
+  "Glyph of Safekeeping": {
+    "korean": "안전 보존의 문양",
+    "category": "Lore / Magic",
+    "description": "미로덴의 은신처를 봉인하는 데 사용된 마법 문양."
+  },
+  "Kehelben": {
+    "korean": "케헬벤",
+    "category": "Lore / Magic",
+    "description": "아노르윈의 주문을 통해 배울 수 있는 '필요의 단어(Word of Necessity)'."
+  },
+  "Eltargrim": {
+    "korean": "엘타그림",
+    "category": "Character",
+    "description": "미스 드라노어의 전설적인 코로날(Coronal, 통치자/왕)."
+  },
+  "Coronal": {
+    "korean": "코로날",
+    "category": "Lore / Title",
+    "description": "고대 엘프 도시국가의 통치자(왕)를 칭하는 직함."
+  },
+  "Tel'Quessir": {
+    "korean": "텔퀘시르",
+    "category": "Creature / Race",
+    "description": "엘프들이 자신들을 일컫는 말 ('사람들'이라는 뜻)."
+  },
+  "Trasaal": {
+    "korean": "트라살",
+    "category": "Character",
+    "description": "미스 드라노어의 인물."
+  },
+  "Ailos": {
+    "korean": "아일로스",
+    "category": "Character",
+    "description": "미스 드라노어의 인물."
+  },
+  "armathor": {
+    "korean": "아마토르",
+    "category": "Lore / Title",
+    "description": "미스 드라노어의 치안과 마법 방어를 담당하던 고위 엘프 전사/마법사 계급."
+  },
+  "Mythanthor": {
+    "korean": "미산토르",
+    "category": "Location / Lore",
+    "description": "고대 미스 드라노어와 연관된 장소 혹은 마법사의 이름."
+  }
+}

@@ -1,0 +1,1637 @@
+{
+  "Elminster": {
+    "korean": "엘민스터",
+    "category": "Character",
+    "description": "포가튼 렐름을 상징하는 전설적인 대현자이자 마법의 여신 미스트라의 수석 초즌. 미쌀을 조사해 달라고 아산을 이곳으로 보낸 인물."
+  },
+  "Pool of Radiance": {
+    "korean": "풀 오브 래디언스",
+    "category": "Magic",
+    "description": "게임 세계관에 등장하는 강력하고 신비로운 마법의 연못."
+  },
+  "New Phlan": {
+    "korean": "뉴 플란",
+    "category": "Location",
+    "description": "문시(Moonsea) 북부 해안에 위치한 도시. 1988년작 전작에서 영웅들에 의해 해방되었으나, 10년 후 미스 드라노어의 웅덩이와 연결되어 생명력을 빼앗기는 위기에 처함."
+  },
+  "Year of the Gauntlet": {
+    "korean": "건틀릿의 해",
+    "category": "Lore / Timeline",
+    "description": "포가튼 렐름 데일력(Dale Reckoning) 1369년의 공식 명칭. 본 게임의 시대적 배경."
+  },
+  "Harbor Ballads": {
+    "korean": "항구의 뱃노래",
+    "category": "Phrase",
+    "description": "부둣가 선술집이나 뱃사람들 사이에서 흥얼거리는 확인되지 않은 무용담이나 뜬소문을 뜻함."
+  },
+  "Myth Drannor": {
+    "korean": "미스 드래너",
+    "category": "Location",
+    "description": "포가튼 레임즈 세계관에 등장하는 파괴된 엘프의 도시."
+  },
+  "Athan": {
+    "korean": "아산",
+    "category": "Character",
+    "description": "페어릴과 베리안의 동료이자 원정대의 대장으로, 엘민스터의 명을 받아 미스 드라노어의 오염된 미쌀을 조사하러 온 인물."
+  },
+  "Moander": {
+    "korean": "모앤더",
+    "category": "Lore / Deity",
+    "description": "포가튼 렐름의 고대 부패, 파멸, 썩어가는 식물성 오물의 신(Abomination)."
+  },
+  "Gauntlets of Moander": {
+    "korean": "모앤더의 건틀릿",
+    "category": "Artifact / Item",
+    "description": "고대 부패신 모앤더의 힘이 깃든 강력한 유물. 타락한 광휘의 웅덩이를 영구히 파괴할 수 있는 유일한 핵심 도구."
+  },
+  "Pelendralaar": {
+    "korean": "펠렌드랄라",
+    "category": "Character / Monster",
+    "description": "드래곤 교단을 이끄는 고대 언데드 드래곤(드라코리치). 카이아 모르드레인에 의해 드라콜리치로 변모하였다."
+  },
+  "Kya Mordrayn": {
+    "korean": "카이아 모르드레인",
+    "category": "Character",
+    "description": "사룡 교단의 배후에서 펠렌드랄라를 드라콜리치로 만들고 도시를 장악한 사악하고 잔혹한 대마법사 소서리스."
+  },
+  "Hillsfar": {
+    "korean": "힐스파",
+    "category": "Location",
+    "description": "문시(Moonsea) 남부 연안의 부유하고 방어벽이 견고한 대표적인 도시국가. 광휘의 웅덩이의 악한 손길이 이곳 항구까지 침투함."
+  },
+  "The Cult of the Dragon": {
+    "korean": "사룡 교단",
+    "category": "Organization",
+    "description": "죽지 않는 악룡(드라코리치)이 세계를 지배할 것이라는 사교적 교리를 믿으며, 드래곤을 언데드로 만들어 페이룬을 위협하는 비밀 사교 집단."
+  },
+  "Mythal": {
+    "korean": "미쌀",
+    "category": "Lore / High Magic",
+    "description": "고대 고위 엘프 마법으로 창조된 거대한 영구 결계망으로, 도시의 영광을 지탱했으나 최근 힘이 약해지고 오염이 발생하며 옅어져 가고 있음."
+  },
+  "Moonsea": {
+    "korean": "문시",
+    "category": "Location",
+    "description": "뉴 플란, 힐스파, 젠틸 킵 등의 도시들이 둘러싸고 있는 거대한 북부 내해 지역."
+  },
+  "Dragonreach": {
+    "korean": "드래곤리치",
+    "category": "Location",
+    "description": "코르만소 숲 남쪽과 내륙 바다를 잇는 전략적으로 중요한 수로/해역."
+  },
+  "Baelnorn": {
+    "korean": "베일노른",
+    "category": "Creature / Undead",
+    "description": "가문이나 성소를 수호하기 위해 스스로 불사가 된 선한 성향의 엘프 언데드 수호자이며, 깊은 지하에 은신처를 두고 있음."
+  },
+  "Mage Captain": {
+    "korean": "메이지 캡틴",
+    "category": "Title / Military",
+    "description": "드래곤 교단 휘하 군대에서 전투 마법사 부대를 통솔하는 장교 계급."
+  },
+  "Annorweyn Elvensong": {
+    "korean": "아노르웨인 엘븐송",
+    "category": "Character",
+    "description": "미스 드라노어의 멸망 당시 목숨을 잃고 영혼(유령)으로 남아 미스트라 여신을 모시는 고대 엘프 여사제."
+  },
+  "Gem of the Weave": {
+    "korean": "위브의 보석",
+    "category": "Artifact / Item",
+    "description": "미스 드라노어의 마법 결계인 미쌀(Mythal)을 조율하고 통제하는 데 반드시 필요한 핵심 마법 보석."
+  },
+  "Miroden Silverblade": {
+    "korean": "미로덴 실버블레이드",
+    "category": "Character",
+    "description": "코로날의 측근이자 궁중 마법사였던 고대 엘프 아마토르이자 베일노른. 위브의 사파이어와 결속되어 미쌀을 수호한다."
+  },
+  "The Weave": {
+    "korean": "위브",
+    "category": "Lore / Cosmology",
+    "description": "마법의 여신 미스트라가 주관하는 원초적 마법 그물망."
+  },
+  "Mystra": {
+    "korean": "미스트라",
+    "category": "Lore / Deity",
+    "description": "마법의 여신이자 위브를 관장하는 최고신."
+  },
+  "Ghleanna Stormlake": {
+    "korean": "글레아나 스톰레이크",
+    "category": "Character",
+    "description": "엘민스터와 함께 뉴 플란 방어에 참전한 하프엘프 마법사이자, 선발대로 떠났던 영웅 아단(Athan)의 여동생."
+  },
+  "Anorrwyn": {
+    "korean": "아노르윈",
+    "category": "Character",
+    "description": "미스 드라노어의 신전에 뼈와 영혼이 묶여 있던 엘프 유령이자 여사제. 시간의 경계에서 과거와 현재를 오가며 주인공에게 도움을 줌."
+  },
+  "Cormanthyr": {
+    "korean": "코르만소르",
+    "category": "Location",
+    "description": "포가튼 렐름의 고대 엘프 왕국. 미스 드라노어가 속해 있던 거대한 숲이자 제국."
+  },
+  "Weeping Wars": {
+    "korean": "통곡의 전쟁",
+    "category": "Lore / Event",
+    "description": "미스 드라노어의 멸망을 불러온 악의 군대와의 대규모 전쟁."
+  },
+  "Serpentspires": {
+    "korean": "서펜트스파이어",
+    "category": "Location",
+    "description": "고대 미스 드라노어에 존재했던 장소."
+  },
+  "Glim-gardens": {
+    "korean": "글림 정원",
+    "category": "Location",
+    "description": "고대 미스 드라노어에 존재했던 찬란한 정원."
+  },
+  "Sapphire of the Weave": {
+    "korean": "위브의 사파이어",
+    "category": "Item",
+    "description": "미쌀과 결속되어 미로덴이 미쌀을 조율하고 수리하는 데 사용하는 마법 보석."
+  },
+  "Glyph of Safekeeping": {
+    "korean": "안전 보존의 문양",
+    "category": "Lore / Magic",
+    "description": "미로덴의 은신처를 봉인하는 데 사용된 마법 문양."
+  },
+  "Kehelben": {
+    "korean": "케헬벤",
+    "category": "Lore / Magic",
+    "description": "아노르웨인의 주문을 통해 배울 수 있는 필요의 단어(Word of Necessity)."
+  },
+  "Eltargrim": {
+    "korean": "엘타그림",
+    "category": "Character",
+    "description": "미스 드라노어의 전설적인 코로날(Coronal, 통치자/왕)."
+  },
+  "Coronal": {
+    "korean": "코로날",
+    "category": "Lore / Title",
+    "description": "고대 엘프 도시국가의 통치자 왕을 칭하는 직함."
+  },
+  "Tel'Quessir": {
+    "korean": "텔퀘시르",
+    "category": "Creature / Race",
+    "description": "엘프들이 자신들을 일컫는 말 ('사람들'이라는 뜻)."
+  },
+  "Trasaal": {
+    "korean": "트라살",
+    "category": "Character",
+    "description": "미스 드라노어의 인물."
+  },
+  "Ailos": {
+    "korean": "아일로스",
+    "category": "Character",
+    "description": "미스 드라노어의 인물."
+  },
+  "armathor": {
+    "korean": "아마토르",
+    "category": "Lore / Title",
+    "description": "미스 드라노어의 치안과 마법 방어를 담당하던 고위 엘프 전사/마법사 계급."
+  },
+  "Mythanthor": {
+    "korean": "미산토르",
+    "category": "Location / Lore",
+    "description": "고대 미스 드라노어와 연관된 인물 혹은 장소로, 도시 전역에 봉인된 차원문인 미산토르의 길을 만든 것으로 전해짐."
+  },
+  "Beriand": {
+    "korean": "베리안",
+    "category": "Character",
+    "description": "눈이 먼 늙은 엘프이자 치유 능력을 지닌 지혜로운 인물. 미스트라의 문양을 다룰 수 있으며, 여행자들의 승리를 축하하고 안식처를 제공한다."
+  },
+  "Protector": {
+    "korean": "수호자",
+    "category": "Character / Entity",
+    "description": "미쌀의 위브를 조율해야 하는 미스 드라노어 유적과 관련된 수호자적 존재."
+  },
+  "Miroden": {
+    "korean": "미로디원",
+    "category": "Character",
+    "description": "위브의 사파이어를 사용해 미쌀을 조율하고 수리하는 인물."
+  },
+  "Cult": {
+    "korean": "교단",
+    "category": "Faction",
+    "description": "미스 드라노어 유적에서 암약하며, 광휘의 샘을 보호하고 힘을 키우기 위해 파벌을 넘어 단결하고 있는 비밀스러운 사교 집단."
+  },
+  "Anorrweyn": {
+    "korean": "아노르웨인",
+    "category": "Character",
+    "description": "두개골이 제자리를 찾아 현재로 돌아온 고대의 엘프 영혼으로, 카알렌페이어에게는 오만했던 과거의 기억으로 조롱받는 대상."
+  },
+  "drow": {
+    "korean": "드로우",
+    "category": "Race",
+    "description": "언더다크에 거주하는 다크 엘프 종족으로, 최근 미스 드라노어에 대규모로 침입함."
+  },
+  "Communicant": {
+    "korean": "전령",
+    "category": "Role / Lore",
+    "description": "미쌀(Mythal) 또는 위브(The Weave)와 교감하며 그 의지를 전달하거나 대행하는 역할을 맡은 자."
+  },
+  "Dracolich": {
+    "korean": "드라콜리치",
+    "category": "Monster",
+    "description": "언데드가 된 드래곤으로, 강력한 마법과 브레스를 그대로 지닌 공포의 대상."
+  },
+  "Gauntlets": {
+    "korean": "건틀릿",
+    "category": "Item",
+    "description": "아산의 원정대가 챙겨 미스 드라노어로 파견되었던 마법 장갑(모앤더의 건틀릿)."
+  },
+  "Sapphire": {
+    "korean": "사파이어",
+    "category": "Item",
+    "description": "이벤트에 등장하는 마법적 보석이자 베일노른이 사용하지 않거나 파괴해버린 대상."
+  },
+  "Deathbane": {
+    "korean": "데스베인",
+    "category": "Artifact / Item",
+    "description": "베리안이 다루었던 강력한 지팡이 형태의 아이템. 이 지팡이가 없으면 죽은 자를 부활시킬 수 없다."
+  },
+  "Nottle": {
+    "korean": "노틀",
+    "category": "Character",
+    "description": "고대 엘프 은신처의 암호를 비싸게 팔아넘긴 인물이며 미스트라의 메달리온을 팔고 끔찍한 장소에 대한 이야기를 전해준 적이 있다."
+  },
+  "Faeril": {
+    "korean": "페어릴",
+    "category": "Character",
+    "description": "베리안과 함께 여신 미스트라를 섬기는 성직자이자 엘프 전사. 여행자들의 업적에 감탄하며 함께 모험하기를 동경한다. 마법의 입을 통해 멀리서도 경고와 조언을 전할 수 있다."
+  },
+  "Harldain Ironbar": {
+    "korean": "할다인 아이언바",
+    "category": "Character",
+    "description": "위브의 젬을 보관하고 있는 오나글림 드워프 영혼."
+  },
+  "Wizard's Torc": {
+    "korean": "마법사의 토르크",
+    "category": "Artifact / Item",
+    "description": "목에 착용하는 강력한 마법 목걸이 형태의 아이템으로 도시의 마지막 대마법사 울레어가 착용했다고 전해짐."
+  },
+  "Ring of Calling": {
+    "korean": "소환의 반지",
+    "category": "Artifact / Item",
+    "description": "단어의 방 등으로 진입하는 것과 연관된 마법 반지."
+  },
+  "Skeletal Arm": {
+    "korean": "해골 팔",
+    "category": "Item",
+    "description": "소환의 반지가 결속되어 있던 뼈로 된 팔 형태의 아이템으로, 흉터 난 마법사들이 가져갔음."
+  },
+  "Castle Cormanthor": {
+    "korean": "코르만소르 성",
+    "category": "Location",
+    "description": "미스 드라노어가 위치한 코르만소르 숲 내의 성."
+  },
+  "Phlan": {
+    "korean": "플랜",
+    "category": "Location",
+    "description": "문노스 북부에 위치한 도시로, 광휘의 샘에 의해 위협받는 지역."
+  },
+  "Word of Power": {
+    "korean": "힘의 단어",
+    "category": "Lore / Magic",
+    "description": "마법 문양(Glyph)의 봉인을 해제하고 텀블다운 문 등을 여는 데 사용되는 고대의 마법 단어."
+  },
+  "Room of Words": {
+    "korean": "단어의 방",
+    "category": "Location",
+    "description": "미스 드라노어 유적 내에 존재하는 특수한 방으로, 예언이나 징조의 흐름과 관련이 있다."
+  },
+  "Word of Mystra": {
+    "korean": "미스트라의 단어",
+    "category": "Lore / Magic",
+    "description": "단어의 방으로 가는 길을 열기 위해 아산이 배웠던 마법의 단어."
+  },
+  "Stone Mouth": {
+    "korean": "스톤 마우스",
+    "category": "Location / Object",
+    "description": "가고일 형태의 석상 입."
+  },
+  "Odelinde": {
+    "korean": "오델린데",
+    "category": "Character",
+    "description": "나가로 불리는 인물이며 '황금 뱀'으로도 칭해짐."
+  },
+  "Malgi Hi": {
+    "korean": "말기 하이",
+    "category": "Character",
+    "description": "남서쪽 유적에 리저드포크들 사이에 거주하며 인류를 혐오하고 어둠의 주문을 모으는 위험하고 잔혹한 인간 인물."
+  },
+  "Thirsty Ground": {
+    "korean": "써스티 그라운드",
+    "category": "Location",
+    "description": "게임 내에서 발견되는 특수한 장소 또는 지형."
+  },
+  "Harldain": {
+    "korean": "할다인",
+    "category": "Character",
+    "description": "이벤트에 등장하는 드워프 인물."
+  },
+  "Plinshree": {
+    "korean": "플린슈리",
+    "category": "Character",
+    "description": "점술 그릇 속에서 환영으로 나타나는 아름다운 나이아들(물의 님프)."
+  },
+  "Ormyrr": {
+    "korean": "오미르",
+    "category": "Race",
+    "description": "지하에 거주하는 지렁이/도롱뇽 유사 종족으로, 험악한 생김새와 달리 인간 등 다른 종족과 우호적인 관계를 맺거나 거래를 하기도 함."
+  },
+  "Preybelish": {
+    "korean": "프레이벨리시",
+    "category": "Character",
+    "description": "이벤트에 등장하는 인물."
+  },
+  "Tudo": {
+    "korean": "투도",
+    "category": "Character",
+    "description": "미스 드라노어의 유적을 탐사하며 뼈를 줍는 듯한 활동을 하는, 상당한 능력을 지닌 도적."
+  },
+  "Song of Faerun": {
+    "korean": "페이룬의 노래",
+    "category": "Lore / Artifact",
+    "description": "세계관 속 전설이나 노래."
+  },
+  "Word of Oblivion": {
+    "korean": "망각의 단어",
+    "category": "Lore / Magic",
+    "description": "소환의 반지를 해제하고 묶인 뼈들을 잠재우는 신비로운 단어."
+  },
+  "talibund": {
+    "korean": "탈리분드",
+    "category": "Terminology",
+    "description": "운명이 예견될 수 없으며, 정해진 길을 벗어나 자신만의 길을 걷는 자들을 일컫는 말."
+  },
+  "Path": {
+    "korean": "길",
+    "category": "Lore",
+    "description": "추종하거나 따라야 할 신념 또는 여정."
+  },
+  "Lolth": {
+    "korean": "롤스",
+    "category": "Deity",
+    "description": "드로우의 주신이자 거미 여신."
+  },
+  "Bergos": {
+    "korean": "르고스",
+    "category": "Character",
+    "description": "파티의 동료 혹은 NPC."
+  },
+  "Staff of Sunlight": {
+    "korean": "태양의 지팡이",
+    "category": "Item",
+    "description": "빛을 발하는 마법 지팡이."
+  },
+  "Bodach Swan": {
+    "korean": "보다크 스완",
+    "category": "Item/Lore",
+    "description": "미스 드라노어 유적과 관련된 고유 명칭이자 플레이어들이 찾고 있는 대상."
+  },
+  "Great Ones": {
+    "korean": "위대한 자들",
+    "category": "Faction/Entity",
+    "description": "가고일들이 언급하는 존재들."
+  },
+  "Tusk-Lord": {
+    "korean": "엄니 영주",
+    "category": "Title/Entity",
+    "description": "미스 드라노어 유적의 세력 지도자 중 하나."
+  },
+  "Planet": {
+    "korean": "행성",
+    "category": "Lore / Object",
+    "description": "미스 드라노어 유적 이벤트에서 언급되는 오브젝트나 마법적 개체."
+  },
+  "Spires": {
+    "korean": "첨탑",
+    "category": "Location / Architecture",
+    "description": "미스 드라노어의 거대한 탑 구조물."
+  },
+  "Hoard": {
+    "korean": "보물고",
+    "category": "Lore / Location",
+    "description": "보물이나 물품이 숨겨진 장소 또는 보물 무덤."
+  },
+  "Gem": {
+    "korean": "보석",
+    "category": "Item",
+    "description": "원정대가 가지고 있던 재화 중 하나이자 론글린 방 중앙에 배치된 중요 물품."
+  },
+  "Ozama": {
+    "korean": "오자마",
+    "category": "Character",
+    "description": "이야기 중에 언급되는 인물."
+  },
+  "Sammaster Madfool": {
+    "korean": "사마스터 매드풀",
+    "category": "Character",
+    "description": "광신적인 교단의 창시자이자 흑막인 사마스터를 지칭하는 별칭 또는 관련 인물."
+  },
+  "Sisters": {
+    "korean": "자매들",
+    "category": "Creature / Faction",
+    "description": "이벤트에 등장하는 여성 NPC 그룹을 지칭하는 호칭."
+  },
+  "Kellan": {
+    "korean": "켈란",
+    "category": "Character",
+    "description": "브론윈의 전우이자 주인공 파티의 동료. 용감한 동료들과 함께 적을 쓰러뜨리며 명예로운 최후를 맞이함."
+  },
+  "Bronwyn": {
+    "korean": "브론윈",
+    "category": "Character",
+    "description": "파티원 중 한 명으로 유령 상태의 카알렌페이어와 상호작용을 시도한다."
+  },
+  "Kog": {
+    "korean": "코그",
+    "category": "Character",
+    "description": "게임 내 등장하는 인물 또는 크리처 이름."
+  },
+  "Pool": {
+    "korean": "샘",
+    "category": "Lore",
+    "description": "Pool of Radiance 세계관의 핵심 오브젝트인 마법의 웅덩이(광휘의 샘)."
+  },
+  "Freth": {
+    "korean": "프레스",
+    "category": "Faction",
+    "description": "드로우 가문 중 하나."
+  },
+  "Nathlilik": {
+    "korean": "나스릴릭",
+    "category": "Character",
+    "description": "이벤트에 등장하는 인물/크리처."
+  },
+  "Soul Vessel": {
+    "korean": "영혼 그릇",
+    "category": "Item / Lore",
+    "description": "영혼을 담아두는 마법적 용기."
+  },
+  "Dumathoin": {
+    "korean": "두마토인",
+    "category": "Deity",
+    "description": "포가튼렐름 세계관의 드워프 신."
+  },
+  "Key of Dumathoin": {
+    "korean": "두마토인의 열쇠",
+    "category": "Item",
+    "description": "이벤트에서 언급되는 열쇠 아이템."
+  },
+  "Halls of Light": {
+    "korean": "빛의 전당",
+    "category": "Location",
+    "description": "미스 드라노어 유적의 상층 구역으로, 드워프 군주의 영혼과 관련된 장소이자 흉터 난 마법사들이 많이 있다고 전해지는 곳."
+  },
+  "Halls of Stone": {
+    "korean": "돌의 전당",
+    "category": "Location",
+    "description": "미스 드라노어 유적 내의 장소로, 'Halls of Stone'이라는 문자가 새겨져 있는 구역."
+  },
+  "Main Halls": {
+    "korean": "메인 전당",
+    "category": "Location",
+    "description": "미스 드라노어 유적의 주요 구역으로 상부 전당으로 향하는 계단이 연결되어 있으며 오크와 나가 등 위험한 존재들이 도사리고 있음."
+  },
+  "Lizardfolk Camp": {
+    "korean": "리저드폴크 야영지",
+    "category": "Location",
+    "description": "리저드폴크들이 머무는 야영지."
+  },
+  "Deep Halls": {
+    "korean": "깊은 전당",
+    "category": "Location",
+    "description": "미스 드라노어 유적의 심층 구역으로, 툼탈과 아산 일행이 이동한 장소."
+  },
+  "Ceremonial Court": {
+    "korean": "의식 궁전",
+    "category": "Location",
+    "description": "깊은 전당 내의 의식을 치르는 장소."
+  },
+  "Naga's Lair": {
+    "korean": "나가의 은신처",
+    "category": "Location",
+    "description": "나가와 관련된 지하 장소."
+  },
+  "First Cellar": {
+    "korean": "첫 번째 지하실",
+    "category": "Location",
+    "description": "유적의 첫 번째 지하실 구역."
+  },
+  "Margolye Chasm": {
+    "korean": "마르고일 협곡",
+    "category": "Location",
+    "description": "두 번째 지하실에 위치한 협곡."
+  },
+  "Second Cellar": {
+    "korean": "두 번째 지하실",
+    "category": "Location",
+    "description": "유적의 두 번째 지하실 구역."
+  },
+  "Cult Stronghold": {
+    "korean": "교단 요새",
+    "category": "Location",
+    "description": "교단이 거점으로 삼은 요새."
+  },
+  "Lower Keep": {
+    "korean": "하층 성채",
+    "category": "Location",
+    "description": "유적 내 하층 성채 구역."
+  },
+  "Catacomb Prisons": {
+    "korean": "카타콤 감옥",
+    "category": "Location",
+    "description": "카타콤에 위치한 감옥 시설."
+  },
+  "Lizardfolk Tunnel": {
+    "korean": "리저드폴크 터널",
+    "category": "Location",
+    "description": "리저드폴크들이 이용하는 터널."
+  },
+  "Passage to Castle Cormanthor": {
+    "korean": "코르만소르 성으로 통하는 통로",
+    "category": "Location",
+    "description": "코르만소르 성으로 이어지는 통로."
+  },
+  "Beshaba": {
+    "korean": "베샤바",
+    "category": "Character/Deity",
+    "description": "불행과 액운을 관장하는 페이룬의 여신."
+  },
+  "Hall of Wizards": {
+    "korean": "마법사의 전당",
+    "category": "Location",
+    "description": "미스 드라노어 내에 위치한 장소로, 소환의 반지를 다루기 위해 찾아가야 할 곳이자 마법사의 점술 거울이 있던 곳."
+  },
+  "Catacombs": {
+    "korean": "카타콤",
+    "category": "Location",
+    "description": "미스 드라노어 아래에 위치한 지하 묘지로, 과거 도시의 비축 물자, 위험한 마법 연구실, 무덤 및 감옥이 있었던 장소."
+  },
+  "Upper Catacombs": {
+    "korean": "상층 카타콤",
+    "category": "Location",
+    "description": "카타콤의 상층부 구역."
+  },
+  "Lower Catacombs": {
+    "korean": "하층 카타콤",
+    "category": "Location",
+    "description": "카타콤의 하층부 구역."
+  },
+  "City Heights": {
+    "korean": "도시 고지대",
+    "category": "Location",
+    "description": "미스 드라노어의 도시 고지대 구역으로, 소환의 반지와 망각의 단어를 통해 갈 수 있는 곳."
+  },
+  "Shaundakul": {
+    "korean": "샤운다쿨",
+    "category": "Deity",
+    "description": "포가튼 렐름 세계관의 신(여행, 탐험, 바람의 신). '바람의 기수'로도 불리며 미스 드라노어의 부흥을 열망하는 신도들이 많았다."
+  },
+  "Caalenfaire": {
+    "korean": "카알렌페이어",
+    "category": "Character",
+    "description": "볼룬과 함께 점술 그릇을 통해 미래와 과거를 살피는 점술가이자 마법사. 환영을 통해 이방인들에게 조언과 경고를 건넨다."
+  },
+  "Anorrweyn Evensong": {
+    "korean": "아노르웨인 에븐송",
+    "category": "Character",
+    "description": "과거 궁정에서 오만방자하게 충고를 일삼았으나 현재는 추종자들이 모두 죽었다고 믿으며 슬퍼하는 자칭 미스트라의 여사제."
+  },
+  "orogs": {
+    "korean": "오로그",
+    "category": "Creature",
+    "description": "포가튼렐름 세계관의 강력하고 지능적인 오크 아종. 잔인하고 흉측하지만 때로는 명예롭게 거래하기도 함."
+  },
+  "Lady Shar": {
+    "korean": "샤르 여신",
+    "category": "Deity",
+    "description": "포가튼렐름 세계관의 어둠과 밤의 여신."
+  },
+  "orog": {
+    "korean": "오로그",
+    "category": "Monster/Race",
+    "description": "오크보다 강력하고 지적인 지하 세계의 괴물 종족."
+  },
+  "Mistress": {
+    "korean": "여주인",
+    "category": "Title/Character",
+    "description": "오로그들이 모시는 수수께끼의 여성 지도자."
+  },
+  "Helm Cleaver": {
+    "korean": "투구 쪼개기",
+    "category": "Item/Weapon",
+    "description": "강력한 무기로 언급되는 명칭."
+  },
+  "City ruins": {
+    "korean": "도시 폐허",
+    "category": "Location",
+    "description": "미스 드라노어의 폐허가 된 도시 구역."
+  },
+  "grebbo": {
+    "korean": "그레보",
+    "category": "Term",
+    "description": "오미르가 사용하는 고유 용어 또는 명칭."
+  },
+  "Sharpstick Room": {
+    "korean": "뾰족막대기 방",
+    "category": "Location",
+    "description": "던전 내의 특정 장소."
+  },
+  "Circle Place": {
+    "korean": "원형 광장",
+    "category": "Location",
+    "description": "던전 내의 특정 장소."
+  },
+  "Nightingale Court": {
+    "korean": "나이팅게일 코트",
+    "category": "Location",
+    "description": "미스 드라노어의 구역 중 하나."
+  },
+  "Stillwater": {
+    "korean": "스틸워터",
+    "category": "Location",
+    "description": "오크와 언데드 외에는 잘 찾지 않는, 베리안 일행이 머무는 조용한 지역 이름."
+  },
+  "Sullymarsh": {
+    "korean": "설리마쉬",
+    "category": "Location",
+    "description": "습지 지역 이름."
+  },
+  "Windrider Glade": {
+    "korean": "윈드라이더 글레이드",
+    "category": "Location",
+    "description": "숲이나 공터 지역 이름."
+  },
+  "Lizard": {
+    "korean": "리저드",
+    "category": "Monster/Race",
+    "description": "파충류 형태의 괴물 또는 종족."
+  },
+  "waterbell": {
+    "korean": "워터벨",
+    "category": "Item",
+    "description": "나이아들과 관련된 중요한 물건."
+  },
+  "dragon-lovers": {
+    "korean": "드래곤 연인들",
+    "category": "Faction",
+    "description": "작중 언급되는 특정 집단이나 세력."
+  },
+  "naiad": {
+    "korean": "나이아들",
+    "category": "Creature",
+    "description": "물가에 사는 요정, 물의 님프."
+  },
+  "Word of Venom": {
+    "korean": "독의 단어",
+    "category": "Lore / Magic",
+    "description": "이벤트에서 언급되는 신비로운 힘이나 주문."
+  },
+  "Kluusar's Bloodstone Amulet": {
+    "korean": "클루사르의 혈석 부적",
+    "category": "Artifact / Item",
+    "description": "이벤트에서 언급되는 목걸이 형태의 마법 아이템."
+  },
+  "Theodore's Token of Luck": {
+    "korean": "시어도어의 행운의 토큰",
+    "category": "Artifact / Item",
+    "description": "이벤트에서 언급되는 행운과 관련된 아이템."
+  },
+  "Tyr's Locket of Justice": {
+    "korean": "티르의 정의의 로켓",
+    "category": "Artifact / Item",
+    "description": "티르 신앙과 관련된 로켓 형태의 아이템."
+  },
+  "Onglore's Amulet of War": {
+    "korean": "온글로어의 전쟁 부적",
+    "category": "Artifact / Item",
+    "description": "전쟁과 관련된 부적 형태의 아이템."
+  },
+  "Starstone": {
+    "korean": "스타스톤",
+    "category": "Artifact / Item",
+    "description": "이벤트에서 언급되는 별 모양의 돌 또는 마법 아이템."
+  },
+  "Seal of Mythanthor": {
+    "korean": "미산토르의 인장",
+    "category": "Artifact / Item",
+    "description": "도시 고지대로 가는 길을 열기 위해 소환의 반지를 가져가야 하는 인장."
+  },
+  "Borea": {
+    "korean": "보레아",
+    "category": "Lore / Deity",
+    "description": "깊은 북쪽 출신으로 피 한 방울로 남을 얼릴 만큼 강력한 힘을 가졌으나 미스 드라노어에서 실종된 여마법사."
+  },
+  "Ammath": {
+    "korean": "아마스",
+    "category": "Location / Lore",
+    "description": "미스 드라노어 지역과 관련된 위대한 엘프 가문 또는 지명."
+  },
+  "Blood Lesson": {
+    "korean": "피의 교훈",
+    "category": "Lore",
+    "description": "이벤트에서 언급되는 가르침 또는 의식."
+  },
+  "Blood Blessing": {
+    "korean": "피의 축복",
+    "category": "Lore",
+    "description": "이벤트에서 언급되는 축복 또는 의식."
+  },
+  "Fiona's Kiss of Life": {
+    "korean": "피오나의 생명의 입맞춤",
+    "category": "Lore",
+    "description": "피오나와 관련된 축복이나 기술."
+  },
+  "Fiona": {
+    "korean": "피오나",
+    "category": "Character",
+    "description": "미스 드라노어에 자신의 정원을 심었다고 전해지는 희귀한 엘프 뱀파이어 피오나 카실테니라."
+  },
+  "Backwards Key": {
+    "korean": "거꾸로 된 열쇠",
+    "category": "Item",
+    "description": "하우스의 마법사들의 문을 열 수 있는, 흑요석과 아다만타이트로 상감되고 뼈로 조각된 신비로운 열쇠."
+  },
+  "Emmeric": {
+    "korean": "에메릭",
+    "category": "Character",
+    "description": "지치지 않고 상대방의 주의를 끌기 위해 말을 거는 모험가로, 최근 원정대에서 자격을 증명함."
+  },
+  "arraccat": {
+    "korean": "아라카트",
+    "category": "Creature / Monster",
+    "description": "게임 내에서 언급되는 둥지를 파괴해야 하는 괴물 또는 생명체."
+  },
+  "Ualair": {
+    "korean": "울레어",
+    "category": "Character",
+    "description": "침묵의 울레어로 불리며 미스 드라노어의 마지막 대마법사를 지낸 인물."
+  },
+  "Passkey": {
+    "korean": "패스키",
+    "category": "Item",
+    "description": "특정 장소나 문을 열거나 함정을 통과하는 데 사용되는 열쇠 아이템."
+  },
+  "Orrery": {
+    "korean": "오러리",
+    "category": "Artifact / Item",
+    "description": "천체의 운행을 보여주거나 마법적 기능을 하는 태양계의 기계적 모형."
+  },
+  "lizard-men": {
+    "korean": "리저드맨",
+    "category": "Monster/Race",
+    "description": "파충류 형태의 휴머노이드 종족."
+  },
+  "alhoon": {
+    "korean": "알후른",
+    "category": "Creature",
+    "description": "언데드가 된 일레시드(마인드 플라이어). 마법을 사용할 수 있어 더욱 위험한 존재."
+  },
+  "phaerrim": {
+    "korean": "패림",
+    "category": "Creature",
+    "description": "네더릴 시대부터 존재해 온 파괴적이고 사악한 마법 생명체."
+  },
+  "Ormyrr King": {
+    "korean": "오미르 왕",
+    "category": "Title/Character",
+    "description": "오미르들의 군주."
+  },
+  "lizardfolk": {
+    "korean": "리저드포크",
+    "category": "Monster/Race",
+    "description": "파충류 휴머노이드 종족으로, 해당 구역에서 특유의 냄새가 감지됨."
+  },
+  "Spellfire": {
+    "korean": "주문불",
+    "category": "Magic",
+    "description": "마법 에너지가 물리적인 불꽃 형태로 발현되는 강력하고 위험한 포가튼 렐름의 마법 현상."
+  },
+  "Towers of Song": {
+    "korean": "노래의 탑",
+    "category": "Location",
+    "description": "고대 미스 드라노어에 존재했던 찬란했던 마법과 예술의 건축물들."
+  },
+  "Servants of Mystery": {
+    "korean": "신비의 하인들",
+    "category": "Organization",
+    "description": "마법의 여신 미스트라를 섬기는 종교적 집단이나 사제들을 지칭."
+  },
+  "Children of Lloth": {
+    "korean": "롤스의 어둠의 자식들",
+    "category": "Organization / Monster",
+    "description": "드로우의 여신 롤스를 섬기는 잔인무도한 드로우 세력."
+  },
+  "Speculum": {
+    "korean": "스펙룸",
+    "category": "Location",
+    "description": "마법사의 전당이라 불리는 미스 드라노어 내의 특정 장소."
+  },
+  "Antarn's gate": {
+    "korean": "안탄의 문",
+    "category": "Location",
+    "description": "불꽃 문신을 통해 통과할 수 있는 특별한 문."
+  },
+  "Lady": {
+    "korean": "레이디",
+    "category": "Lore / Deity",
+    "description": "마법의 여신 미스트라를 높여 부르는 호칭."
+  },
+  "blueglow moss": {
+    "korean": "푸른빛 이끼",
+    "category": "Item / Flora",
+    "description": "미스 드라노어의 특수한 식물/이끼. 과거에는 미쌀의 힘으로 강력한 빛을 내며 치유 효과를 발휘했으나, 미쌀이 쇠퇴하면서 현재는 거의 빛을 잃었다."
+  },
+  "Faerun": {
+    "korean": "파에룬",
+    "category": "Location",
+    "description": "포가튼 렐름 세계관의 주 무대가 되는 거대한 대륙."
+  },
+  "Far Reaches": {
+    "korean": "파 프런",
+    "category": "Location",
+    "description": "파에룬 대륙의 특정 지역 명칭."
+  },
+  "Mordrayn": {
+    "korean": "모드레인",
+    "category": "Character",
+    "description": "주인공 파티와 아산에 의해 처치당하거나 그들의 적대 세력으로 언급되는 인물."
+  },
+  "Year of Doom": {
+    "korean": "파멸의 해",
+    "category": "Lore / Time",
+    "description": "포가튼 렐름 연대기 상의 특정 연도로, 미로덴이 삶의 의미를 잃게 된 계기가 된 시점."
+  },
+  "Far Hills": {
+    "korean": "파 힐스",
+    "category": "Location",
+    "description": "드워프들이 보석을 채굴했던 깊은 지역."
+  },
+  "Armies of Darkness": {
+    "korean": "어둠의 군단",
+    "category": "Organization",
+    "description": "과거 도시를 포위하고 공격했던 세력."
+  },
+  "nycaloth": {
+    "korean": "니카로스",
+    "category": "Monster",
+    "description": "도시 포위 당시 루비를 파괴했던 강력한 몬스터/악마."
+  },
+  "House of Gems": {
+    "korean": "보석의 집",
+    "category": "Location",
+    "description": "오나글림이라 불리는 드워프 일족의 거처이자 에메랄드가 보관되어 있을 것으로 추정되는 장소."
+  },
+  "Onaglym": {
+    "korean": "오나글림",
+    "category": "Character / Organization",
+    "description": "에메랄드를 보물고에 숨겨두었던 드워프 일족 및 그들이 거주하던 전당."
+  },
+  "Emerald": {
+    "korean": "에메랄드",
+    "category": "Item",
+    "description": "오나글림 드워프들의 보물고에 숨겨져 있으며 미쌀에 조율할 수 있는 마지막 남은 위브의 보석."
+  },
+  "Windsong Towers": {
+    "korean": "바람노래 탑",
+    "category": "Location",
+    "description": "미스 드라노어의 마에르드림 안뜰에 별들을 향해 높이 솟아 있던 고대 엘프들의 상징적인 탑들."
+  },
+  "Maerdrym": {
+    "korean": "마에르드림",
+    "category": "Location",
+    "description": "미스 드라노어 내에 위치한 고대 엘프들의 안뜰이자 구역."
+  },
+  "Tymora": {
+    "korean": "티모라",
+    "category": "Deity",
+    "description": "행운과 승리를 관장하는 페이룬의 여신."
+  },
+  "Silver Fire": {
+    "korean": "은빛 불꽃",
+    "category": "Magic / Lore",
+    "description": "미스트라의 권능과 직접적으로 연관된 강력하고 신성한 마법의 에너지."
+  },
+  "Torc": {
+    "korean": "토르크",
+    "category": "Item",
+    "description": "목에 착용하는 보기 드문 귀중한 목걸이 형태의 보물."
+  },
+  "Azmark Duathel": {
+    "korean": "아즈마크 두아텔",
+    "category": "Character",
+    "description": "테이의 즈키르 궁정에서 온 위대한 마법사로 알려졌으나, 실상은 사룡 교단의 비밀스러운 일원이다."
+  },
+  "Zulkir's Court": {
+    "korean": "즈키르 궁정",
+    "category": "Location",
+    "description": "마법사의 국가 테이의 통치자들인 즈키르들이 있는 궁정."
+  },
+  "Thay": {
+    "korean": "테이",
+    "category": "Location",
+    "description": "붉은 마법사들이 지배하는 붉은 마법과 언데드로 악명 높은 마법사의 국가."
+  },
+  "Red Wizards": {
+    "korean": "붉은 마법사",
+    "category": "Organization",
+    "description": "테이를 지배하며 사악한 마법을 연구하고 음모를 꾸미는 마법사 집단."
+  },
+  "Tumbledown Door": {
+    "korean": "텀블다운 문",
+    "category": "Location",
+    "description": "미스트라의 문양으로 봉인되어 있으며 힘의 단어로 열 수 있는 유적 동쪽의 문."
+  },
+  "Glyph of Mystra": {
+    "korean": "미스트라의 문양",
+    "category": "Magic / Lore",
+    "description": "텀블다운 문 및 유적의 통로들을 봉인하고 있는 마법적 문양."
+  },
+  "Mol": {
+    "korean": "몰",
+    "category": "Character",
+    "description": "오크 무리의 대장."
+  },
+  "Upper Halls": {
+    "korean": "상부 전당",
+    "category": "Location",
+    "description": "메인 전당에서 계단을 통해 이어지는 미스 드라노어의 구역."
+  },
+  "Zud": {
+    "korean": "주드",
+    "category": "Character",
+    "description": "메인 전당 북서쪽 거대한 홀에 거주하며 부하 오크들이 극도로 두려워하는 흉포한 오크 우두머리."
+  },
+  "Elven Court": {
+    "korean": "엘프 코트",
+    "category": "Location",
+    "description": "코르만소르의 엘프들이 모여 사는 지역 또는 관련 세력 범위."
+  },
+  "Talking Room": {
+    "korean": "대화의 방",
+    "category": "Location",
+    "description": "지하 던전 위쪽 층 동쪽에 위치한 장소."
+  },
+  "Waters of Life": {
+    "korean": "생명의 샘물",
+    "category": "Item",
+    "description": "던전의 상부 전당 어딘가에 존재하며 심각한 부상이나 죽음의 위협을 치유할 수 있는 신비로운 치유의 물."
+  },
+  "Dungeons": {
+    "korean": "던전",
+    "category": "Location",
+    "description": "오크들과 드로우들이 득글거리는 미스 드라노어 유적 하부의 지하 공간이자 이방인들이 당장 벗어나야 하는 곳."
+  },
+  "Mountain Fist": {
+    "korean": "산의 주먹",
+    "category": "Item",
+    "description": "전설 속의 강력한 무기로, 곤봉 혹은 메이스로 전해지며 주인의 죽음과 함께 지하 깊은 곳으로 사라졌다고 함."
+  },
+  "Hanali Celanil": {
+    "korean": "하나리 세라닐",
+    "category": "Character",
+    "description": "아름다움, 사랑, 예술 등을 관장하는 엘프 신화의 여신. 그녀의 성직자 유령이 깊은 전당에서 목격된 바 있음."
+  },
+  "Glyph": {
+    "korean": "문양",
+    "category": "Magic",
+    "description": "바닥이나 문에 새겨져 통로를 강력하게 봉인하고 있는 마법적 표식."
+  },
+  "Glyph of Water": {
+    "korean": "물의 문양",
+    "category": "Magic",
+    "description": "던전의 문들을 봉인하는 데 사용된 마법 문양 중 하나."
+  },
+  "Thyaast Ammath": {
+    "korean": "티아스트 아마스",
+    "category": "Character",
+    "description": "자신의 마법으로 인해 사망했다고 전해지는 강력한 힘을 지녔던 아마스 가문의 엘프 마법사."
+  },
+  "Shrine of Mystra": {
+    "korean": "미스트라의 성소",
+    "category": "Location",
+    "description": "미스 드라노어 내에 존재한다고 전해지는 마법의 여신 미스트라의 성소로, 유령처럼 나타났다가 사라지기를 반복함."
+  },
+  "Great Pump": {
+    "korean": "거대한 펌프",
+    "category": "Location / Structure",
+    "description": "도시 고지대의 보석의 집에 위치하며 과거에는 심장박동 같은 소리를 냈으나 현재는 소리가 거의 나지 않는 장치."
+  },
+  "Round Tower": {
+    "korean": "둥근 탑",
+    "category": "Location",
+    "description": "보석의 집에 위치한 탑으로, 오로그들이 주인공과의 회담을 제안한 장소."
+  },
+  "Fiona Casilltenirra": {
+    "korean": "피오나 카실테니라",
+    "category": "Character",
+    "description": "미스 드라노어에 정원을 조성했다고 전해지는 아름답고 위험한 엘프 뱀파이어."
+  },
+  "Column of the Whispering Wind": {
+    "korean": "속삭이는 바람의 기둥",
+    "category": "Location",
+    "description": "잃어버린 물건이 어디 있는지 알려주는 기능을 가졌던 미스 드라노어의 고대 장소."
+  },
+  "Pujik": {
+    "korean": "푸직",
+    "category": "Character",
+    "description": "최근 오미르의 왕이 된 인물."
+  },
+  "Gate": {
+    "korean": "차원문",
+    "category": "Magic / Item",
+    "description": "다른 장소나 도시로 이동할 수 있게 해주는 마법적 통로."
+  },
+  "Staff": {
+    "korean": "지팡이",
+    "category": "Item",
+    "description": "마법사나 성직자 등이 사용하는 도구."
+  },
+  "Servant of Mystery": {
+    "korean": "신비의 하인",
+    "category": "Character",
+    "description": "마법의 여신 미스트라를 섬기는 추종자나 성직자를 지칭하는 표현."
+  },
+  "Harrowdale": {
+    "korean": "해로데일",
+    "category": "Location",
+    "description": "엘프들의 속담과 전통이 전해지는 지역."
+  },
+  "Kara-Tur": {
+    "korean": "카라투르",
+    "category": "Location",
+    "description": "음유시인들로 언급되는 멀고 이국적인 동방의 대륙."
+  },
+  "Old Ones": {
+    "korean": "고대인",
+    "category": "Character",
+    "description": "현재의 투쟁과 대비되는, 과거를 살아갔거나 여유를 누리는 존재들을 지칭."
+  },
+  "naga": {
+    "korean": "나가",
+    "category": "Monster",
+    "description": "던전 깊은 곳에 서식하며 속을 알 수 없고 신비로운 지혜나 의지를 지닌 뱀 형상의 괴수."
+  },
+  "Mother of Magic": {
+    "korean": "마법의 어머니",
+    "category": "Lore / Deity",
+    "description": "마법의 여신 미스트라를 지칭하는 호칭."
+  },
+  "Medallion": {
+    "korean": "메달리온",
+    "category": "Item",
+    "description": "미스트라와 관련된 상징적인 증표."
+  },
+  "Mace": {
+    "korean": "메이스",
+    "category": "Item",
+    "description": "타격용 무기."
+  },
+  "Maul": {
+    "korean": "마우리",
+    "category": "Item",
+    "description": "거대한 망치 형태의 타격용 무기."
+  },
+  "Morathil": {
+    "korean": "모라실",
+    "category": "Item",
+    "description": "오크들에게 빼앗긴 베리안의 지팡이."
+  },
+  "Lizard-man": {
+    "korean": "리저드맨",
+    "category": "Monster/Race",
+    "description": "파충류 형태의 괴물 또는 종족."
+  },
+  "Dark Naga": {
+    "korean": "다크 나가",
+    "category": "Monster",
+    "description": "어둠의 힘을 지닌 위험한 나가 종족으로, 세 마리가 함께 등장하여 플레이어와 격돌한 대상."
+  },
+  "Volun": {
+    "korean": "볼룬",
+    "category": "Character",
+    "description": "카알렌페이어의 조수이자 제자."
+  },
+  "Veiled Ones": {
+    "korean": "베일드 원",
+    "category": "Organization",
+    "description": "카알렌페이어와 볼룬을 찾아오는 의문의 방문객이자 원정대."
+  },
+  "krakatoac": {
+    "korean": "크라카토아크",
+    "category": "Item",
+    "description": "점술 그릇(scrying bowl)에 사용하는 재료 또는 마법 약물."
+  },
+  "scrying bowl": {
+    "korean": "점술 그릇",
+    "category": "Item",
+    "description": "미래나 다른 곳의 상황을 엿보는 데 사용하는 마법 도구."
+  },
+  "Jarial": {
+    "korean": "자리알",
+    "category": "Character",
+    "description": "상황에 적극적으로 반응하며 파티에 합류한 마법사."
+  },
+  "Eadred": {
+    "korean": "이드레드",
+    "category": "Character",
+    "description": "자신의 이름을 크게 외치며 존재감을 과시하는 파티원."
+  },
+  "Shar": {
+    "korean": "샤",
+    "category": "Lore / Deity",
+    "description": "어둠과 밤의 여신이자 미스트라와 대척점에 있는 포가튼 렐름의 주요 신."
+  },
+  "Golden Serpent": {
+    "korean": "황금 뱀",
+    "category": "Character",
+    "description": "오델린데를 가리키는 별칭이자 샤운다쿨의 성전지기로 언급되는 존재."
+  },
+  "Wind Rider's shrine": {
+    "korean": "바람의 기수 성소",
+    "category": "Location",
+    "description": "오델린데와 그녀의 선조들이 수호해 온 성소."
+  },
+  "Spinning Spires": {
+    "korean": "회전하는 첨탑",
+    "category": "Location / Architecture",
+    "description": "오러리에 의해 동력을 얻어 이동 수단으로 사용되던 미스 드라노어의 거대한 첨탑 구조물."
+  },
+  "Shrinekeepers": {
+    "korean": "성소 지킴이",
+    "category": "Character",
+    "description": "과거 미스 드라노어의 성소를 수호하던 이들."
+  },
+  "Mocthrinul": {
+    "korean": "목트리눌",
+    "category": "Character / Location",
+    "description": "카이아 모르드레인과 펠렌드랄라에 의해 거대한 탑과 함께 완전히 파괴된 대상."
+  },
+  "Far Holes": {
+    "korean": "파 아일즈",
+    "category": "Location",
+    "description": "카이아 모르드레인과 펠렌드랄라에 의해 무자비하게 약탈당한 장소."
+  },
+  "Splashing Word": {
+    "korean": "물의 주문",
+    "category": "Magic",
+    "description": "미스 드라노어 유적 내에서 물과 관련된 수수께끼나 마법 효과를 열기 위해 사용되는 주문 또는 단어."
+  },
+  "Lady of Loss": {
+    "korean": "상실의 여인",
+    "category": "Lore / Deity",
+    "description": "어둠과 밤의 여신 샤를 지칭하는 또 다른 호칭."
+  },
+  "Backwards Ritual": {
+    "korean": "거꾸로 된 의식",
+    "category": "Magic",
+    "description": "볼룬과 카알렌페이어가 진행하는 수수께끼의 의식."
+  },
+  "Rhesheshannen": {
+    "korean": "레셰샤넨",
+    "category": "Lore / Magic",
+    "description": "망각의 단어의 실제 명칭."
+  },
+  "Tulun Wall": {
+    "korean": "툴룬 장벽",
+    "category": "Location",
+    "description": "카알렌페이어가 언급한 여러 가능성 중 장소."
+  },
+  "Corridor of Salg": {
+    "korean": "살그의 복도",
+    "category": "Location",
+    "description": "카알렌페이어가 언급한 여러 가능성 중 통로."
+  },
+  "Zhentil Keep": {
+    "korean": "젠틸 킵",
+    "category": "Location",
+    "description": "포가튼 렐름 세계관의 주요 도시 중 하나."
+  },
+  "dragon-kin": {
+    "korean": "용아종",
+    "category": "Monster",
+    "description": "용과 혈연적 관계가 있거나 유사한 특성을 가진 괴물 및 종족."
+  },
+  "drawbridge": {
+    "korean": "도개교",
+    "category": "Location",
+    "description": "성문 등에 설치되어 들어 올릴 수 있는 다리"
+  },
+  "magical guardian": {
+    "korean": "마법 수호자",
+    "category": "Monster",
+    "description": "장소를 지키는 마법적인 존재"
+  },
+  "Spawn Pool": {
+    "korean": "산란의 샘",
+    "category": "Location",
+    "description": "사악한 기운이 뿜어져 나오는 마법의 웅덩이."
+  },
+  "orc idol": {
+    "korean": "오크의 우상",
+    "category": "Item",
+    "description": "오크들이 숭배하는 불길한 조형물."
+  },
+  "battleaxe": {
+    "korean": "전투도끼",
+    "category": "Item",
+    "description": "전투용 도끼 무기"
+  },
+  "basin": {
+    "korean": "제단",
+    "category": "Item",
+    "description": "제물을 놓거나 의식을 치르기 위한 수조 또는 분수 형태의 구조물"
+  },
+  "common dagger": {
+    "korean": "평범한 단검",
+    "category": "Item",
+    "description": "마법적인 특성이 없는 일반적인 단검"
+  },
+  "Cult of the Dragon": {
+    "korean": "용 교단",
+    "category": "Faction",
+    "description": "언데드 드래곤을 숭배하고 세계를 지배하려는 사악한 비밀 사교 집단."
+  },
+  "warhammer": {
+    "korean": "워해머",
+    "category": "Item",
+    "description": "전투용 망치"
+  },
+  "tribute": {
+    "korean": "제물",
+    "category": "Item",
+    "description": "영혼들이나 신들 등에게 바치는 공물"
+  },
+  "Glyph of Song": {
+    "korean": "노래의 문양",
+    "category": "Magic",
+    "description": "노래와 관련된 마법적인 봉인 표식."
+  },
+  "Mellen": {
+    "korean": "멜렌",
+    "category": "Character",
+    "description": "노래의 단어(노래하는 자)라 불리는 인물."
+  },
+  "Gargoyle": {
+    "korean": "가고일",
+    "category": "Monster",
+    "description": "괴물의 일종으로 거친 언어를 사용함."
+  },
+  "Spectre": {
+    "korean": "유령",
+    "category": "Monster",
+    "description": "언데드 크리처의 일종."
+  },
+  "chest": {
+    "korean": "상자",
+    "category": "Item",
+    "description": "물건을 담아두는 보관함"
+  },
+  "ogglin": {
+    "korean": "적",
+    "category": "Slang / Race",
+    "description": "드로우들이 적을 낮추어 부르는 호칭."
+  },
+  "rivven": {
+    "korean": "리벤",
+    "category": "Character",
+    "description": "엘프 등의 종족이 인간을 낮춰 부르는 용어."
+  },
+  "Ibrith": {
+    "korean": "이브리스",
+    "category": "Magic/Word",
+    "description": "'너희들은 멍청하다'라는 의미로 사용되는 표현."
+  },
+  "Ancient Eye": {
+    "korean": "고대의 눈",
+    "category": "Lore",
+    "description": "작중에서 맹세나 지칭으로 사용되는 고유 명칭."
+  },
+  "Greyanna Faeurdyn": {
+    "korean": "그레이안나 파에우르딘",
+    "category": "Character",
+    "description": "미스 드라노르의 프레스 가문 소속 드로우 여성 귀족."
+  },
+  "House of Freth": {
+    "korean": "프레스 가문",
+    "category": "Organization",
+    "description": "미스 드라노르에서 활동하며 교단과의 관계를 끊은 드로우 가문."
+  },
+  "House of Kilsek": {
+    "korean": "킬섹 가문",
+    "category": "Organization",
+    "description": "그레이안나와 프레스 가문의 숙적인 드로우 가문."
+  },
+  "waerogglin": {
+    "korean": "어리석은 적",
+    "category": "Slang / Race",
+    "description": "드로우 언어로 어리석은 적을 낮추어 부르는 호칭."
+  },
+  "Qu'Daharil": {
+    "korean": "쿼다하릴",
+    "category": "Character",
+    "description": "드로우 사회에서 가문의 귀족 딸을 가르치는 호칭."
+  },
+  "malla ilharess": {
+    "korean": "말라 일하레스",
+    "category": "Character",
+    "description": "드로우 사회에서 존경받는 여주인 또는 지배자를 뜻하는 호칭."
+  },
+  "Rhonglyn room": {
+    "korean": "론글린 방",
+    "category": "Location",
+    "description": "얼어붙은 받침대와 보석이 있으며 몹시 차갑고 신비로운 분위기를 풍기는 방."
+  },
+  "taproom": {
+    "korean": "주막",
+    "category": "Location",
+    "description": "술을 팔고 마시는 방이나 공간"
+  },
+  "dwarven rune": {
+    "korean": "드워프 룬 문자",
+    "category": "Magic",
+    "description": "드워프들이 사용하는 고대의 룬 문자."
+  },
+  "Necklace": {
+    "korean": "목걸이",
+    "category": "Item",
+    "description": "안전과 보호의 룬 문자가 새겨진 거대한 흑맥주 색 보석이 달린 목걸이."
+  },
+  "Runes": {
+    "korean": "룬 문자",
+    "category": "Magic",
+    "description": "장소의 이름 등을 나타내기 위해 새겨진 마법적 문자."
+  },
+  "dwarven warrior": {
+    "korean": "드워프 전사",
+    "category": "Character",
+    "description": "드워프 종족의 전사"
+  },
+  "orc": {
+    "korean": "오크",
+    "category": "Monster",
+    "description": "포가튼 실름 세계관에 등장하는 대표적인 괴물 종족"
+  },
+  "Drake": {
+    "korean": "드레이크",
+    "category": "Character",
+    "description": "쪽지의 수신자이자 유물의 행방을 찾는 인물"
+  },
+  "Durlin": {
+    "korean": "덜린",
+    "category": "Character",
+    "description": "쪽지를 남긴 인물"
+  },
+  "Hachaam Selorn": {
+    "korean": "하참 셀론",
+    "category": "Character",
+    "description": "미스 드라노르의 전설적인 용사이자 무기대장"
+  },
+  "sigil of warding": {
+    "korean": "방어의 문양",
+    "category": "Magic",
+    "description": "벽이나 통로 등에 그려져 보호 또는 차단 효과를 내는 마법적 문양"
+  },
+  "rogue": {
+    "korean": "도적",
+    "category": "Character",
+    "description": "함정 해제와 잠금장치 조작 등에 뛰어난 기술을 가진 모험가 클래스"
+  },
+  "fireball trap": {
+    "korean": "화염구 함정",
+    "category": "Item",
+    "description": "화염구 마법이나 효과를 이용한 함정"
+  },
+  "poison needle": {
+    "korean": "독바늘",
+    "category": "Item",
+    "description": "독이 발린 바늘 형태의 함정"
+  },
+  "acid trap": {
+    "korean": "산성 함정",
+    "category": "Item",
+    "description": "산성 액체를 이용한 함정"
+  },
+  "Mungoth": {
+    "korean": "문고스",
+    "category": "Location",
+    "description": "영원한 언데드의 땅으로 이어지는 지역."
+  },
+  "Nightmare Gate": {
+    "korean": "악몽의 차원문",
+    "category": "Magic / Location",
+    "description": "언데드 hordes를 소환해 오크를 격퇴하는 데 쓰였던 위험한 마법 차원문."
+  },
+  "Oghma": {
+    "korean": "오그마",
+    "category": "Character",
+    "description": "포가튼 Realms 세계관의 지식, 서적, 발명, 바드의 신"
+  },
+  "Pyre of Silence": {
+    "korean": "침묵의 장작더미",
+    "category": "Location",
+    "description": "책들을 태워 처분하거나 비밀을 묻기 위한 장소"
+  },
+  "Juiblex": {
+    "korean": "주이블렉",
+    "category": "Monster",
+    "description": "슬라임의 신이자 언더다크의 고대 신."
+  },
+  "Underdark": {
+    "korean": "언더다크",
+    "category": "Location",
+    "description": "포가튼 렐름 세계관의 거대한 지하 세계."
+  },
+  "Constricting Word": {
+    "korean": "구속의 말",
+    "category": "Magic",
+    "description": "편지 작성자가 사용하고자 하는 마법적 주문 또는 권능."
+  },
+  "Frox": {
+    "korean": "프로록",
+    "category": "Character",
+    "description": "악몽의 차원문에서 넘어온 언데드에게 살해당한 인물."
+  },
+  "Bisbel": {
+    "korean": "비스벨",
+    "category": "Character",
+    "description": "악몽의 차원문에서 넘어온 언데드에게 살해당한 인물."
+  },
+  "Word of Constriction": {
+    "korean": "속박의 주문",
+    "category": "Magic",
+    "description": "무언가를 단단히 봉인하거나 속박하는 마법적 주문."
+  },
+  "Shashakiro": {
+    "korean": "샤샤키로",
+    "category": "Magic",
+    "description": "물의 문양의 봉인을 해제하는 데 사용되는 물의 주문의 이름."
+  },
+  "stairwell": {
+    "korean": "계단실",
+    "category": "Location",
+    "description": "건물이나 지하로 이어지는 계단이 있는 공간"
+  },
+  "Urghosh lock": {
+    "korean": "우르고시 자물쇠",
+    "category": "Item",
+    "description": "캐리언 크롤러의 독이 발려 있다고 전해지는 정교한 오크 자물쇠"
+  },
+  "carrion crawler": {
+    "korean": "캐리언 크롤러",
+    "category": "Monster",
+    "description": "마비 독을 지닌 지네와 유사한 괴물"
+  },
+  "ranger": {
+    "korean": "레인저",
+    "category": "Character",
+    "description": "야외 추적과 탐색에 능한 모험가 클래스"
+  },
+  "Fountain Macabre": {
+    "korean": "죽음의 분수",
+    "category": "Location",
+    "description": "나가족의 피와 관련된 음산한 문구가 적혀 있는 오래된 분수."
+  },
+  "Nagakind": {
+    "korean": "나사족",
+    "category": "Monster",
+    "description": "나가 종족을 가리키는 말."
+  },
+  "dagger": {
+    "korean": "단검",
+    "category": "Item",
+    "description": "선반에 꽂혀 있던 작은 무기"
+  },
+  "oil": {
+    "korean": "기름막",
+    "category": "Item",
+    "description": "물 위에 퍼져 있는 기름 층"
+  },
+  "boots": {
+    "korean": "장화",
+    "category": "Item",
+    "description": "물 위에 떠 있는 낡은 장화"
+  },
+  "Channel of Silent Earth": {
+    "korean": "침묵의 대지의 통로",
+    "category": "Location",
+    "description": "고대의 지식을 담고 있는 장소"
+  },
+  "Channel": {
+    "korean": "수로",
+    "category": "Location",
+    "description": "지하 또는 건축물 내부에 위치한 물이 흐르거나 깊게 파인 통로."
+  },
+  "Rune of Shield": {
+    "korean": "방패의 룬",
+    "category": "Magic",
+    "description": "문 등에 새겨져 있는 방패 형상의 마법적 룬 문자"
+  },
+  "Rune of Great Cleaving": {
+    "korean": "거대한 쪼개기의 룬",
+    "category": "Magic",
+    "description": "문 등에 새겨진 드워프의 마법 룬."
+  },
+  "spiral stair": {
+    "korean": "나선형 계단",
+    "category": "Location",
+    "description": "아래로 둥글게 이어지는 계단"
+  },
+  "Moradin": {
+    "korean": "모라딘",
+    "category": "Character / Entity",
+    "description": "드워프 신화의 주신이자 영혼의 대장장이라 불리는 신."
+  },
+  "scribe": {
+    "korean": "서기관",
+    "category": "Character",
+    "description": "기록을 담당하는 사람"
+  },
+  "Garras": {
+    "korean": "가라스",
+    "category": "Character",
+    "description": "편지의 수신인."
+  },
+  "Elena": {
+    "korean": "엘레나",
+    "category": "Character",
+    "description": "가라스에게 편지를 남긴 발신인."
+  },
+  "Channel of Creeping Stone": {
+    "korean": "기어다니는 돌의 수로",
+    "category": "Location",
+    "description": "Forgotten Realms 세계관의 Myth Drannor 유적 내에 존재하는 특수한 통로 또는 수로."
+  },
+  "Channel of Eternal Fire": {
+    "korean": "영원한 불꽃의 수로",
+    "category": "Location",
+    "description": "뜨거운 열기와 직관을 부여하는 힘이 깃든 장소."
+  },
+  "Spire": {
+    "korean": "첨탑",
+    "category": "Location",
+    "description": "세계관 내에 존재하는 높고 뾰족한 탑 구조물"
+  },
+  "Tyr Grimjaws": {
+    "korean": "그림조 티르",
+    "category": "Character",
+    "description": "손상된 신으로 불리며 늑대의 턱이 인간의 머리를 집어삼키는 형상의 문장을 가진 존재"
+  },
+  "Thumtal": {
+    "korean": "툼탈",
+    "category": "Character",
+    "description": "아산에게 쪽지를 남긴 동료 모험가."
+  },
+  "Calimshan": {
+    "korean": "칼림샨",
+    "category": "Location",
+    "description": "파에룬 대륙에 위치한 지역."
+  },
+  "Ozbort": {
+    "korean": "오즈보르트",
+    "category": "Character",
+    "description": "사룡 교단에 소속되어 있던 죽은 마법사."
+  },
+  "Lifespring Guardian": {
+    "korean": "생명의 샘 수호자",
+    "category": "Monster",
+    "description": "분수 근처에 존재하며, 분수의 물을 마시기 위해 처치하거나 안식에 들게 해야 하는 수호자."
+  },
+  "Echoing Word": {
+    "korean": "메아리치는 단어",
+    "category": "Lore / Magic",
+    "description": "엘레나가 모험가들에게 가르쳐 준 힘의 단어와 관련된 마법적 단어."
+  },
+  "Wishobranet": {
+    "korean": "위쇼브라넷",
+    "category": "Magic",
+    "description": "유령의 손짓으로 나타난 힘의 단어."
+  },
+  "Tavern of Health": {
+    "korean": "건강의 주막",
+    "category": "Location",
+    "description": "오크들이 언급했던 폐허 속의 주막"
+  },
+  "Axehandle Inn": {
+    "korean": "도끼자루 여관",
+    "category": "Location",
+    "description": "Myth Drannor 지역에 위치한 낡고 오래된 여관"
+  },
+  "Well of Wisdom": {
+    "korean": "지혜의 우물",
+    "category": "Location",
+    "description": "플레이어가 마주하는 물이 말라 있거나 생명의 물이 흐르는 우물 구조물."
+  },
+  "Well of Endurance": {
+    "korean": "인내의 우물",
+    "category": "Location",
+    "description": "게임 내에 등장하는 우물 형태의 장소 또는 오브젝트"
+  },
+  "Cult Lady": {
+    "korean": "교단 레이디",
+    "category": "Character",
+    "description": "교단을 이끄는 여성 지도자 또는 강력한 인물."
+  }
+}
