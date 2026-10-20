@@ -437,3 +437,308 @@ psVar9 + uVar2 같은 포인터 연산: 디컴파일러가 ECX, EDX 레지스터 재사용을 변수 하
 글자 인자: GetCharRect는 movsx(부호 확장)로 넘기지만, GetCharWidth는 AL만 교체한 레지스터라 상위 24비트가 포인터 쓰레기입니다. 그래서 GetCharWidth는 unsigned char로 넘겼습니다. 한글(CP949)처럼 0x80 이상 바이트에서 폭이나 그리기가 이상하면 이 부분을 먼저 확인해 보세요.
 WordWrap과 연동: 이 함수는 WordWrap이 채운 m_pLineEndIndices(+0x13C), m_pLineWidths(+0x140), m_nLineHeight(+0x14C)를 그대로 읽습니다. 마지막 줄만 strlen(미포함) 규칙이지만, 이 함수는 TEXT[charIdx] != 0 검사를 같이 하므로 문제가 없습니다.
 */
+
+
+//============================================================================
+
+/*
+
+cTextManager::CalculateTextExtents (0x0043BF40) 복원 코드
+
+이 함수는 앞의 두 함수와 구조가 다릅니다. WordWrap이 하나의 긴 문자열을 쪼개는 것과 달리, 이미 줄 단위로 나뉜 char* 배열(m_ppLines)을 받아 줄 높이, 박스 폭, 전체 높이를 계산합니다. 폭에는 좌우 여백이 붙고, 줄바꿈 계산은 하지 않습니다.
+
+*/
+
+#include <windows.h>
+
+/* ------------------------------------------------------------------ */
+/*  구조체 (제시하신 구조체는 오프셋이 일부 틀려서 수정했습니다)            */
+/* ------------------------------------------------------------------ */
+struct cFont { void** vtable; /* ... */ };
+
+struct cTextManager {
+    void* vftable;             // +0x000
+    char   pad_004[0x138];      // +0x004 ~ +0x13B
+    int    m_nLineCount;        // +0x13C
+    int    m_nLineHeight;       // +0x140  가장 큰 글자 높이        (출력)
+    int    m_nBoxWidth;         // +0x144  가장 긴 줄 폭 + 여백     (출력)
+    int    m_nTotalHeight;      // +0x148  m_nLineCount * 줄 높이   (출력)
+    char   pad_14C[0x4C];       // +0x14C ~ +0x197
+    char** m_ppLines;           // +0x198  줄별 문자열 포인터 배열
+    char   pad_19C[4];          // +0x19C
+    cFont* m_pFont;             // +0x1A0
+};
+
+/* ------------------------------------------------------------------ */
+/*  폰트 vtable 헬퍼 (이전 코드와 동일)                                    */
+/*  +0x1C GetCharHeight, +0x20 GetCharWidth (thiscall, 인자 1개)         */
+/* ------------------------------------------------------------------ */
+typedef int(__fastcall* tFontCharFn)(cFont*, void*, int);
+
+static __forceinline int Font_GetCharHeight(cFont* f, char ch)
+{
+    return ((tFontCharFn)f->vtable[0x1C / 4])(f, 0, (int)(unsigned char)ch);
+}
+
+static __forceinline int Font_GetCharWidth(cFont* f, char ch)
+{
+    return ((tFontCharFn)f->vtable[0x20 / 4])(f, 0, (int)(unsigned char)ch);
+}
+
+/* ------------------------------------------------------------------ */
+/*  본체                                                                */
+/* ------------------------------------------------------------------ */
+#define BOX_PADDING_LEFT   10      // 줄 폭 계산의 시작값 (EBP = 0xA)
+#define BOX_PADDING_RIGHT  0x14    // 최대폭 비교 시 더하는 값
+
+BOOL __fastcall cTextManager_CalculateTextExtents_Hook(cTextManager* self, void* /*edx*/)
+{
+    int maxLineHeight = 0;     // [esp+0x10]
+    int maxBoxWidth = 0;     // [esp+0x14]
+
+    for (int lineIdx = 0; lineIdx < self->m_nLineCount; lineIdx++)
+    {
+        int currentLineWidth = BOX_PADDING_LEFT;       // 줄마다 10으로 초기화
+        int charIdx = 0;
+
+        /* 빈 줄이면 아무것도 하지 않고 건너뜀 */
+        while (self->m_ppLines[lineIdx][charIdx] != '\0')
+        {
+            char ch = self->m_ppLines[lineIdx][charIdx];
+
+            int charH = Font_GetCharHeight(self->m_pFont, ch);
+            if (charH > maxLineHeight)
+                maxLineHeight = charH;
+
+            currentLineWidth += Font_GetCharWidth(self->m_pFont, ch);
+
+            if (currentLineWidth + BOX_PADDING_RIGHT > maxBoxWidth)
+                maxBoxWidth = currentLineWidth + BOX_PADDING_RIGHT;
+
+            charIdx++;
+        }
+    }
+
+    self->m_nLineHeight = maxLineHeight;
+    self->m_nBoxWidth = maxBoxWidth;
+    self->m_nTotalHeight = self->m_nLineCount * maxLineHeight;
+
+    return TRUE;
+}
+
+/*
+훅 예시 (MinHook)
+typedef BOOL (__fastcall* tCalcExtents)(cTextManager*, void*);
+tCalcExtents g_origCalcExtents = NULL;
+MH_CreateHook((LPVOID)0x0043BF40, &cTextManager_CalculateTextExtents_Hook, (LPVOID*)&g_origCalcExtents);
+MH_EnableHook((LPVOID)0x0043BF40);
+
+디컴파일러가 잘못 읽은 부분
+charHeight_Width 변수: 디컴파일러가 EAX를 하나의 변수로 합쳤습니다. 이 변수에 높이와 폭이 번갈아 들어가서 charHeight_Width = local_8 같은 어색한 대입이 생겼습니다. 실제로는 maxLineHeight(스택 [esp+0x10])와 maxBoxWidth([esp+0x14])가 독립적으로 유지됩니다. 마지막에 this+0x140에 저장되는 값도 마지막 글자의 폭이 아니라 최대 높이입니다.
+szLine, c: 디컴파일러가 만든 임시 변수입니다. 실제로는 매번 m_ppLines[lineIdx][charIdx]를 다시 읽습니다.
+dummy[n] 오프셋: 이 클래스는 dummy가 +0x04에서 시작합니다. 대응은 [0x4e]=+0x13C(줄 수), [0x4f]=+0x140(줄 높이), [0x50]=+0x144(박스 폭), [0x51]=+0x148(전체 높이), [0x65]=+0x198(줄 배열)입니다.
+제시하신 구조체의 오류:
++0x140은 m_rcBounds_left가 아니라 **줄 높이(출력)**입니다.
++0x148은 m_rcBounds_top이 아니라 **전체 높이(출력)**입니다.
+줄 배열은 +0x18C가 아니라 **+0x198**입니다. +0x18C로 두면 엉뚱한 곳을 읽습니다.
+vtable+0x1C/+0x20: 앞의 함수들과 같은 cFont 슬롯(GetCharHeight/GetCharWidth)입니다. 이 함수는 폰트 포인터를 +0x1A0에서 읽습니다.
+원본의 동작과 주의점
+폭 계산: maxBoxWidth = 10 + 줄의 글자폭 합 + 0x14 = 합 + 30입니다. 왼쪽 10px, 오른쪽 20px 여백으로 보입니다. 두 상수의 용도는 호출부를 봐야 확실해집니다.
+빈 줄만 있을 때: 폭 갱신이 글자 루프 안에서만 일어나므로, 모든 줄이 비어 있으면 폭은 30이 아니라 0이 됩니다. 줄 높이도 0이라 전체 높이는 0입니다.
+줄 높이는 전역 최댓값입니다. 줄마다 따로 저장하지 않고 모든 줄이 같은 높이를 쓰며, 전체 높이는 줄 수 × 최대 높이입니다. 줄 간격은 없습니다.
+글자 인자: 이전 함수와 같은 문제입니다. 원본은 AL만 교체한 EAX를 push하므로 상위 24비트에 줄 포인터 조각이 남습니다. 폰트 함수가 하위 바이트만 쓴다고 보고 unsigned char로 넘겼습니다. CP949 환경에서 폭이 이상하면 GetCharWidth 내부의 인자 처리를 확인해 보세요.
+줄 수 필드: +0x13C는 이 클래스의 줄 수입니다. cTextLayout의 +0x138과는 다른 클래스이므로 혼동하지 않도록 하세요.
+반환값: 항상 TRUE이고, 실패 경로는 없습니다.
+*/
+
+
+///============================================================================
+
+
+/*
+cTextManager::DrawTextLines (0x0043BC80) 복원 코드
+
+이 함수는 디컴파일이 가장 심하게 깨져 있어서 어셈블리만 보고 복원했습니다. 디컴파일러가 그리기 루프 전체를 “unreachable”로 지운 것이 핵심 원인입니다. 복원 결과를 요약하면 다음과 같습니다.
+
+대상 서피스와 폰트 서피스를 Lock합니다.
+대상 서피스의 비트 수를 읽어 모드를 정합니다. 16bpp(모드 2)일 때만 실제로 그립니다.
+줄마다 글자를 하나씩 그리고, 글자 픽셀 중 0이 아닌 것은 모두 고정 색 하나로 찍습니다. 원본 색 정보는 쓰지 않습니다.
+글리프 아틀라스에서 대상으로 복사하므로 센터링과 그림자는 없습니다. 시작 x는 5px입니다.
+*/
+
+
+#include <windows.h>
+#include <ddraw.h>
+
+/* ------------------------------------------------------------------ */
+/*  구조체 (asm에서 직접 확인한 오프셋만 기재)                             */
+/* ------------------------------------------------------------------ */
+struct cFont { void** vtable; /* ... */ };
+
+struct cRenderTarget { void** vtable; /* +0x54 : 대상 서피스 반환 */ };
+
+struct cTextManager {
+    void* vftable;         // +0x000
+    char           pad_004[0x13C];  // +0x004 ~ +0x13F
+    int            m_nLineHeight;   // +0x140  줄 높이 (CalculateTextExtents 가 채운 값)
+    char           pad_144[0x48];   // +0x144 ~ +0x18B
+    char** m_ppLines;       // +0x18C  줄별 문자열 포인터 배열
+    int            m_nLineCount;    // +0x190
+    char           pad_194[0x0C];   // +0x194 ~ +0x19F
+    cFont* m_pFont;         // +0x1A0
+    char           pad_1A4[0x1C];   // +0x1A4 ~ +0x1BF
+    cRenderTarget* m_pTarget;       // +0x1C0
+};
+
+/* ------------------------------------------------------------------ */
+/*  게임 내부 함수 / vtable 헬퍼                                         */
+/* ------------------------------------------------------------------ */
+/* FUN_00436180(0x29, 0x9f, 0xdf) : 호출 직후 AX 를 16bit 픽셀로 사용.
+   cdecl, 인자 3개. 이름은 임시 (RGB → 현재 픽셀 포맷 변환으로 추정). */
+typedef WORD(__cdecl* tMakeColor16)(int a, int b, int c);
+#define game_MakeColor16 ((tMakeColor16)0x00436180)
+
+typedef int(__fastcall* tFontCharFn)(cFont*, void*, int);
+typedef RECT* (__fastcall* tFontRectFn)(cFont*, void*, int);
+typedef void* (__fastcall* tFontSurfFn)(cFont*, void*);
+typedef IDirectDrawSurface7* (__fastcall* tTargetSurfFn)(cRenderTarget*, void*);
+
+static __forceinline int Font_GetCharWidth(cFont* f, char ch)      // +0x20
+{
+    return ((tFontCharFn)f->vtable[0x20 / 4])(f, 0, (int)(unsigned char)ch);
+}
+
+static __forceinline RECT* Font_GetCharRect(cFont* f, char ch)     // +0x24 (원본: movsx)
+{
+    return ((tFontRectFn)f->vtable[0x24 / 4])(f, 0, (int)ch);
+}
+
+static __forceinline void* Font_GetSurface(cFont* f)               // +0x28
+{
+    return ((tFontSurfFn)f->vtable[0x28 / 4])(f, 0);
+}
+
+static __forceinline IDirectDrawSurface7* Target_GetSurface(cRenderTarget* t)  // +0x54
+{
+    return ((tTargetSurfFn)t->vtable[0x54 / 4])(t, 0);
+}
+
+/* ------------------------------------------------------------------ */
+/*  본체                                                                */
+/*  원본: RET 0x4 → 스택 인자 1개를 callee 가 정리한다 (함수 안에서는 안 읽음) */
+/*  따라서 훅은 __fastcall(this, edx, int) 로 선언해야 스택이 맞는다.         */
+/* ------------------------------------------------------------------ */
+#define TEXT_LEFT_MARGIN  5
+#define TEXT_COLOR_A      0x29
+#define TEXT_COLOR_B      0x9F
+#define TEXT_COLOR_C      0xDF
+
+BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*/,
+    int /*unusedStackArg*/)
+{
+    int mode = 0;   // 원본은 초기화 안 된 스택 변수. 1=8bpp 2=16bpp 3=24bpp 4=32bpp
+
+    DDSURFACEDESC2 ddsd;
+    memset(&ddsd, 0, sizeof(ddsd));
+    ddsd.dwSize = 0x7C;
+
+    IDirectDrawSurface7* pDst = Target_GetSurface(self->m_pTarget);
+    IDirectDrawSurface7* pSrc = (IDirectDrawSurface7*)Font_GetSurface(self->m_pFont);
+
+    /* ---- 대상 서피스 Lock (실패 시 아무것도 Unlock 하지 않고 반환) ---- */
+    if (pDst->Lock(NULL, &ddsd, 0, NULL) != 0)
+        return FALSE;
+
+    BYTE* dstBase = (BYTE*)ddsd.lpSurface;
+    int   dstPitchW = (int)((unsigned)ddsd.lPitch >> 1);
+
+    switch (ddsd.ddpfPixelFormat.dwRGBBitCount) {
+    case 8:  mode = 1; break;
+    case 16: mode = 2; break;
+    case 24: mode = 3; break;
+    case 32: mode = 4; break;
+    default: break;                 // mode 는 건드리지 않음
+    }
+
+    /* ---- 폰트 서피스 Lock (원본은 같은 ddsd 를 재사용하고 결과도 검사하지 않음) ---- */
+    pSrc->Lock(NULL, &ddsd, 0, NULL);
+    BYTE* srcBase = (BYTE*)ddsd.lpSurface;
+    int   srcPitchW = (int)((unsigned)ddsd.lPitch >> 1);
+
+    int penY = 0;
+
+    for (int lineIdx = 0; lineIdx < self->m_nLineCount; lineIdx++)
+    {
+        int penX = TEXT_LEFT_MARGIN;
+        int charIdx = 0;
+
+        while (self->m_ppLines[lineIdx][charIdx] != '\0')
+        {
+            char  ch = self->m_ppLines[lineIdx][charIdx];
+            RECT* rc = Font_GetCharRect(self->m_pFont, ch);
+
+            int w = rc->right - rc->left;
+            int h = rc->bottom - rc->top;
+
+            /* 16bpp 에서만 그린다 (다른 모드는 폭 전진만 한다) */
+            if (w > 0 && mode == 2 && h > 0)
+            {
+                const WORD* srcRow = (const WORD*)srcBase + (rc->top * srcPitchW + rc->left);
+                WORD* dstRow = (WORD*)dstBase + (penY * dstPitchW + penX);
+
+                for (int y = 0; y < h; y++)
+                {
+                    for (int x = 0; x < w; x++)
+                    {
+                        if (srcRow[x] != 0)         // 0 = 투명
+                            dstRow[x] = game_MakeColor16(TEXT_COLOR_A, TEXT_COLOR_B, TEXT_COLOR_C);
+                    }
+                    srcRow += srcPitchW;
+                    dstRow += dstPitchW;
+                }
+            }
+
+            penX += Font_GetCharWidth(self->m_pFont, ch);
+            charIdx++;
+        }
+
+        penY += self->m_nLineHeight;
+    }
+
+    /* Unlock 순서: 대상 → 폰트 */
+    pDst->Unlock(NULL);
+    pSrc->Unlock(NULL);
+    return TRUE;
+}
+
+/*
+훅 예시 (MinHook)
+typedef BOOL (__fastcall* tDrawTextLines)(cTextManager*, void*, int);
+tDrawTextLines g_origDrawTextLines = NULL;
+MH_CreateHook((LPVOID)0x0043BC80, &cTextManager_DrawTextLines_Hook, (LPVOID*)&g_origDrawTextLines);
+MH_EnableHook((LPVOID)0x0043BC80);
+
+디컴파일러가 잘못 읽은 부분
+RET 0x4: 어셈블리는 스택 인자 1개를 정리하며 반환하는데, 디컴파일러는 인자 없는 __thiscall로 봤습니다. 함수 안에서 이 인자를 읽는 코드는 없습니다. 그래도 훅의 시그니처에 int 하나를 넣어야 스택이 맞습니다. 0x0043C73F의 호출부에서 실제로 무엇을 push하는지는 확인해 두세요.
+“Removing unreachable block” 경고: 디컴파일러는 [ESP+0x10](모드 변수)을 초기화되지 않은 값으로 보고 mode == 2 분기를 죽은 코드로 지웠습니다. 그 결과 그리기 루프 전체가 사라지고 GetCharRect, GetCharWidth 호출만 남았습니다. 실제로는 스위치에서 이 변수를 세팅하고 있고, 모드 2일 때 픽셀 복사 루프를 탑니다.
+빈 switch(uStack_3c): uStack_3c는 ddsd.ddpfPixelFormat.dwRGBBitCount(스택 [ESP+0xA8])입니다. 점프 테이블은 bits - 8로 인덱싱하며, 바이트 테이블이 8→1, 16→2, 24→3, 32→4로 매핑합니다. 그 외 값은 default라서 모드를 건드리지 않습니다.
+unaff_EBP, unaff_EBX 호출: 두 번째 Lock이 대상 서피스가 아니라 폰트 서피스([ESP+0x1C])에 호출된 것을 놓쳐서 생긴 오류입니다. 첫 Lock 결과는 [ESP+0x40](dst lpSurface)과 [ESP+0x50](dst pitch/2)에, 두 번째 결과는 [ESP+0x4C](src lpSurface)와 [ESP+0x28](src pitch/2)에 저장됩니다.
+FUN_00436180 호출 누락: 디컴파일 결과에서는 이 호출 전체가 사라졌습니다. 원본은 비투명 픽셀마다 FUN_00436180(0x29, 0x9F, 0xDF)를 호출하고 반환 AX를 대상 픽셀에 씁니다. 이 함수는 RGB를 현재 픽셀 포맷으로 바꾸는 것으로 보이며, 글자색이 고정이라는 의미입니다.
+EBP 재사용: 루프 안에서 EBP가 줄 인덱스에서 글자 폭(w)으로 바뀌었다가, [ESP+0x18]에서 다시 복원됩니다. 디컴파일러가 이를 한 변수로 합쳐서 줄 인덱스 흐름이 꼬였습니다.
+필드 오프셋 (this->dummy[n]이 아니라 직접 오프셋으로 확인):
++0x140: 줄 높이
++0x18C: 줄 포인터 배열
++0x190: 줄 수
++0x1A0: 폰트
++0x1C0: 대상 서피스를 주는 객체(vtable +0x54)
+원본의 동작과 주의점
+구조체가 CalculateTextExtents와 다릅니다. 이전 함수는 줄 수가 +0x13C이고 줄 배열이 +0x198이었는데, 이 함수는 줄 수가 +0x190이고 줄 배열이 +0x18C입니다. 줄 높이(+0x140)와 폰트(+0x1A0)만 같습니다. 서로 다른 클래스이거나, 같은 클래스의 서로 다른 배열일 수 있습니다. 두 함수를 같은 구조체로 묶으면 안 됩니다.
+16bpp만 지원합니다. 8, 24, 32bpp 서피스에서는 아무것도 그리지 않고, 폭 계산과 Unlock만 하고 TRUE를 반환합니다. 24와 32bpp 모드도 분기는 있지만 그리는 코드가 없습니다.
+고정 색상입니다. 아틀라스 픽셀값은 “0이냐 아니냐”만 보고 버려지며, 모든 글자가 같은 색입니다. 원본 아틀라스 색을 쓰는 RenderShadow와는 다릅니다.
+고정 여백입니다. x는 항상 5에서 시작합니다. CalculateTextExtents는 폭에 10 + 20을 더했으므로 좌우 여백이 비대칭입니다.
+클리핑이 없습니다. 대상 서피스가 (5 + 최대 줄 폭) × (줄 수 × 줄 높이)보다 작으면 메모리가 깨집니다.
+두 번째 Lock의 결과를 검사하지 않습니다. 실패하면 ddsd에 첫 Lock의 대상 서피스 값이 그대로 남아서 대상이 자기 자신을 읽게 됩니다. 이것도 그대로 복원했습니다.
+Lock 실패 시 반환 경로: 첫 Lock이 실패하면 Unlock 없이 FALSE로 반환합니다. 폰트 서피스는 아직 Lock하지 않았으니 문제는 없습니다.
+mode 초기화: 원본에서는 초기화되지 않은 스택 값입니다. 비트 수가 8, 16, 24, 32가 아니면 쓰레기 값이 그대로 남고 우연히 2가 될 가능성도 있습니다. 복원본에서는 0으로 초기화했습니다.
+글자 인자: GetCharRect는 movsx(부호 확장)로, GetCharWidth는 AL만 교체된 레지스터를 push하므로 상위 24비트가 쓰레기입니다. 이전 함수들과 같은 방식으로 처리했습니다.
+*/
