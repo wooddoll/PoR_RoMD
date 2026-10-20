@@ -410,5 +410,5 @@ void ApplyMemoryPatches()
     PatchCalculateTextExtents_4ByteRead();
     PatchDrawTextLines_4ByteRead();
     PatchRenderShadow_4ByteRead();
-    PatchSprintfMeasure_4ByteRead();
+	//PatchSprintfMeasure_4ByteRead();  'A'의 높이만 측정하기 위해 호출하므로 패치하지 않아도 됨. 모든 폰트는 동일한 높이를 가짐.
 }
