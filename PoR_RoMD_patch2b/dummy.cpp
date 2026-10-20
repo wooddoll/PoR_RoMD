@@ -1,11 +1,12 @@
 #include <windows.h>
 #include <string.h>
 
-/* ------------------------------------------------------------------ */
-/*  구조체                                                              */
-/* ------------------------------------------------------------------ */
-struct cFont_vtable;                     // 슬롯 접근만 필요하므로 void** 로 캐스팅해서 사용
-struct cFont { cFont_vtable* vtable; /* ... */ };
+inline bool IsSpaceCh(int charCode) {
+  if (((charCode < 9) || (0xd < charCode)) && (paramcharCode_1 != 0x20)) {
+    return false;
+  }
+  return true;
+}
 
 struct cTextLayout {
     void* vftable;                 // +0x000
@@ -13,46 +14,48 @@ struct cTextLayout {
     cFont* m_pFont;                 // +0x124
     char* m_pszText;               // +0x128
     char   pad_12C[4];              // +0x12C
-    int    m_nUnknown130;           // +0x130  (==1 이면 최종 폭을 GetMaxWidth() 로 강제)
+    int    m_nAlign;                // +0x130  (==1 이면 최종 폭을 GetMaxWidth() 로 강제 // ==1 이면 줄 가운데 정렬
     char   pad_134[4];              // +0x134
     int    m_nLineCount;            // +0x138
-    int* m_pLineEndIndices;       // +0x13C  줄별 끝 문자 인덱스
-    int* m_pLineWidths;           // +0x140  줄별 픽셀 폭
+    int* m_pLineEndIndices;       // +0x13C
+    int* m_pLineWidths;           // +0x140
     int    m_nMaxLineWidth;         // +0x144
     int    m_nTotalHeight;          // +0x148
-    int    m_nLineHeight;           // +0x14C  (신규 확인: 가장 큰 글자 높이)
+    int    m_nLineHeight;           // +0x14C
+    WORD   m_wTextColor;            // +0x150  원본 픽셀이 0xFFFF 일 때 대체할 색
+    char   pad_152[2];              // +0x152
+    WORD   m_wShadowColor;          // +0x154
+    char   pad_156[0x0E];           // +0x156 ~ +0x163
+    BYTE   m_bShadow;               // +0x164  그림자 사용 여부
 
     int GetMaxWidth() {             // vtable +0x48
         typedef int(__thiscall* tGetMaxWidth)(void*);
-        return ((tGetMaxWidth)(*(void***)this)[0x12])(this);
+        return ((tGetMaxWidth)(*(void***)this)[0x48 / 4])(this);
+    }
+    IDirectDrawSurface7* GetTargetSurface() {   /* vtable +0x54 : 그려 넣을 대상 서피스 반환 (포인터 전체 32bit) */
+        typedef IDirectDrawSurface7* (__thiscall* tFn)(void*);
+        return ((tFn)(*(void***)this)[0x54 / 4])(this);
     }
 };
 
 /* ------------------------------------------------------------------ */
-/*  게임 내부 함수 (원본 CRT/할당자를 그대로 써야 한다)                      */
+/*  내부 함수 (원본 CRT/할당자를 그대로 써야 한다)                      */
 /* ------------------------------------------------------------------ */
-typedef void* (__cdecl* tOperatorNew)(unsigned int size);
-typedef void(__cdecl* tOperatorDelete)(void* p);
-typedef int(__cdecl* tIsSpace)(int c);
-
-#define game_new     ((tOperatorNew)    0x005EA8FD)   // operator_new
-#define game_delete  ((tOperatorDelete) 0x005EA8F2)   // delete_005ea8f2
-#define game_isspace ((tIsSpace)        0x00445480)   // isspace_00445480
+typedef void* (__cdecl* t_malloc)(unsigned int size);
+typedef void(__cdecl* t_free)(void* p);
+#define _malloc     ((t_malloc) 0x005EA8FD)   // malloc
+#define _free       ((t_free)   0x005EA8F2)   // free
 
 /* cFont vtable: +0x1C GetCharHeight, +0x20 GetCharWidth  (thiscall, 인자 1개) */
 typedef int(__fastcall* tFontCharFn)(cFont* font, void* edx, int ch);
 
-static __forceinline int Font_GetCharHeight(cFont* f, char ch)
+static __forceinline int Font_GetCharHeight(cFont* f, int ch)
 {
-    return ((tFontCharFn)((void**)f->vtable)[0x1C / 4])(f, 0, (int)(unsigned char)ch);
+    return ((tFontCharFn)((void**)f->vtable)[0x1C / 4])(f, 0, ch);
 }
-static __forceinline int Font_GetCharWidth(cFont* f, char ch)
+static __forceinline int Font_GetCharWidth(cFont* f, int ch)
 {
-    return ((tFontCharFn)((void**)f->vtable)[0x20 / 4])(f, 0, (int)(unsigned char)ch);
-}
-static __forceinline int IsSpaceCh(char ch)
-{
-    return game_isspace((int)(signed char)ch);      // 원본: movsx
+    return ((tFontCharFn)((void**)f->vtable)[0x20 / 4])(f, 0, ch);
 }
 
 /* ------------------------------------------------------------------ */
@@ -62,13 +65,13 @@ static __forceinline int IsSpaceCh(char ch)
 static void PushLineValue(int** ppArr, int nLineCount, int value)
 {
     unsigned int cb = (unsigned int)nLineCount * 4;
-    int* pNew = (int*)game_new(cb);
+    int* pNew = (int*)_malloc(cb);
 
     if (cb > 4)
         memcpy(pNew, *ppArr, cb - 4);
     pNew[nLineCount - 1] = value;
 
-    game_delete(*ppArr);
+    _free(*ppArr);
     *ppArr = pNew;
 }
 
@@ -94,12 +97,10 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
 
     if (TEXT[0] != '\0')
     {
-        do
-        {
+        do {
             char ch = TEXT[nCharIdx];
 
-            if (ch == '\n')
-            {
+            if (ch == '\n') {
                 /* 명시적 개행: 현재 줄 확정 */
                 PushLineValue(&self->m_pLineEndIndices, nLineCount, nCharIdx - 1);
                 PushLineValue(&self->m_pLineWidths, nLineCount, nCurrentLineWidth);
@@ -111,14 +112,11 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                 nLineCount++;
                 nCharIdx++;
             }
-            else
-            {
+            else {
                 /* 단어 시작 위치 기록: 공백이 아니고, (맨 앞 or 앞 글자가 공백) */
                 if (!IsSpaceCh(ch))
                 {
-                    if (nCharIdx == 0 ||
-                        (nCharIdx > 0 && IsSpaceCh(TEXT[nCharIdx - 1])))
-                    {
+                    if (nCharIdx == 0 || (nCharIdx > 0 && IsSpaceCh(TEXT[nCharIdx - 1]))) {
                         nLastSpaceIdx = nCharIdx;
                     }
                 }
@@ -129,11 +127,9 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
 
                 nCurrentLineWidth += Font_GetCharWidth(self->m_pFont, TEXT[nCharIdx]);
 
-                if (nCurrentLineWidth > nBoxMaxWidth)
-                {
+                if (nCurrentLineWidth > nBoxMaxWidth) {
                     /* 박스 폭 초과: 마지막 단어 시작 직전까지 되돌린다 */
-                    if (nCharIdx >= nLastSpaceIdx)
-                    {
+                    if (nCharIdx >= nLastSpaceIdx) {
                         do {
                             nCurrentLineWidth -= Font_GetCharWidth(self->m_pFont, TEXT[nCharIdx]);
                             nCharIdx--;
@@ -141,8 +137,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                     }
 
                     /* 줄 끝의 공백 제거 */
-                    if (IsSpaceCh(TEXT[nCharIdx]))
-                    {
+                    if (IsSpaceCh(TEXT[nCharIdx])) {
                         do {
                             nCurrentLineWidth -= Font_GetCharWidth(self->m_pFont, TEXT[nCharIdx]);
                             nCharIdx--;
@@ -159,8 +154,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                     nLineCount++;
                     nCharIdx = nLastSpaceIdx;       // 다음 줄은 단어 시작부터
                 }
-                else
-                {
+                else {
                     nCharIdx++;
                 }
             }
@@ -181,7 +175,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
     PushLineValue(&self->m_pLineWidths, nLineCount, nCurrentLineWidth);
 
     /* 옵션: 폭 고정 모드면 박스 최대폭 사용 */
-    if (self->m_nUnknown130 == 1)
+    if (self->m_nAlign == 1)
         self->m_nMaxLineWidth = self->GetMaxWidth();
 
     /* 여백 2px */
@@ -243,7 +237,7 @@ struct cTextLayout {
     cFont* m_pFont;                 // +0x124
     char* m_pszText;               // +0x128
     char   pad_12C[4];              // +0x12C
-    int    m_nUnknown130;           // +0x130  ==1 이면 줄 가운데 정렬
+    int    m_nAlign;           // +0x130  ==1 이면 줄 가운데 정렬
     char   pad_134[4];              // +0x134
     int    m_nLineCount;            // +0x138
     int* m_pLineEndIndices;       // +0x13C
@@ -310,7 +304,7 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
     IDirectDrawSurface7* pSrc = (IDirectDrawSurface7*)Font_GetSurface(self->m_pFont);
 
     /* 첫 줄 가운데 정렬 오프셋 */
-    if (self->m_nUnknown130 == 1)
+    if (self->m_nAlign == 1)
         xOffset = (self->m_nMaxLineWidth - self->m_pLineWidths[0]) / 2;
 
     /* ---- 대상 서피스 Lock ---- */
@@ -392,7 +386,7 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
         /* 다음 줄 */
         lineIdx++;
         xOffset = 0;
-        if (self->m_nUnknown130 == 1 && lineIdx < self->m_nLineCount)
+        if (self->m_nAlign == 1 && lineIdx < self->m_nLineCount)
             xOffset = (self->m_nMaxLineWidth - self->m_pLineWidths[lineIdx]) / 2;
 
         yAccum += self->m_nLineHeight;

@@ -1,9 +1,12 @@
 #pragma once
-#include <windows.h>
+
 #include <string>
 #include <cstdint>
 #include <vector>
 #include <algorithm>
+
+#define WIN32_LEAN_AND_MEAN // 불필요한 Windows 헤더 제외 (선택 사항)
+#include <windows.h>
 
 // Bink 표면 포맷 상수
 #define BINK_SURFACE_24R    0
