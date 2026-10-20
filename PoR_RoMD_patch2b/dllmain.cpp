@@ -14,7 +14,7 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
     LoadOriginalDll();
     InstallBinkHooks();
 
-    plog::init(plog::debug, "korean.log"); // Step2: initialize the logger
+    plog::init(plog::error, "korean.log"); // Step2: initialize the logger
 
     if (LoadSettings(L"korean.ini")) {
         //OutputDebugStringA("[version.dll proxy] korean.ini loaded.\n");
