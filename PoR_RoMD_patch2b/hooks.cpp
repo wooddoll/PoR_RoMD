@@ -1,8 +1,12 @@
-#include <windows.h>
-#include <shlwapi.h>
+
 #include <intrin.h>
 #include <stdint.h>
 #include <stdio.h>
+
+#define WIN32_LEAN_AND_MEAN // 불필요한 Windows 헤더 제외 (선택 사항)
+#include <windows.h>
+#include <shlwapi.h>
+#pragma comment(lib, "Shlwapi.lib")
 
 #include "por2.h"
 #include "help_util.h"
@@ -15,7 +19,7 @@
 #endif
 
 
-__forceinline void GetCurrentCall(int charCode)
+inline void GetCurrentCall(int charCode)
 {
     uintptr_t retAddr = reinterpret_cast<uintptr_t>(_ReturnAddress());
     uint8_t c1 = static_cast<uint8_t>(charCode & 0xFF);        // 현재 바이트
@@ -44,8 +48,8 @@ __forceinline void GetCurrentCall(int charCode)
     }
     // 5. unknown: EDI가 인덱스!
     else if (retAddr >= 0x00476820 && retAddr <= 0x00476adc) {
-        //OutputDebugStringFormat("[Case5(unknown)] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
-		PLOG_DEBUG << "[Case5(unknown)] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
+        //OutputDebugStringFormat("[SprintfMeasure] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+		PLOG_DEBUG << "[SprintfMeasure] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
     }
     else {
         //OutputDebugStringFormat("[!!!ELSE!!!] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
@@ -168,7 +172,7 @@ int __fastcall Hook_GetCharHeight(cFont* thisPtr, void* /*dummyEDX*/, int charCo
 }
 
 // 크래시 방지용 전역 빈 사각형 구조체
-static RECT g_dummyZeroRect = { 0, 0, 0, 0 };
+static const RECT g_dummyZeroRect = { 0, 0, 0, 0 };
 
 // ----------------------------------------------------------------
 // [5] GetCharRect 훅
@@ -195,17 +199,6 @@ RECT* __fastcall Hook_GetCharRect(cFont* thisPtr, void* /*edx*/, int charCode)
 
     // &pGlyph->x0 주소 반환 (RECT 포인터)
     return &rect;
-}
-
-
-void patchBytes(uintptr_t targetAddr, const void* data, size_t bytes) {
-    DWORD oldProtect;
-    if (VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, PAGE_EXECUTE_READWRITE, &oldProtect)) {
-        memcpy(reinterpret_cast<void*>(targetAddr), data, bytes);
-        VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, oldProtect, &oldProtect);
-        // 패치한 메모리 영역의 CPU 캐시를 갱신합니다.
-        FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), bytes);
-    }
 }
 
 // ============================================================
@@ -361,24 +354,6 @@ void PatchResourcePath()
     for (int i = 0; i < elementCount; ++i) {
         patchBytes(pDialpath[i], &newPathAddr, 4);
     }
-}
-
-
-//////////////////============================================================
-// 32비트 전용: 5바이트 점프 훅 함수 (MinHook 대체)
-bool HookFunction(uintptr_t targetAddr, uintptr_t hookFuncAddr)
-{
-    DWORD oldProtect;
-    if (!VirtualProtect(reinterpret_cast<void*>(targetAddr), 5, PAGE_EXECUTE_READWRITE, &oldProtect))
-        return false;
-
-    // E9 [상대 변위 4바이트] : JMP hookFuncAddr
-    *reinterpret_cast<uint8_t*>(targetAddr) = 0xE9;
-    *reinterpret_cast<int32_t*>(targetAddr + 1) = static_cast<int32_t>(hookFuncAddr - (targetAddr + 5));
-
-    VirtualProtect(reinterpret_cast<void*>(targetAddr), 5, oldProtect, &oldProtect);
-    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), 5);
-    return true;
 }
 
 void ApplyHooks()
