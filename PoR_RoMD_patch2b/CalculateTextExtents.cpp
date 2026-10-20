@@ -36,7 +36,7 @@ BOOL __fastcall cTextManager_CalculateTextExtents_Hook(cTextManager* self, void*
 
     self->m_nLineHeight = maxLineHeight;
     self->m_nBoxWidth = maxBoxWidth;
-    self->m_nTotalHeight = self->m_nLineCount * maxLineHeight;
+    self->m_nTotalHeight = self->m_nLineCountB * maxLineHeight;
 
     return TRUE;
 }
