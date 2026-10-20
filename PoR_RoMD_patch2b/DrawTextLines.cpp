@@ -17,7 +17,7 @@
 
 BOOL __fastcall cTextBox_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/)
 {
-    IDirectDrawSurface7* pDst = self->m_pTarget->GetSurface();
+    IDirectDrawSurface7* pDst = self->m_pTarget->GetTargetSurface();
     IDirectDrawSurface7* pSrc = self->m_pFont->GetSurface();
 
     if (pDst == NULL || pSrc == NULL)

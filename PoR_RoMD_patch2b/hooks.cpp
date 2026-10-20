@@ -172,7 +172,7 @@ int __fastcall Hook_GetCharHeight(cFont* thisPtr, void* /*dummyEDX*/, int charCo
 }
 
 // 크래시 방지용 전역 빈 사각형 구조체
-static const RECT g_dummyZeroRect = { 0, 0, 0, 0 };
+static RECT g_dummyZeroRect = { 0, 0, 0, 0 };
 
 // ----------------------------------------------------------------
 // [5] GetCharRect 훅

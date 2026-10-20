@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #define WIN32_LEAN_AND_MEAN // 불필요한 Windows 헤더 제외 (선택 사항)
 #include <windows.h>
 #include <ddraw.h>          // IDirectDrawSurface7 및 DirectDraw 핵심 헤더
@@ -86,7 +87,7 @@ struct cFont_vtable {
 	virtual IDirectDrawSurface7* GetSurface() = 0;                                      // +0x28, return IDirectDrawSurface*
 };
 
-extern static const RECT g_dummyZeroRect;
+extern RECT g_dummyZeroRect;
 struct cFont {
 	cFont_vtable* vtable;           // +0x00
 	int glyphCount;                 // +0x04
@@ -160,7 +161,7 @@ struct cTextLayout {
 struct cTextManager {
     void*  vftable;             // +0x000
     int    unknown_004[78];     // +0x004 ~ +0x13B
-    int    m_nLineCount;        // +0x13C
+    int    m_nLineCountB;       // +0x13C   to Calculate
     int    m_nLineHeight;       // +0x140  가장 큰 글자 높이        (출력)
     int    m_nBoxWidth;         // +0x144  가장 긴 줄 폭 + 여백     (출력)
     int    m_nTotalHeight;      // +0x148  m_nLineCount * 줄 높이   (출력)
@@ -169,7 +170,7 @@ struct cTextManager {
     int    m_nLineCountA;       // +0x190  to Draw
     int    unknown_194;         // +0x194
     char** m_ppLinesB;          // +0x198  to Calculate
-    int    m_nLineCountB;       // +0x19C  to Calculate
+    int    unknown_19C;         // +0x19C 
     cFont* m_pFont;             // +0x1A0
     int    unknown_1A4[7];      // +0x1A4 ~ +0x1BF
     cTextLayout* m_pTarget;     // +0x1C0

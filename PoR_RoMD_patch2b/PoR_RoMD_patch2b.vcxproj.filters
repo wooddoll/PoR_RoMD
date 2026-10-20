@@ -18,9 +18,6 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="hooks.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="sbv_parser.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -33,7 +30,19 @@
     <ClCompile Include="help_util.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="dummy.cpp">
+    <ClCompile Include="por2_hook.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderShadow.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="WordWrap.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="CalculateTextExtents.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="DrawTextLines.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

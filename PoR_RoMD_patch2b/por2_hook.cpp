@@ -1,7 +1,12 @@
 #include "por2.h"
-#include <MinHook.h>
 
-static const RECT g_dummyZeroRect = { 0, 0, 0, 0 };
+#include <shlwapi.h> // PathFindFileNameA 등을 사용하기 위해 포함 (필요시 shlwapi.lib 링크)
+#pragma comment(lib, "Shlwapi.lib")
+
+#include <MinHook.h>
+#include "help_util.h"
+
+RECT g_dummyZeroRect = { 0, 0, 0, 0 };
 
 BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/);
 BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/);
@@ -24,13 +29,17 @@ const uintptr_t ptrDrawTextLines = 0x0043BC80;
 typedef BOOL (__fastcall* tDrawTextLines)(cTextManager*, void*, int);
 tDrawTextLines g_origDrawTextLines = NULL;
 
+
+#define USING_MINHOOK   0
 //------- for debug
+#if USING_MINHOOK
 BOOL __fastcall _cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/) {
     if(g_origWordWrap == NULL) {
         PLOG_ERROR << "[PoR2] g_origWordWrap is NULL!";
         return FALSE;
     }
-    BOOL ret = g_origWordWrap(self, NULL);
+    //BOOL ret = g_origWordWrap(self, NULL);
+    BOOL ret = cTextLayout_WordWrap_Hook(self, NULL);
     return ret;
 }
 BOOL __fastcall _cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/) {
@@ -38,7 +47,8 @@ BOOL __fastcall _cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
         PLOG_ERROR << "[PoR2] g_origRenderShadow is NULL!";
         return FALSE;
     }
-    BOOL ret = g_origRenderShadow(self, NULL);
+    //BOOL ret = g_origRenderShadow(self, NULL);
+    BOOL ret = cTextLayout_RenderShadow_Hook(self, NULL);
     return ret;
 }
 BOOL __fastcall _cTextManager_CalculateTextExtents_Hook(cTextManager* self, void* /*edx*/) {
@@ -46,7 +56,8 @@ BOOL __fastcall _cTextManager_CalculateTextExtents_Hook(cTextManager* self, void
         PLOG_ERROR << "[PoR2] g_origCalcExtents is NULL!";
         return FALSE;
     }
-    BOOL ret = g_origCalcExtents(self, NULL);
+    //BOOL ret = g_origCalcExtents(self, NULL);
+    BOOL ret = cTextManager_CalculateTextExtents_Hook(self, NULL);
     return ret;
 }
 BOOL __fastcall _cTextBox_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/) {
@@ -54,12 +65,13 @@ BOOL __fastcall _cTextBox_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, 
         PLOG_ERROR << "[PoR2] g_origDrawTextLines is NULL!";
         return FALSE;
     }
-    BOOL ret = g_origDrawTextLines(self, NULL, /*unusedStackArg*/0);
+    //BOOL ret = g_origDrawTextLines(self, NULL, /*unusedStackArg*/0);
+    BOOL ret = cTextBox_DrawTextLines_Hook(self, NULL, /*unusedStackArg*/0);
     return ret;
 }
+#endif
 //-------
 
-#define USING_MINHOOK   1
 void Apply_Por2_Hooks()
 {
 #if USING_MINHOOK
