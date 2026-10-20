@@ -1,6 +1,9 @@
 #include "sbv_parser.h"
+
 #include <fstream>
 #include <sstream>
+
+#define WIN32_LEAN_AND_MEAN // ???? Windows ?? ?? (?? ??)
 #include <windows.h>
 
 uint64_t SbvParser::ParseTimeToMs(const std::string& timeStr) {

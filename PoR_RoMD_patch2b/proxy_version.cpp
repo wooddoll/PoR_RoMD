@@ -1,5 +1,7 @@
-#include <windows.h>
 #include <mutex>
+
+#define WIN32_LEAN_AND_MEAN // 불필요한 Windows 헤더 제외 (선택 사항)
+#include <windows.h>
 
 #include "help_util.h"
 

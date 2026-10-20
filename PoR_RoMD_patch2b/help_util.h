@@ -18,6 +18,9 @@ bool ReloadAllIniSettings(const std::wstring& filePath);
 void OutputDebugStringFormat(const char* format, ...);
 const char* OutputEucKrChar(unsigned char byte1, unsigned char byte2);
 
+bool HookFunction(uintptr_t targetAddr, uintptr_t hookFuncAddr);
+void patchBytes(uintptr_t targetAddr, const void* data, size_t bytes);
+
 std::wstring GetExeDirectory();
 std::wstring CombinePath(const std::wstring& dir, const std::wstring& file);
 

@@ -1,7 +1,7 @@
 #include "bink_hook.h"
 #include "sbv_parser.h"
 #include "subtitle_renderer.h"
-#include "MinHook.h"
+#include <MinHook.h>
 #include <shlwapi.h> // PathFindFileNameA 등을 사용하기 위해 포함 (필요시 shlwapi.lib 링크)
 #pragma comment(lib, "Shlwapi.lib")
 

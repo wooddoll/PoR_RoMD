@@ -1,11 +1,12 @@
-#include <windows.h>
-#include <iostream>
-#include <shlwapi.h> // PathFindFileNameA 등을 사용하기 위해 포함 (필요시 shlwapi.lib 링크)
-#pragma comment(lib, "Shlwapi.lib")
-
-#include <filesystem>
 #include "help_util.h"
 
+#include <iostream>
+#include <filesystem>
+
+#define WIN32_LEAN_AND_MEAN // 불필요한 Windows 헤더 제외 (선택 사항)
+#include <windows.h>
+#include <shlwapi.h> // PathFindFileNameA 등을 사용하기 위해 포함 (필요시 shlwapi.lib 링크)
+#pragma comment(lib, "Shlwapi.lib")
 
 IniConfig g_Config; // 실제 전역 객체 할당
 
@@ -176,4 +177,32 @@ void OutputDebugStringFormat(const char* format, ...)
     vsprintf_s(str, sizeof(str), format, args);
     OutputDebugStringA(str);
     va_end(args);
+}
+
+//////////////////============================================================
+// 32비트 전용: 5바이트 점프 훅 함수 (MinHook 대체)
+bool HookFunction(uintptr_t targetAddr, uintptr_t hookFuncAddr)
+{
+    DWORD oldProtect;
+    if (!VirtualProtect(reinterpret_cast<void*>(targetAddr), 5, PAGE_EXECUTE_READWRITE, &oldProtect))
+        return false;
+
+    // E9 [상대 변위 4바이트] : JMP hookFuncAddr
+    *reinterpret_cast<uint8_t*>(targetAddr) = 0xE9;
+    *reinterpret_cast<int32_t*>(targetAddr + 1) = static_cast<int32_t>(hookFuncAddr - (targetAddr + 5));
+
+    VirtualProtect(reinterpret_cast<void*>(targetAddr), 5, oldProtect, &oldProtect);
+    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), 5);
+    return true;
+}
+
+void patchBytes(uintptr_t targetAddr, const void* data, size_t bytes) 
+{
+    DWORD oldProtect;
+    if (VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, PAGE_EXECUTE_READWRITE, &oldProtect)) {
+        memcpy(reinterpret_cast<void*>(targetAddr), data, bytes);
+        VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, oldProtect, &oldProtect);
+        // 패치한 메모리 영역의 CPU 캐시를 갱신합니다.
+        FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), bytes);
+    }
 }
