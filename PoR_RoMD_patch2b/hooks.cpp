@@ -13,15 +13,14 @@
 
 #define _LOG_   1
 #if _LOG_
-#define CHECK(charcode) do { PLOG_DEBUG << "Caller" << __func__; GetCurrentCall(charcode); } while(0)
+#define CHECK(charcode) do { GetCurrentCall(charcode, reinterpret_cast<uintptr_t>(_ReturnAddress())); } while(0)
 #else
 #define CHECK(charcode) ((void)0)
 #endif
 
 
-inline void GetCurrentCall(int charCode)
+inline void GetCurrentCall(const int charCode, const uintptr_t caller)
 {
-    uintptr_t retAddr = reinterpret_cast<uintptr_t>(_ReturnAddress());
     uint8_t c1 = static_cast<uint8_t>(charCode & 0xFF);        // 현재 바이트
     uint8_t c2 = static_cast<uint8_t>((charCode >> 8) & 0xFF); // 다음 바이트 (4바이트 읽기)
 
@@ -50,6 +49,10 @@ inline void GetCurrentCall(int charCode)
     else if (retAddr >= 0x00476820 && retAddr <= 0x00476adc) {
         //OutputDebugStringFormat("[SprintfMeasure] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
 		PLOG_DEBUG << "[SprintfMeasure] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
+    }
+	else if (retAddr >= 0x00438830 && retAddr <= 0x00438b0f) {
+        //OutputDebugStringFormat("[check_FUN_00438830] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
+		PLOG_DEBUG << "[check_FUN_00438830] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << OutputEucKrChar(c1, c2);
     }
     else {
         //OutputDebugStringFormat("[!!!ELSE!!!] retAddr=0x%p, charCode=0x%02X,0x%02X, %s\n", (void*)retAddr, c1, c2, OutputEucKrChar(c1, c2));
