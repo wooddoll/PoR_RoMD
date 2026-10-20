@@ -4,11 +4,17 @@
 #include <cstdint>
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
+#include <deque>
+#include <memory>
+#include <mutex>
+#include <thread>
+#include <condition_variable>
 
-#define WIN32_LEAN_AND_MEAN // 불필요한 Windows 헤더 제외 (선택 사항)
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-// Bink 표면 포맷 상수
 #define BINK_SURFACE_24R    0
 #define BINK_SURFACE_24     1
 #define BINK_SURFACE_32     2
@@ -24,91 +30,203 @@
 
 class SubtitleRenderer {
 private:
-    // 자막 비트맵 캐시 데이터
-    static inline std::wstring s_cachedText = L"";
-    static inline uint32_t s_cachedWidth = 0;
-    static inline uint32_t s_cachedHeight = 0;
-    static inline std::vector<uint32_t> s_pixelBuffer; // 캐시된 32bpp 자막 비트맵
+    // 프레임 좌표계 기준으로 잘라낸 자막 비트맵
+    struct SubBitmap {
+        int x = 0, y = 0;          // 프레임 내 좌상단 위치
+        int w = 0, h = 0;
+        std::vector<uint32_t> px;  // 32bpp, 0 = 투명
+    };
+    using BmpPtr = std::shared_ptr<const SubBitmap>;
 
-    // 자막 텍스트가 달라졌을 때만 1회 호출되어 비트맵을 갱신
-    static void UpdateSubtitleBitmap(const std::wstring& text, uint32_t width, uint32_t height) {
-        s_cachedText = text;
-        s_cachedWidth = width;
-        s_cachedHeight = height;
-        s_pixelBuffer.assign(width * height, 0); // 0으로 투명 초기화
+    // ---- 캐시 / 워커 상태 ----
+    static inline std::mutex s_mtx;
+    static inline std::condition_variable s_cv;
+    static inline std::unordered_map<std::wstring, BmpPtr> s_cache;
+    static inline std::unordered_set<std::wstring> s_pending;
+    static inline std::deque<std::wstring> s_queue;
+    static inline uint32_t s_width = 0, s_height = 0;
+    static inline uint32_t s_generation = 0;   // 해상도 변경 시 증가 -> 오래된 결과 폐기
+    static inline std::thread s_worker;
+    static inline bool s_stop = false;
+    static inline bool s_started = false;
 
-        // [핵심] GetDC(NULL) 대신 CreateCompatibleDC(NULL)을 사용하여 DWM 깜빡임 원천 차단
+    // ---- 실제 GDI 렌더링 (어느 스레드에서 호출해도 무방) ----
+    static BmpPtr RenderBitmap(const std::wstring& text, uint32_t width, uint32_t height) {
+        int fontSize = (int)height / 20;
+        if (fontSize < 18) fontSize = 18;
+        int outline = (fontSize >= 28) ? 2 : 1;
+
+        // 하단 띠 영역만 렌더링
+        RECT rc;
+        rc.left = 20;
+        rc.right = (LONG)width - 20;
+        rc.top = (LONG)height - (fontSize * 4);
+        rc.bottom = (LONG)height - ((LONG)height / 25);
+
+        int bandTop = (std::max)(0, (int)rc.top - 8);
+        int bandH = (int)height - bandTop;
+        if (bandH <= 0 || width == 0) return nullptr;
+
+        RECT rcBand = rc;
+        OffsetRect(&rcBand, 0, -bandTop);   // 띠 기준 좌표로 변환
+
         HDC hdcMem = CreateCompatibleDC(NULL);
-        if (!hdcMem) return;
+        if (!hdcMem) return nullptr;
 
-        BITMAPINFO bmi = { 0 };
+        BITMAPINFO bmi = {};
         bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-        bmi.bmiHeader.biWidth = width;
-        bmi.bmiHeader.biHeight = -(LONG)height; // Top-Down
+        bmi.bmiHeader.biWidth = (LONG)width;
+        bmi.bmiHeader.biHeight = -bandH; // top-down
         bmi.bmiHeader.biPlanes = 1;
         bmi.bmiHeader.biBitCount = 32;
         bmi.bmiHeader.biCompression = BI_RGB;
 
-        uint32_t* pGdiPixels = nullptr;
-        HBITMAP hBmp = CreateDIBSection(hdcMem, &bmi, DIB_RGB_COLORS, (void**)&pGdiPixels, NULL, 0);
-        if (!hBmp || !pGdiPixels) {
-            DeleteDC(hdcMem);
-            return;
-        }
+        uint32_t* gdiPx = nullptr;
+        HBITMAP hBmp = CreateDIBSection(hdcMem, &bmi, DIB_RGB_COLORS, (void**)&gdiPx, NULL, 0);
+        if (!hBmp || !gdiPx) { DeleteDC(hdcMem); return nullptr; }
 
-        HGDIOBJ hOldBmp = SelectObject(hdcMem, hBmp);
-        memset(pGdiPixels, 0, width * height * 4);
-
-        int fontSize = height / 20;
-        if (fontSize < 18) fontSize = 18;
+        HGDIOBJ oldBmp = SelectObject(hdcMem, hBmp);
+        memset(gdiPx, 0, (size_t)width * bandH * 4);
 
         HFONT hFont = CreateFontW(
             fontSize, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
             DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
             ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"맑은 고딕");
-        HGDIOBJ hOldFont = SelectObject(hdcMem, hFont);
-
+        HGDIOBJ oldFont = SelectObject(hdcMem, hFont);
         SetBkMode(hdcMem, TRANSPARENT);
 
-        RECT rc;
-        rc.left = 20;
-        rc.right = width - 20;
-        rc.top = height - (fontSize * 4);
-        rc.bottom = height - (height / 25);
+        const UINT fmt = DT_CENTER | DT_BOTTOM | DT_WORDBREAK;
 
-        // 외곽선 (검은색 8방향)
-        SetTextColor(hdcMem, RGB(0, 0, 0));
-        int outline = (fontSize >= 28) ? 2 : 1;
+        // 외곽선: 완전한 검정(0)은 "투명"과 구분이 안 되므로 RGB(1,1,1) 사용
+        SetTextColor(hdcMem, RGB(1, 1, 1));
         for (int dx = -outline; dx <= outline; dx++) {
             for (int dy = -outline; dy <= outline; dy++) {
                 if (dx == 0 && dy == 0) continue;
-                RECT rcOut = rc;
-                OffsetRect(&rcOut, dx, dy);
-                DrawTextW(hdcMem, text.c_str(), -1, &rcOut, DT_CENTER | DT_BOTTOM | DT_WORDBREAK);
+                RECT r = rcBand;
+                OffsetRect(&r, dx, dy);
+                DrawTextW(hdcMem, text.c_str(), -1, &r, fmt);
+            }
+        }
+        SetTextColor(hdcMem, RGB(255, 255, 255));
+        DrawTextW(hdcMem, text.c_str(), -1, &rcBand, fmt);
+        GdiFlush();
+
+        // 실제 픽셀이 있는 bbox 계산
+        int minX = (int)width, minY = bandH, maxX = -1, maxY = -1;
+        for (int y = 0; y < bandH; y++) {
+            const uint32_t* row = gdiPx + (size_t)y * width;
+            for (uint32_t x = 0; x < width; x++) {
+                if (row[x] & 0x00FFFFFF) {
+                    if ((int)x < minX) minX = (int)x;
+                    if ((int)x > maxX) maxX = (int)x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
             }
         }
 
-        // 본문 (흰색)
-        SetTextColor(hdcMem, RGB(255, 255, 255));
-        DrawTextW(hdcMem, text.c_str(), -1, &rc, DT_CENTER | DT_BOTTOM | DT_WORDBREAK);
+        BmpPtr result;
+        if (maxX >= minX && maxY >= minY) {
+            auto bm = std::make_shared<SubBitmap>();
+            bm->x = minX;
+            bm->y = bandTop + minY;
+            bm->w = maxX - minX + 1;
+            bm->h = maxY - minY + 1;
+            bm->px.resize((size_t)bm->w * bm->h);
+            for (int y = 0; y < bm->h; y++) {
+                const uint32_t* src = gdiPx + (size_t)(minY + y) * width + minX;
+                memcpy(&bm->px[(size_t)y * bm->w], src, (size_t)bm->w * 4);
+            }
+            result = bm;
+        }
+        else {
+            result = std::make_shared<SubBitmap>(); // 빈 자막 (w=h=0)
+        }
 
-        GdiFlush();
-
-        // 렌더링된 결과를 캐시 버퍼로 복사
-        memcpy(s_pixelBuffer.data(), pGdiPixels, width * height * 4);
-
-        // GDI 해제
-        SelectObject(hdcMem, hOldFont);
+        SelectObject(hdcMem, oldFont);
         DeleteObject(hFont);
-        SelectObject(hdcMem, hOldBmp);
+        SelectObject(hdcMem, oldBmp);
         DeleteObject(hBmp);
         DeleteDC(hdcMem);
+        return result;
+    }
+
+    // ---- 워커 스레드 ----
+    static void WorkerLoop() {
+        for (;;) {
+            std::wstring text;
+            uint32_t w, h, gen;
+            {
+                std::unique_lock<std::mutex> lk(s_mtx);
+                s_cv.wait(lk, [] { return s_stop || !s_queue.empty(); });
+                if (s_stop) return;
+                text = std::move(s_queue.front());
+                s_queue.pop_front();
+                w = s_width; h = s_height; gen = s_generation;
+            }
+
+            BmpPtr bmp = RenderBitmap(text, w, h);   // 락 밖에서 무거운 작업
+
+            {
+                std::lock_guard<std::mutex> lk(s_mtx);
+                s_pending.erase(text);
+                if (gen == s_generation && bmp)      // 해상도가 바뀌었으면 버림
+                    s_cache[text] = bmp;
+            }
+        }
+    }
+
+    // s_mtx를 잡은 상태에서 호출
+    static void EnqueueLocked(const std::wstring& text) {
+        if (text.empty() || s_cache.count(text) || s_pending.count(text)) return;
+        if (!s_started) {                           // 첫 호출 시 지연 시작 (DllMain에서 만들지 않도록)
+            s_started = true;
+            s_stop = false;
+            s_worker = std::thread(WorkerLoop);
+        }
+        s_pending.insert(text);
+        s_queue.push_back(text);
+        s_cv.notify_one();
+    }
+
+    // s_mtx를 잡은 상태에서 호출
+    static void SetResolutionLocked(uint32_t w, uint32_t h) {
+        if (s_width == w && s_height == h) return;
+        s_width = w; s_height = h;
+        s_generation++;
+        s_cache.clear();
+        s_pending.clear();
+        s_queue.clear();
     }
 
 public:
+    // 영상 열 때(자막 로딩 직후) 호출: 모든 자막을 백그라운드에서 미리 렌더링
+    static void Prefetch(const std::vector<std::wstring>& texts, uint32_t width, uint32_t height) {
+        if (width == 0 || height == 0) return;
+        std::lock_guard<std::mutex> lk(s_mtx);
+        SetResolutionLocked(width, height);
+        for (const auto& t : texts) EnqueueLocked(t);
+    }
+
+    // 영상 닫을 때: 캐시/큐 정리 (워커 스레드는 유지)
     static void ClearCache() {
-        s_cachedText.clear();
-        s_pixelBuffer.clear();
+        std::lock_guard<std::mutex> lk(s_mtx);
+        s_generation++;
+        s_cache.clear();
+        s_pending.clear();
+        s_queue.clear();
+    }
+
+    // 게임 종료/언로드 시 호출. DllMain(DLL_PROCESS_DETACH)에서는 호출하지 말 것(로더 락 데드락 위험)
+    static void Shutdown() {
+        {
+            std::lock_guard<std::mutex> lk(s_mtx);
+            s_stop = true;
+            s_cv.notify_all();
+        }
+        if (s_worker.joinable()) s_worker.join();
+        s_started = false;
+        ClearCache();
     }
 
     static void RenderSubtitleToBuffer(
@@ -117,82 +235,88 @@ public:
     {
         if (text.empty() || !destBuffer || width == 0 || height == 0) return;
 
-        // 1. 자막 내용이나 해상도가 변경되었을 때만 딱 한 번 GDI 렌더링 수행
-        if (s_cachedText != text || s_cachedWidth != width || s_cachedHeight != height) {
-            UpdateSubtitleBitmap(text, width, height);
+        // 1. 캐시 조회 (락은 매우 짧게)
+        BmpPtr bmp;
+        {
+            std::lock_guard<std::mutex> lk(s_mtx);
+            SetResolutionLocked(width, height);
+            auto it = s_cache.find(text);
+            if (it != s_cache.end()) bmp = it->second;
         }
 
-        if (s_pixelBuffer.empty()) return;
+        // 캐시 미스: Prefetch를 못 한 자막. 1회만 동기 렌더링 후 캐시에 저장
+        if (!bmp) {
+            bmp = RenderBitmap(text, width, height);
+            if (!bmp) return;
+            std::lock_guard<std::mutex> lk(s_mtx);
+            if (s_width == width && s_height == height)
+                s_cache[text] = bmp;
+        }
+        if (bmp->w == 0 || bmp->h == 0) return;
 
-        // 2. 바이트 수 및 서페이스 형식 판별
+        // 2. 서페이스 형식 판별
         uint32_t surfaceType = binkFormatFlags & BINK_SURFACE_MASK;
-        int bytesPerPixel = 4;
-
+        int bpp = 4;
         if (surfaceType == BINK_SURFACE_565 || surfaceType == BINK_SURFACE_555 ||
             surfaceType == BINK_SURFACE_655 || surfaceType == BINK_SURFACE_664) {
-            bytesPerPixel = 2;
+            bpp = 2;
         }
         else if (surfaceType == BINK_SURFACE_24 || surfaceType == BINK_SURFACE_24R) {
-            bytesPerPixel = 3;
+            bpp = 3;
         }
         else if (surfaceType >= BINK_SURFACE_32 && surfaceType <= BINK_SURFACE_32RA) {
-            bytesPerPixel = 4;
+            bpp = 4;
         }
         else {
             int absPitch = std::abs(destPitch);
-            if (absPitch > 0 && width > 0) {
-                int estimatedBpp = absPitch / width;
-                if (estimatedBpp == 2 || estimatedBpp == 3 || estimatedBpp == 4) {
-                    bytesPerPixel = estimatedBpp;
-                }
-            }
+            int est = absPitch / (int)width;
+            if (est == 2 || est == 3 || est == 4) bpp = est;
         }
 
-        // 3. 캐시된 비트맵 픽셀을 게임 비디오 서페이스로 고속 복사
-        uint8_t* baseDest = (uint8_t*)destBuffer + (destY * destPitch) + (destX * bytesPerPixel);
-        const uint32_t* srcPixels = s_pixelBuffer.data();
+        const bool swapRB32 = (surfaceType == BINK_SURFACE_32R || surfaceType == BINK_SURFACE_32RA);
+        const bool is555 = (surfaceType == BINK_SURFACE_555);
+        const bool rgbOrder24 = (surfaceType == BINK_SURFACE_24R);
 
-        // 텍스트가 위치하는 하단 영역만 탐색하여 복사 속도 극대화
-        uint32_t startY = height / 2; // 상단 절반은 자막이 없으므로 스킵
+        // 3. bbox 영역만 복사 (프레임 범위 밖은 클리핑)
+        for (int y = 0; y < bmp->h; y++) {
+            uint32_t fy = bmp->y + y;
+            if (fy >= height) break;
 
-        for (uint32_t y = startY; y < height; y++) {
-            const uint32_t* srcRow = srcPixels + (y * width);
-            uint8_t* dstRow = baseDest + (y * destPitch);
+            const uint32_t* src = &bmp->px[(size_t)y * bmp->w];
+            uint8_t* dstRow = (uint8_t*)destBuffer
+                + (ptrdiff_t)(destY + fy) * destPitch
+                + (size_t)(destX + bmp->x) * bpp;
 
-            for (uint32_t x = 0; x < width; x++) {
-                uint32_t srcColor = srcRow[x] & 0x00FFFFFF;
-                if (srcColor == 0) continue; // 투명 영역 통과
+            int cw = bmp->w;
+            if ((uint32_t)(bmp->x + cw) > width) cw = (int)width - bmp->x;
 
-                uint8_t r = (srcColor >> 16) & 0xFF;
-                uint8_t g = (srcColor >> 8) & 0xFF;
-                uint8_t b = srcColor & 0xFF;
+            for (int x = 0; x < cw; x++) {
+                uint32_t c = src[x] & 0x00FFFFFF;
+                if (c == 0) continue;
 
-                if (bytesPerPixel == 2) {
-                    uint16_t* pDst16 = (uint16_t*)(dstRow + (x * 2));
-                    if (surfaceType == BINK_SURFACE_555) {
-                        *pDst16 = (uint16_t)(((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3));
-                    }
-                    else {
-                        *pDst16 = (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
-                    }
+                uint8_t r = (c >> 16) & 0xFF;
+                uint8_t g = (c >> 8) & 0xFF;
+                uint8_t b = c & 0xFF;
+
+                switch (bpp) {
+                case 2: {
+                    uint16_t* d = (uint16_t*)(dstRow + x * 2);
+                    *d = is555
+                        ? (uint16_t)(((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3))
+                        : (uint16_t)(((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+                    break;
                 }
-                else if (bytesPerPixel == 4) {
-                    uint32_t* pDst32 = (uint32_t*)(dstRow + (x * 4));
-                    if (surfaceType == BINK_SURFACE_32R || surfaceType == BINK_SURFACE_32RA) {
-                        *pDst32 = (r) | (g << 8) | (b << 16);
-                    }
-                    else {
-                        *pDst32 = srcColor;
-                    }
+                case 3: {
+                    uint8_t* d = dstRow + x * 3;
+                    if (rgbOrder24) { d[0] = r; d[1] = g; d[2] = b; }
+                    else { d[0] = b; d[1] = g; d[2] = r; }
+                    break;
                 }
-                else if (bytesPerPixel == 3) {
-                    uint8_t* pDst24 = dstRow + (x * 3);
-                    if (surfaceType == BINK_SURFACE_24R) {
-                        pDst24[0] = r; pDst24[1] = g; pDst24[2] = b;
-                    }
-                    else {
-                        pDst24[0] = b; pDst24[1] = g; pDst24[2] = r;
-                    }
+                default: {
+                    uint32_t* d = (uint32_t*)(dstRow + x * 4);
+                    *d = swapRB32 ? (uint32_t)(r | (g << 8) | (b << 16)) : c;
+                    break;
+                }
                 }
             }
         }

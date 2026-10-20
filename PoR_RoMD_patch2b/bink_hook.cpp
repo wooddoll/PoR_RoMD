@@ -143,16 +143,19 @@ static int __stdcall DetourBinkCopyToBuffer(
 }
 
 // 후킹 함수: BinkClose
-static void __stdcall DetourBinkClose(HBINK bink) 
+static void __stdcall DetourBinkClose(HBINK bink)
 {
-    if (bink) 
+    if (bink)
     {
+        bool noMoreSubtitles = false;
         {
             std::lock_guard<std::mutex> lock(g_SubtitleMutex);
             g_SubtitlesMap.erase(bink);
+            noMoreSubtitles = g_SubtitlesMap.empty();
         }
 
-        SubtitleRenderer::ClearCache(); // 캐시 메모리 정리
+        if (noMoreSubtitles)
+            SubtitleRenderer::ClearCache();
     }
 
     if (fpBinkClose) {
@@ -173,7 +176,7 @@ static FARPROC GetBinkProc(HMODULE hMod, const char* name, const char* mangled)
 
 
 // 후킹 함수: BinkOpen
-static HBINK __stdcall DetourBinkOpen(const char* name, uint32_t flags) 
+static HBINK __stdcall DetourBinkOpen(const char* name, uint32_t flags)
 {
     if (!fpBinkOpen) {
         return nullptr;
@@ -189,24 +192,34 @@ static HBINK __stdcall DetourBinkOpen(const char* name, uint32_t flags)
         g_SubtitlesMap.erase(bink);
     }
 
-    // 지정된 폴더에서 동영상이름.sbv 경로 생성
     std::wstring sbvPath = BuildSubtitlePath(name);
     if (sbvPath.empty()) {
         return bink;
     }
+
     std::vector<SubtitleEntry> entries;
-    if (SbvParser::LoadFromFile(sbvPath, entries)) 
+    if (SbvParser::LoadFromFile(sbvPath, entries))
     {
+        // [추가] 자막 텍스트를 모아서 백그라운드 선렌더링 요청
+        std::vector<std::wstring> texts;
+        texts.reserve(entries.size());
+        for (const auto& e : entries) {
+            if (!e.text.empty())            // <- SubtitleEntry의 텍스트 필드명에 맞게 수정
+                texts.push_back(e.text);
+        }
+
         {
             std::lock_guard<std::mutex> lock(g_SubtitleMutex);
             g_SubtitlesMap[bink] = std::move(entries);
         }
-        // 디버깅용 로그 (필요시 OutputDebugString으로 확인 가능)
-        //OutputDebugStringW((L"[Subtitle] Loaded: " + sbvPath + L"\n").c_str());
-        PLOG_DEBUG << "[Subtitle] Loaded: " << sbvPath;
+
+        // [추가] BINK 구조체의 Width/Height는 렌더링 때 쓰는 값과 동일해야 캐시가 맞습니다
+        const BINK* b = (const BINK*)bink;
+        SubtitleRenderer::Prefetch(texts, b->Width, b->Height);
+
+        PLOG_DEBUG << "[Subtitle] Loaded: " << sbvPath << " (" << texts.size() << " lines prefetching)";
     }
     else {
-        //OutputDebugStringW((L"[Subtitle] Not found: " + sbvPath + L"\n").c_str());
         PLOG_ERROR << "[Subtitle] Not found: " << sbvPath;
     }
 
@@ -280,9 +293,9 @@ void InstallBinkHooks()
     PLOG_DEBUG << "[binkw32.dll] function hooked.";
 }
 
-void RemoveBinkHooks() 
+void RemoveBinkHooks()
 {
-    if(!g_BinkHookInitialized)
+    if (!g_BinkHookInitialized)
         return;
 
     MH_DisableHook(MH_ALL_HOOKS);
@@ -296,7 +309,7 @@ void RemoveBinkHooks()
         g_SubtitlesMap.clear();
     }
 
-    SubtitleRenderer::ClearCache();
+    SubtitleRenderer::Shutdown();   // [변경] 워커 스레드 종료 + 캐시 정리
     MH_Uninitialize();
 
     g_BinkHookInitialized = false;
