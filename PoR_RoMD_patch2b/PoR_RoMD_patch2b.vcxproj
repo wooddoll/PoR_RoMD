@@ -156,12 +156,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bink_hook.cpp" />
+    <ClCompile Include="CalculateTextExtents.cpp" />
     <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="dummy.cpp" />
+    <ClCompile Include="DrawTextLines.cpp" />
     <ClCompile Include="help_util.cpp" />
-    <ClCompile Include="hooks.cpp" />
+    <ClCompile Include="por2_hook.cpp" />
     <ClCompile Include="proxy_version.cpp" />
+    <ClCompile Include="RenderShadow.cpp" />
     <ClCompile Include="sbv_parser.cpp" />
+    <ClCompile Include="WordWrap.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="version.def" />
