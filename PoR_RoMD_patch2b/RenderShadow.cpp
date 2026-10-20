@@ -5,7 +5,7 @@
 #include <windows.h>        // COM 및 기본 Windows API 정의 (ddraw.h보다 먼저 포함되어야 함)
 #include <ddraw.h>          // IDirectDrawSurface7 및 DirectDraw 핵심 헤더
 
-#define TEXT (self->m_pszText)
+#define _Text (self->m_pszText)
 
 BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
 {
@@ -47,7 +47,7 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
             xOffset = (self->m_nMaxLineWidth - self->m_pLineWidths[lineIdx]) / 2;
         }
         
-        int chCode = getCharCode(TEXT, charIdx);
+        int chCode = getCharCode(_Text, charIdx);
 
         if (charIdx <= self->m_pLineEndIndices[lineIdx])
         {
@@ -80,7 +80,7 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
 
                 xOffset += self->m_pFont->GetCharWidth(chCode);
                 charIdx += (0xFF < chCode) ? 2 : 1;   // 2바이트면 +2, 아니면 +1
-                chCode = getCharCode(TEXT, charIdx);
+                chCode = getCharCode(_Text, charIdx);
             } while (chCode != '\0' && charIdx <= self->m_pLineEndIndices[lineIdx]);
         }
 
@@ -88,7 +88,7 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
         if (IsSpaceCh(chCode))
         {
             do {
-                chCode = getCharCode(TEXT, ++charIdx);
+                chCode = getCharCode(_Text, ++charIdx);
                 if (chCode == '\0')
                     break;
             } while (IsSpaceCh(chCode));
@@ -103,4 +103,4 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
 
     return TRUE;
 }
-#undef TEXT
+#undef _Text

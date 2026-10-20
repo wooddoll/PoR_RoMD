@@ -11,7 +11,7 @@ RECT g_dummyZeroRect = { 0, 0, 0, 0 };
 BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/);
 BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/);
 BOOL __fastcall cTextManager_CalculateTextExtents_Hook(cTextManager* self, void* /*edx*/);
-BOOL __fastcall cTextBox_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/);
+BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/);
 
 const uintptr_t ptrWordWrap = 0x00444890;
 typedef BOOL (__fastcall* tWordWrap)(cTextLayout*, void*);
@@ -66,7 +66,7 @@ BOOL __fastcall _cTextBox_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, 
         return FALSE;
     }
     //BOOL ret = g_origDrawTextLines(self, NULL, /*unusedStackArg*/0);
-    BOOL ret = cTextBox_DrawTextLines_Hook(self, NULL, /*unusedStackArg*/0);
+    BOOL ret = cTextManager_DrawTextLines_Hook(self, NULL, /*unusedStackArg*/0);
     return ret;
 }
 #endif
@@ -106,15 +106,33 @@ void Apply_Por2_Hooks()
     if (st == MH_OK) {
         MH_EnableHook((LPVOID)ptrDrawTextLines);    
     } else {
-        PLOG_ERROR << "[PoR2] cTextBox_DrawTextLines_Hook hook failed.";
+        PLOG_ERROR << "[PoR2] cTextManager_DrawTextLines_Hook hook failed.";
     }
 
     PLOG_DEBUG << "[PoR2] function hooked.";
 #else
+    uint8_t testWordWrap[128];
+	memcpy(testWordWrap, reinterpret_cast<void*>(ptrWordWrap), sizeof(testWordWrap));
+    uint8_t testRenderShadow[128];
+    memcpy(testRenderShadow, reinterpret_cast<void*>(ptrRenderShadow), sizeof(testRenderShadow));
+    uint8_t testCalculateTextExtents[128];
+    memcpy(testCalculateTextExtents, reinterpret_cast<void*>(ptrCalculateTextExtents), sizeof(testCalculateTextExtents));
+    uint8_t testDrawTextLines[128];
+    memcpy(testDrawTextLines, reinterpret_cast<void*>(ptrDrawTextLines), sizeof(testDrawTextLines));
+    FILE* fp = nullptr;
+    fopen_s(&fp, "hook_test.bin", "wb");
+    if (fp) {
+        fwrite(testWordWrap, 1, sizeof(testWordWrap), fp);
+        fwrite(testRenderShadow, 1, sizeof(testRenderShadow), fp);
+        fwrite(testCalculateTextExtents, 1, sizeof(testCalculateTextExtents), fp);
+        fwrite(testDrawTextLines, 1, sizeof(testDrawTextLines), fp);
+        fclose(fp);
+	}
+
     HookFunction(ptrWordWrap, reinterpret_cast<uintptr_t>(cTextLayout_WordWrap_Hook));
     HookFunction(ptrRenderShadow, reinterpret_cast<uintptr_t>(cTextLayout_RenderShadow_Hook));
     HookFunction(ptrCalculateTextExtents, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));
-    HookFunction(ptrDrawTextLines, reinterpret_cast<uintptr_t>(cTextBox_DrawTextLines_Hook));
+    HookFunction(ptrDrawTextLines, reinterpret_cast<uintptr_t>(cTextManager_DrawTextLines_Hook));
 #endif
 }
 

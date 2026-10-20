@@ -15,7 +15,7 @@
 #define TEXT_COLOR_B      0x9F
 #define TEXT_COLOR_C      0xDF
 
-BOOL __fastcall cTextBox_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/)
+BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/)
 {
     IDirectDrawSurface7* pDst = self->m_pTarget->GetTargetSurface();
     IDirectDrawSurface7* pSrc = self->m_pFont->GetSurface();
