@@ -289,56 +289,6 @@ python read_font.py --help
 * 영문과 같은 baseline을 쓰면 한글은 글자가 살짝 뜬 것처럼 보이므로 baseline-1 사용
 ---
 
-## 7. 게임 내부 구조 (cFont)
-
-### struct cFont
-
-```c
-struct cFont {
-    void *vtable;              // +0x00
-
-    int glyphCount;            // +0x04
-    Glyph **glyphs;            // +0x08
-    CharCodeMap *charMap;      // +0x0c
-
-    int unknown_10;            // +0x10
-
-    IDirectDrawSurface *surface; // +0x14
-
-    HDC hdc;                   // +0x18
-    HBITMAP dibBitmap;         // +0x1c
-    void *dibBits;             // +0x20
-
-    int atlasWidth;            // +0x24
-    int atlasHeight;           // +0x28
-};
-```
-
-### struct Glyph
-
-```c
-struct Glyph {
-    int charCode;              // +0x00
-    int left;                  // +0x04
-    int top;                   // +0x08
-    int right;                 // +0x0c
-    int bottom;                // +0x10
-    void *surface;             // +0x14
-};
-```
-
-### struct cCharCodeMap
-
-```c
-struct cCharCodeMap {
-    int count;                 // +0x00
-    int **keys;                // +0x04
-    int **values;              // +0x08
-};
-// vtable은 없지만 FindGlyphIndex() 멤버 함수가 있다.
-
----
-
 ## 8. draw_font_sheet.py — 비트맵 폰트 시트 생성
 
 TTF 폰트를 받아 안티앨리어싱이 없는 단색 비트맵 폰트 시트(PNG + TXT)를 생성하는 스크립트.
