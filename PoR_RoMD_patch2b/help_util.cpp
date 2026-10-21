@@ -60,7 +60,7 @@ void OutputDebugStringFormat(const char* format, ...)
 }
 
 
-bool HookFunction(uintptr_t targetAddr, uintptr_t hookFuncAddr)
+bool HookFunction(const uintptr_t targetAddr, const uintptr_t hookFuncAddr)
 {
     DWORD oldProtect;
     if (!VirtualProtect(reinterpret_cast<void*>(targetAddr), 5, PAGE_EXECUTE_READWRITE, &oldProtect))
@@ -74,7 +74,7 @@ bool HookFunction(uintptr_t targetAddr, uintptr_t hookFuncAddr)
     return true;
 }
 
-void patchBytes(uintptr_t targetAddr, const void* data, size_t bytes) 
+void patchBytes(const uintptr_t targetAddr, const void* data, const size_t bytes) 
 {
     DWORD oldProtect;
     if (VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, PAGE_EXECUTE_READWRITE, &oldProtect)) {
@@ -84,6 +84,15 @@ void patchBytes(uintptr_t targetAddr, const void* data, size_t bytes)
     }
 }
 
+void patchDWORD(const uintptr_t targetAddr, const uint32_t dword)
+{
+    DWORD oldProtect;
+    if (VirtualProtect(reinterpret_cast<void*>(targetAddr), 4, PAGE_EXECUTE_READWRITE, &oldProtect)) {
+		*reinterpret_cast<uint32_t*>(targetAddr) = dword;
+        VirtualProtect(reinterpret_cast<void*>(targetAddr), 4, oldProtect, &oldProtect);
+        FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), 4);
+    }
+}
 
 
 void GetCurrentCall(const int charCode, const uintptr_t retAddr)
