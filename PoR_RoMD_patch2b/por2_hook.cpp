@@ -13,19 +13,16 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/);
 BOOL __fastcall cTextManager_CalculateTextExtents_Hook(cTextManager* self, void* /*edx*/);
 BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/);
 
-const uintptr_t ptrWordWrap = 0x00444890;
+
 typedef BOOL (__fastcall* tWordWrap)(cTextLayout*, void*);
 tWordWrap g_origWordWrap = NULL;
 
-const uintptr_t ptrRenderShadow = 0x00444D40;
 typedef BOOL (__fastcall* tRenderShadow)(cTextLayout*, void*);
 tRenderShadow g_origRenderShadow = NULL;
 
-const uintptr_t ptrCalculateTextExtents = 0x0043BF40;
 typedef BOOL (__fastcall* tCalcExtents)(cTextManager*, void*);
 tCalcExtents g_origCalcExtents = NULL;
 
-const uintptr_t ptrDrawTextLines = 0x0043BC80;
 typedef BOOL (__fastcall* tDrawTextLines)(cTextManager*, void*, int);
 tDrawTextLines g_origDrawTextLines = NULL;
 
