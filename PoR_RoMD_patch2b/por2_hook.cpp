@@ -13,6 +13,8 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/);
 BOOL __fastcall cTextManager_CalculateTextExtents_Hook(cTextManager* self, void* /*edx*/);
 BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/);
 
+BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/);
+
 
 typedef BOOL (__fastcall* tWordWrap)(cTextLayout*, void*);
 tWordWrap g_origWordWrap = NULL;
@@ -26,6 +28,8 @@ tCalcExtents g_origCalcExtents = NULL;
 typedef BOOL (__fastcall* tDrawTextLines)(cTextManager*, void*, int);
 tDrawTextLines g_origDrawTextLines = NULL;
 
+typedef BOOL (__fastcall* tCKeyInput_Draw)(CKeyInput*, void*);
+tCKeyInput_Draw g_origCKeyInput_Draw = NULL;
 
 #define USING_MINHOOK   0
 //------- for debug
@@ -108,6 +112,8 @@ void Apply_Por2_Hooks()
 
     PLOG_DEBUG << "[PoR2] function hooked.";
 #else
+
+#if 0
     uint8_t testWordWrap[128];
 	memcpy(testWordWrap, reinterpret_cast<void*>(ptrWordWrap), sizeof(testWordWrap));
     uint8_t testRenderShadow[128];
@@ -125,11 +131,13 @@ void Apply_Por2_Hooks()
         fwrite(testDrawTextLines, 1, sizeof(testDrawTextLines), fp);
         fclose(fp);
 	}
-
+#endif
     HookFunction(ptrWordWrap, reinterpret_cast<uintptr_t>(cTextLayout_WordWrap_Hook));
     HookFunction(ptrRenderShadow, reinterpret_cast<uintptr_t>(cTextLayout_RenderShadow_Hook));
     HookFunction(ptrCalculateTextExtents, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));
     HookFunction(ptrDrawTextLines, reinterpret_cast<uintptr_t>(cTextManager_DrawTextLines_Hook));
+    
+    patchDWORD(0x00622E24, reinterpret_cast<uintptr_t>(CKeyInput_Draw_Hook));   // vtable 슬롯 교체
 #endif
 }
 

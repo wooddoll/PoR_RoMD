@@ -30,9 +30,6 @@
     <ClCompile Include="help_util.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="por2_hook.cpp">
-      <Filter>소스 파일</Filter>
-    </ClCompile>
     <ClCompile Include="RenderShadow.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -43,6 +40,15 @@
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="DrawTextLines.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="ini_config.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyInput_Draw.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="por2_hook.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -63,6 +69,9 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="help_util.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="ini_config.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>

@@ -25,13 +25,7 @@ inline constexpr uintptr_t ptrcheck_FUN_00438830_end = 0x00438b0f;
 inline constexpr uintptr_t ptr_MakeColor16 = 0x00436180;
 inline constexpr uintptr_t ptr_FindGlyphIndex = 0x004355C0;
 
-#define _LOG_   0
-#if _LOG_
-void GetCurrentCall(const int charCode, const uintptr_t caller);
-#define CHECK(charcode) do { GetCurrentCall(charcode, reinterpret_cast<uintptr_t>(_ReturnAddress())); } while(0)
-#else
-#define CHECK(charcode) ((void)0)
-#endif
+
 /* ------------------------------------------------------------------ */
 /*  내부 함수 (원본 CRT/할당자를 그대로 써야 한다)                      */
 /* ------------------------------------------------------------------ */
@@ -129,7 +123,6 @@ struct cFont {
 	int atlasHeight;                // +0x28
 
     int GetCharHeight(int chCode) {
-        CHECK(chCode);
         int idx = this->pCharMap->FindGlyphIndex(chCode);
         if (idx < 0)
             return 0;
@@ -137,7 +130,6 @@ struct cFont {
         return rect.bottom - rect.top;
     }
     int GetCharWidth(int chCode) {
-        CHECK(chCode);
         int idx = this->pCharMap->FindGlyphIndex(chCode);
         if (idx < 0)
             return 0;
@@ -145,7 +137,6 @@ struct cFont {
         return rect.right - rect.left;
     }
     RECT* GetCharRect(int chCode) {
-        CHECK(chCode);
         int idx = this->pCharMap->FindGlyphIndex(chCode);
         if (idx < 0)
             return &g_dummyZeroRect;
@@ -222,3 +213,35 @@ struct cTextManager {
     cSpriteBase* m_pTarget;     // +0x1C0
 };
 
+
+struct CKeyInput {
+    void* vftable;                  // +0x000
+    char   pad_004[0x34];            // +0x004
+    int    m_nX;                     // +0x038 위젯 화면 x
+    int    m_nY;                     // +0x03C 위젯 화면 y
+    char   pad_040[0x7C];            // +0x040 ~ +0x0BB
+    RECT   m_rcScreen;               // +0x0BC (FUN_004366e0)
+    RECT   m_rcFrame;                // +0x0CC
+    RECT   m_rcClip;                 // +0x0DC
+    void** m_pImage;                 // +0x0EC 배경 이미지 객체 (vtable+0x1C = Draw)
+    int    m_nImageArg;              // +0x0F0
+    BYTE   m_bVisible;               // +0x0F4
+    char   pad_0F5[0x2F];            // +0x0F5 ~ +0x123
+    int    m_nBgFlag;                // +0x124 0이 아니면 배경 그리기
+    char   pad_128[0x0C];            // +0x128 ~ +0x133
+    cFont* m_pFont;                  // +0x134
+    char* m_pszText;                // +0x138
+    int    m_nStopIdx;               // +0x13C 높이 초과로 그리기를 멈춘 인덱스 (-1 = 없음)
+    int    m_nPadX;                  // +0x140
+    int    m_nPadY;                  // +0x144
+    int    m_nBoxW;                  // +0x148
+    int    m_nBoxH;                  // +0x14C
+    BYTE   m_bCursorOn;              // +0x150 커서 표시 여부
+    char   pad_151[3];
+    int    m_nUnknown154;            // +0x154 (이 함수에서 사용 안 함)
+    DWORD  m_dwLastTick;             // +0x158
+    int    m_aBreakCache[20];        // +0x15C ~ +0x1AB 줄바꿈 위치 캐시 (공백 인덱스, -1=없음)
+    int    m_nCursorAlpha;           // +0x1AC 0~255
+    BYTE   m_bCursorFalling;         // +0x1B0 1이면 알파 감소 중
+    BYTE   m_bRightAlign;            // +0x1B1 1이면 넘칠 때 끝부분만 오른쪽 정렬
+};

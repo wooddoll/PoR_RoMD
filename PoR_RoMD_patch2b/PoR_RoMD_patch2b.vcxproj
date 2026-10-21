@@ -160,6 +160,8 @@
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="DrawTextLines.cpp" />
     <ClCompile Include="help_util.cpp" />
+    <ClCompile Include="ini_config.cpp" />
+    <ClCompile Include="KeyInput_Draw.cpp" />
     <ClCompile Include="por2_hook.cpp" />
     <ClCompile Include="proxy_version.cpp" />
     <ClCompile Include="RenderShadow.cpp" />
@@ -173,6 +175,7 @@
     <ClInclude Include="bink_hook.h" />
     <ClInclude Include="help_util.h" />
     <ClInclude Include="hooks.h" />
+    <ClInclude Include="ini_config.h" />
     <ClInclude Include="por2.h" />
     <ClInclude Include="sbv_parser.h" />
     <ClInclude Include="subtitle_renderer.h" />

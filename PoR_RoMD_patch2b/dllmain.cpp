@@ -15,7 +15,7 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
     InstallBinkHooks();
 
     plog::init(plog::error, "korean.log"); // Step2: initialize the logger
-    bool ret = LoadSettings(L"korean.ini")
+    bool ret = LoadSettings(L"korean.ini");
     resetLogLevel();
 
     if (ret) {
