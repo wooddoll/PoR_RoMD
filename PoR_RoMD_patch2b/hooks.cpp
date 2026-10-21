@@ -11,6 +11,14 @@
 #include "por2.h"
 #include "help_util.h"
 
+#define _LOG_   1
+#if _LOG_
+void GetCurrentCall(const int charCode, const uintptr_t caller);
+#define CHECK(charcode) do { GetCurrentCall(charcode, reinterpret_cast<uintptr_t>(_ReturnAddress())); } while(0)
+#else
+#define CHECK(charcode) ((void)0)
+#endif
+
 // ----------------------------------------------------------------
 // cFont 글리프 검색 함수 포인터 (0x004355C0)
 // ----------------------------------------------------------------
@@ -125,7 +133,7 @@ int __fastcall Hook_GetCharHeight(cFont* thisPtr, void* /*dummyEDX*/, int charCo
 }
 
 // 크래시 방지용 전역 빈 사각형 구조체
-static RECT g_dummyZeroRect = { 0, 0, 0, 0 };
+RECT g_dummyZeroRect = { 0, 0, 0, 0 };
 
 // ----------------------------------------------------------------
 // [5] GetCharRect 훅
