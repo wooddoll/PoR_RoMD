@@ -14,7 +14,7 @@
     "category": "Artifact / Item",
     "description": "오러리를 구성하는 다섯 개의 행성 스톤 중 초록색 돌이자 나무의 행성으로 늪지대 쪽에 있다."
   },
-  "Gauntlets of Moander": {
+  "the Gauntlets of Moander": {
     "korean": "모앤더의 건틀릿",
     "category": "Artifact / Item",
     "description": "광채의 샘을 파괴할 수 있는 유일한 힘을 지닌 유물. 손바닥에 눈 모양의 룬 문자가 새겨져 있으며, 엘민스터가 애선 원정대에 맡겼으나 코르만소르 성을 장악한 카이아 모르드레인 일당에게 도난당했다."
@@ -24,7 +24,7 @@
     "category": "Artifact / Item",
     "description": "미스 드레노어의 마법 결계인 미쌀을 조율하고 통제하는 데 반드시 필요한 핵심 마법 보석이자 교단의 손에 넘어가거나 파괴될 수 있는 중요 아이템이며 새로운 보석이 시급히 요구된다."
   },
-  "Gorget of Purgelum": {
+  "the Gorget of Purgelum": {
     "korean": "퍼젤럼의 목가리개",
     "category": "Artifact / Item",
     "description": "프레이벨리가 찾고 있는 희귀한 개인적 걸작 중 하나인 목 보호대 형태의 아이템."
@@ -107,7 +107,7 @@
   "Ailos": {
     "korean": "아일로스",
     "category": "Character",
-    "description": "과거 미스 드레노어의 몰락 당시 아노르웨인의 대사에 언급되는 인물."
+    "description": "과거 미스 드레노어의 몰락 당시 아노레윈의 대사에 언급되는 인물."
   },
   "Alea, Clan Aunglor": {
     "korean": "알레아, 아운글로르 클랜",
@@ -119,25 +119,15 @@
     "category": "Character",
     "description": "나스릴의 부하 드로우 전사."
   },
-  "Annorweyn Elvensong": {
-    "korean": "아노레윈 엘븐송",
-    "category": "Character",
-    "description": "미스 드레노어의 멸망 당시 목숨을 잃고 영혼(유령)으로 남아 미스트라 여신을 모시는 고대 엘프 여사제."
-  },
-  "Anorrweyn": {
-    "korean": "아노레윈",
-    "category": "Character",
-    "description": "미스 드레노어의 꺼져가는 꿈에 묶여 있는, 과거 미스 드레노어 시절 보석의 집에 있던 미스트라의 성소에서 여사제로 활동했던 고결한 엘프 여성으로 위브의 보석의 필요성을 강조했으며 할다인이 지목한 유일한 매개자 후보이자 해골을 찾아야 하는 인물이며 스펙룸 지붕에서 조율 의식을 거행한다. 카이아 모르드레인으로부터 미쌀의 통제권을 빼앗기 위해 사파이어 파괴를 지시한다."
-  },
   "Anorrweyn Evensong": {
     "korean": "아노레윈 엘븐송",
     "category": "Character",
     "description": "통곡의 전쟁 당시 니칼로스들이 보낸 살아있는 불의 벽으로부터 성소를 방어하다 목숨을 잃은 엘프 여사제이자 광채의 샘 부근에서 미쌀의 힘을 다룰 기회를 얻는 인물이며 해골을 미스트라의 유령 성소 제단으로 돌려보내야 한다."
   },
-  "Anorrwyn": {
+  "Anorrweyn": {
     "korean": "아노레윈",
     "category": "Character",
-    "description": "미스 드레노어의 신전에 뼈와 영혼이 묶여 있던 엘프 유령이자 여사제. 시간의 경계에서 과거와 현재를 오가며 주인공에게 도움을 줌."
+    "description": "미스 드레노어의 꺼져가는 꿈에 묶여 있는, 과거 미스 드레노어 시절 보석의 집에 있던 미스트라의 성소에서 여사제로 활동했던 고결한 엘프 여성으로 위브의 보석의 필요성을 강조했으며 할다인이 지목한 유일한 매개자 후보이자 해골을 찾아야 하는 인물이며 스펙룸 지붕에서 조율 의식을 거행한다. 카이아 모르드레인으로부터 미쌀의 통제권을 빼앗기 위해 사파이어 파괴를 지시한다."
   },
   "Aolis Ammath": {
     "korean": "아올리스 아마스",
@@ -742,7 +732,7 @@
   "Trasaal": {
     "korean": "트라살",
     "category": "Character",
-    "description": "과거 미스 드레노어의 위기 상황에서 아노르웨인에 의해 소환되던 인물."
+    "description": "과거 미스 드레노어의 위기 상황에서 아노레윈에 의해 소환되던 인물."
   },
   "Trinketmaster": {
     "korean": "보물 장사꾼",
@@ -1752,7 +1742,7 @@
   "Gate of Antarn": {
     "korean": "안탄의 문",
     "category": "Location",
-    "description": "아노르웨인의 마법으로 열리게 되는 특수한 문 또는 차원문."
+    "description": "아노레윈의 마법으로 열리게 되는 특수한 문 또는 차원문."
   },
   "Glim-Garden": {
     "korean": "글림 정원",
@@ -2327,7 +2317,7 @@
   "Kehelben": {
     "korean": "Kehelben",
     "category": "Lore / Magic",
-    "description": "아노르웨인의 주문을 통해 플레이어가 배울 수 있게 되는 필요의 단어(Word of Necessity)."
+    "description": "아노레윈의 주문을 통해 플레이어가 배울 수 있게 되는 필요의 단어(Word of Necessity)."
   },
   "Rhesheshannen": {
     "korean": "Rhesheshannen",
@@ -2762,7 +2752,7 @@
   "lich": {
     "korean": "리치",
     "category": "Monster",
-    "description": "금지된 마법을 통해 영생을 얻은 언데드 마법사. 아노르웨인의 무덤을 모독하고 성소와의 결속을 깨뜨린 적."
+    "description": "금지된 마법을 통해 영생을 얻은 언데드 마법사. 아노레윈의 무덤을 모독하고 성소와의 결속을 깨뜨린 적."
   },
   "lothwight": {
     "korean": "로스와이트",
