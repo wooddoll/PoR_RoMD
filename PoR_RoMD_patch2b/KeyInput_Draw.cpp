@@ -139,34 +139,34 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
 
     /* ---- 전체 폭 측정 ---- */
     int len = (int)strlen(text);
-    int totalW = 0;
+    int totalWidth = 0;
     for (int i = 0; i < len; i++) {
         RECT* rc = GlyphRect(self->m_pFont, text[i]);
-        totalW += rc->right - rc->left;
+        totalWidth += rc->right - rc->left;
     }
 
     const int fontHeight = self->m_pFont->GetCharHeight('A');
     double* cursorIncBlink = (double*)0x00621FC0;
     double* cursorDecBlink = (double*)0x00622BB8;
 
-    int penX = 0;           // [esp+0x1c] 커서 x 에도 쓰임
-    int penY = 0;           // [esp+0x18] 커서 y 에도 쓰임
+    int currX = 0;           // [esp+0x1c] 커서 x 에도 쓰임
+    int currY = 0;           // [esp+0x18] 커서 y 에도 쓰임
 
-    if (self->m_bRightAlign && totalW > self->m_nBoxW)
+    if (self->m_bRightAlign && totalWidth > self->m_nBoxW)
     {
         /* ===== 한 줄 모드: 끝에서부터 역방향으로, 오른쪽 정렬 ===== */
         int remain = self->m_nBoxW - 2;
         int idx = len - 1;
-        penX = remain;                       // 루프 중 갱신되지 않음 → 커서는 박스 오른쪽 끝
+        currX = remain;                       // 루프 중 갱신되지 않음 → 커서는 박스 오른쪽 끝
 
         do {
             RECT* rc = GlyphRect(self->m_pFont, text[idx]);
-            int w = rc->right - rc->left;
-            int h = rc->bottom - rc->top;
-            remain -= w;
+            int width = rc->right - rc->left;
+            int height = rc->bottom - rc->top;
+            remain -= width;
             BltGlyph(pBack, pGlyph, rc,
                 self->m_nX + self->m_nPadX + remain,
-                self->m_nY + self->m_nPadY, w, h);
+                self->m_nY + self->m_nPadY, width, height);
             idx--;
         } while (remain > 0 && idx >= 0);
         /* 이 경로에서는 줄바꿈 캐시 정리를 건너뛴다 */
@@ -182,8 +182,8 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
 
         if (len != 0)
         {
-            int i = 0;
-            do {
+			for (int i = 0; i < len; ++i) 
+            {
                 if (self->m_nStopIdx != -1 && i >= self->m_nStopIdx)
                     break;
 
@@ -191,8 +191,8 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
                     lastSpace = i;
 
                 RECT* rc = GlyphRect(self->m_pFont, text[i]);
-                int w = rc->right - rc->left;
-                int h = rc->bottom - rc->top;
+                int width = rc->right - rc->left;
+                int height = rc->bottom - rc->top;
 
                 if (i == *p)
                 {
@@ -202,29 +202,31 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
                     for (int j = i; j < len; j++) {
                         RECT* r2 = GlyphRect(self->m_pFont, text[j]);
                         acc += r2->right - r2->left;
-                        if (acc + penX > self->m_nBoxW) { overflow = true; break; }
+                        if (acc + currX > self->m_nBoxW) { 
+                            overflow = true; 
+                            break; 
+                        }
                     }
                     if (overflow) {
-                        penY += h;
-                        penX = 0;
+                        currY += height;
+                        currX = 0;
                         i = *p;          // (= i)
                         p++;
-                        i++;                 // 공백 글자는 그리지 않고 건너뜀
-                        continue;
+                        continue;       // 공백 글자는 그리지 않고 건너뜀
                     }
                     *p = -1;                 // 다 들어가므로 캐시 해제 후 정상 처리
                 }
 
-                if (penX + w > self->m_nBoxW)
+                if (currX + width > self->m_nBoxW)
                 {
                     /* 폭 초과 → 새 줄 */
-                    penY += h;
-                    if (penY + h > self->m_nBoxH) {
-                        penY -= h;                       // 세로도 넘침: 여기서 중단
+                    currY += height;
+                    if (currY + height > self->m_nBoxH) {
+                        currY -= height;                       // 세로도 넘침: 여기서 중단
                         self->m_nStopIdx = i;
                     }
                     else {
-                        penX = 0;
+                        currX = 0;
                         self->m_nStopIdx = -1;
                         if (lastSpace != -1) {
                             i = lastSpace;               // 마지막 공백으로 되돌아감
@@ -239,18 +241,19 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
                 else
                 {
                     BltGlyph(pBack, pGlyph, rc,
-                        self->m_nX + self->m_nPadX + penX,
-                        self->m_nY + self->m_nPadY + penY, w, h);
-                    penX += w;
+                        self->m_nX + self->m_nPadX + currX,
+                        self->m_nY + self->m_nPadY + currY, width, height);
+                    currX += width;
                 }
-                i++;
-            } while (i < len);
+            }
         }
 
         /* 캐시 중 문자열 길이 이상인 항목 무효화 */
-        for (int k = 0; k < 20; k++)
-            if (len <= self->m_aBreakCache[k])
+        for (int k = 0; k < 20; k++) {
+            if (len <= self->m_aBreakCache[k]) {
                 self->m_aBreakCache[k] = -1;
+            }
+        }
     }
 
     /* ===== 커서 ===== */
@@ -281,8 +284,8 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
 
         DWORD color = ((DWORD)self->m_nCursorAlpha << 24) | 0x00FFFFFF;   // 갱신 전 알파 사용
 
-        DrawCursorQuad(self->m_nPadX + self->m_nX + penX,
-            self->m_nPadY + self->m_nY + penY,
+        DrawCursorQuad(self->m_nPadX + self->m_nX + currX,
+            self->m_nPadY + self->m_nY + currY,
             2, fontHeight, color);
 
         /* 알파 페이드: 방향 0 = 증가, 1 = 감소 */
