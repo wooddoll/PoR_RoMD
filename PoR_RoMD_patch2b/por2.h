@@ -6,7 +6,24 @@
 #include <windows.h>
 #include <ddraw.h>          // IDirectDrawSurface7 및 DirectDraw 핵심 헤더
 
+inline constexpr uintptr_t ptr_malloc = 0x005EA8FD;
+inline constexpr uintptr_t ptr_free = 0x005EA8F2;
 
+inline constexpr uintptr_t ptrWordWrap = 0x00444890;
+inline constexpr uintptr_t ptrWordWrap_end = 0x00444CAB;
+inline constexpr uintptr_t ptrRenderShadow = 0x00444D40;
+inline constexpr uintptr_t ptrRenderShadow_end = 0x0043BF00;
+inline constexpr uintptr_t ptrCalculateTextExtents = 0x0043BF40;
+inline constexpr uintptr_t ptrCalculateTextExtents_end = 0x0043C00F;
+inline constexpr uintptr_t ptrDrawTextLines = 0x0043BC80;
+inline constexpr uintptr_t ptrDrawTextLines_end = 0x00445039;
+inline constexpr uintptr_t ptrSprintfMeasure = 0x00476820;
+inline constexpr uintptr_t ptrSprintfMeasure_end = 0x00476adc;
+inline constexpr uintptr_t ptrcheck_FUN_00438830 = 0x00438830;
+inline constexpr uintptr_t ptrcheck_FUN_00438830_end = 0x00438b0f;
+
+inline constexpr uintptr_t ptr_MakeColor16 = 0x00436180;
+inline constexpr uintptr_t ptr_FindGlyphIndex = 0x004355C0;
 
 #define _LOG_   0
 #if _LOG_
@@ -20,13 +37,13 @@ void GetCurrentCall(const int charCode, const uintptr_t caller);
 /* ------------------------------------------------------------------ */
 typedef void* (__cdecl* t_malloc)(unsigned int size);
 typedef void(__cdecl* t_free)(void* p);
-#define _malloc     ((t_malloc) 0x005EA8FD)   // malloc
-#define _free       ((t_free)   0x005EA8F2)   // free
+#define _malloc     ((t_malloc) ptr_malloc)   // malloc
+#define _free       ((t_free)   ptr_free)   // free
 
 /* FUN_00436180(0x29, 0x9f, 0xdf) : 호출 직후 AX 를 16bit 픽셀로 사용.
    cdecl, 인자 3개. 이름은 임시 (RGB → 현재 픽셀 포맷 변환으로 추정). */
 typedef WORD(__cdecl* tMakeColor16)(int a, int b, int c);
-#define game_MakeColor16 ((tMakeColor16)0x00436180)
+#define game_MakeColor16 ((tMakeColor16)ptr_MakeColor16)
 
 
 //=========================================================
@@ -73,7 +90,7 @@ struct cCharCodeMap {
 
     int FindGlyphIndex(int chCode) {    // 못찾으면 -1 리턴
         typedef int(__thiscall* tFn)(cCharCodeMap*, int);
-        return reinterpret_cast<tFn>(0x004355C0)(this, chCode);
+        return reinterpret_cast<tFn>(ptr_FindGlyphIndex)(this, chCode);
     }
 };
 

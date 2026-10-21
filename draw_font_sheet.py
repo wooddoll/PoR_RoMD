@@ -253,6 +253,13 @@ def print_usage():
 
 
 if __name__ == "__main__":
+    char_list_file="./cp949_kor2350ext.txt"
+    output_dir="./font/ext"
+    draw_boxes=True
+    gap=1
+    generate_all_fonts(char_list_file=char_list_file, output_dir=output_dir, draw_boxes=draw_boxes, gap=gap)
+    exit()
+
     args = sys.argv[1:]
 
     if not args:
