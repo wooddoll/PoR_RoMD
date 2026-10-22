@@ -10,10 +10,18 @@
 /*  원본: RET 0x4 → 스택 인자 1개를 callee 가 정리한다 (함수 안에서는 안 읽음) */
 /*  따라서 훅은 __fastcall(this, edx, int) 로 선언해야 스택이 맞는다.         */
 /* ------------------------------------------------------------------ */
+
 #define TEXT_LEFT_MARGIN  5
 #define TEXT_COLOR_A      0x29
 #define TEXT_COLOR_B      0x9F
 #define TEXT_COLOR_C      0xDF
+
+/* FUN_00436180(0x29, 0x9f, 0xdf) : 호출 직후 AX 를 16bit 픽셀로 사용.
+   cdecl, 인자 3개. 이름은 임시 (RGB → 현재 픽셀 포맷 변환으로 추정). */
+   inline constexpr uintptr_t ptr_MakeColor16 = 0x00436180;
+typedef WORD(__cdecl* tMakeColor16)(int a, int b, int c);
+#define game_MakeColor16 ((tMakeColor16)ptr_MakeColor16)
+
 
 BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/)
 {
