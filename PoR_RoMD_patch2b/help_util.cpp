@@ -40,7 +40,7 @@ void resetLogLevel()
     }
 }
 
-char _eucKrStr_[3];
+thread_local char _eucKrStr_[3];
 const char* OutputEucKrChar(unsigned char byte1, unsigned char byte2) 
 {
     _eucKrStr_[0] = static_cast<char>(byte1);

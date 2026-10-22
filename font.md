@@ -8,7 +8,7 @@
 [fontX.bmp, fontX.dff] 5쌍
 ```
 
-- **file path**: `\Pool of Radiance\data\fonts\`
+- **file path**: `./data/fonts/`
 - **파일 목록**: font0 ~ font4 (총 5쌍)
 
 | 파일 | BMP 크기 | DFF 크기 |
@@ -286,7 +286,7 @@ python read_font.py --help
 | font2 | 장식적, 판타지 느낌 | 21px | Umdot20 |
 | font3 | 딱딱하고 포멀한, 시스템용 | 9px | 갈무리9 |
 | font4 | 딱딱하고 포멀한, 시스템용 | 11px | 갈무리11 |
-* 영문과 같은 baseline을 쓰면 한글은 글자가 살짝 뜬 것처럼 보이므로 baseline-1 사용
+* 영문과 같은 baseline을 쓰면 한글은 글자가 살짝 뜬 것처럼 보이므로 baseline보다 -1낮은 위치 사용
 ---
 
 ## 8. draw_font_sheet.py — 비트맵 폰트 시트 생성
@@ -330,13 +330,12 @@ python merge_font.py --help                             # 도움말 표시
 
 ### 9.2 `--random-sheet` 옵션 — 랜덤 혼합 시트 생성
 
-`img_a`(ASCII 영역)의 알파벳 대소문자(A-Z, a-z)와 `img_b`(한글 영역)의 글자를 랜덤하게 섞어 `grid_size x grid_size`(기본 64x64 = 4096개) 글자가 한 장에 들어가도록 이미지와 TXT 메타데이터를 생성한다.
+`img_a`(ASCII 영역)의 알파벳 대소문자(A-Z, a-z)와 `img_b`(한글 영역)의 글자를 랜덤하게 섞어 `grid_size x grid_size`(기본 64x64 = 4096개) 글자가 한 장에 들어가도록 이미지와 TXT 메타데이터를 생성한다. 폰트가 어울리는지 테스트하기 위한 용도.
 
 ```bash
 python merge_font.py --random-sheet 0                  # font0 기준 64x64 그리드 생성
 python merge_font.py --random-sheet 0 --grid 8         # 8x8 그리드로 테스트
 ```
-
 - **글리프 추출 기준**:
   - ASCII: 코드 65~90(A-Z), 97~122(a-z)
   - 한글: CP949 코드 0x8000 이상
