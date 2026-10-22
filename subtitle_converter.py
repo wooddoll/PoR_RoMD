@@ -222,8 +222,12 @@ def write_srt(entries: list) -> str:
 
 def load_json(filepath: str) -> list:
     """Load JSON file. Accepts either a list of entries or a dict with entries."""
-    with open(filepath, 'r', encoding='euc-kr') as f:
-        data = json.load(f)
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        with open(filepath, 'r', encoding='euc-kr') as f:
+            data = json.load(f)
 
     if isinstance(data, list):
         return data
