@@ -22,7 +22,6 @@ inline constexpr uintptr_t ptrSprintfMeasure_end = 0x00476adc;
 inline constexpr uintptr_t ptrcheck_FUN_00438830 = 0x00438830;
 inline constexpr uintptr_t ptrcheck_FUN_00438830_end = 0x00438b0f;
 
-inline constexpr uintptr_t ptr_MakeColor16 = 0x00436180;
 inline constexpr uintptr_t ptr_FindGlyphIndex = 0x004355C0;
 
 
@@ -33,12 +32,6 @@ typedef void* (__cdecl* t_malloc)(unsigned int size);
 typedef void(__cdecl* t_free)(void* p);
 #define _malloc     ((t_malloc) ptr_malloc)   // malloc
 #define _free       ((t_free)   ptr_free)   // free
-
-/* FUN_00436180(0x29, 0x9f, 0xdf) : 호출 직후 AX 를 16bit 픽셀로 사용.
-   cdecl, 인자 3개. 이름은 임시 (RGB → 현재 픽셀 포맷 변환으로 추정). */
-typedef WORD(__cdecl* tMakeColor16)(int a, int b, int c);
-#define game_MakeColor16 ((tMakeColor16)ptr_MakeColor16)
-
 
 //=========================================================
 
@@ -122,27 +115,27 @@ struct cFont {
 	int atlasWidth;                 // +0x24
 	int atlasHeight;                // +0x28
 
-    int GetCharHeight(int chCode) {
+    __forceinline int GetCharHeight(int chCode) {
         int idx = this->pCharMap->FindGlyphIndex(chCode);
         if (idx < 0)
             return 0;
         RECT& rect = this->pGlyphs[idx]->rect; 
         return rect.bottom - rect.top;
     }
-    int GetCharWidth(int chCode) {
+    __forceinline int GetCharWidth(int chCode) {
         int idx = this->pCharMap->FindGlyphIndex(chCode);
         if (idx < 0)
             return 0;
         RECT& rect = this->pGlyphs[idx]->rect; 
         return rect.right - rect.left;
     }
-    RECT* GetCharRect(int chCode) {
+    __forceinline RECT* GetCharRect(int chCode) {
         int idx = this->pCharMap->FindGlyphIndex(chCode);
         if (idx < 0)
             return &g_dummyZeroRect;
         return &(this->pGlyphs[idx]->rect);
     }
-    IDirectDrawSurface7* GetSurface() {
+    __forceinline IDirectDrawSurface7* GetSurface() {
         return this->pSurface;
     }
 };
@@ -169,11 +162,11 @@ struct cTextLayout {
     char   pad_156[0x0E];           // +0x156 ~ +0x163
     BYTE   m_bShadow;               // +0x164  그림자 사용 여부
 
-    int GetMaxWidth() {             // vtable +0x48
+    __forceinline int GetMaxWidth() {             // vtable +0x48
         typedef int(__thiscall* tGetMaxWidth)(void*);
         return ((tGetMaxWidth)(*(void***)this)[0x48 / 4])(this);
     }
-    IDirectDrawSurface7* GetTargetSurface() {   /* vtable +0x54 : 그려 넣을 대상 서피스 반환 (포인터 전체 32bit) */
+    __forceinline IDirectDrawSurface7* GetTargetSurface() {   /* vtable +0x54 : 그려 넣을 대상 서피스 반환 (포인터 전체 32bit) */
         typedef IDirectDrawSurface7* (__thiscall* tFn)(void*);
         return ((tFn)(*(void***)this)[0x54 / 4])(this);
     }
@@ -185,7 +178,7 @@ struct cSpriteBase {            // 폭/높이를 가진 계열 (이름 임시)
     int   m_nWidth;             // +0x128
     int   m_nHeight;            // +0x12C
     /* ... */
-    IDirectDrawSurface7* GetTargetSurface() {   /* vtable +0x54 : 그려 넣을 대상 서피스 반환 (포인터 전체 32bit) */
+    __forceinline IDirectDrawSurface7* GetTargetSurface() {   /* vtable +0x54 : 그려 넣을 대상 서피스 반환 (포인터 전체 32bit) */
         typedef IDirectDrawSurface7* (__thiscall* tFn)(void*);
         return ((tFn)(*(void***)this)[0x54 / 4])(this);
     }
@@ -213,8 +206,7 @@ struct cTextManager {
     cSpriteBase* m_pTarget;     // +0x1C0
 };
 
-
-struct CKeyInput {
+struct CWidgetBase {
     void* vftable;                  // +0x000
     char   pad_004[0x34];            // +0x004
     int    m_nX;                     // +0x038 위젯 화면 x
@@ -227,6 +219,19 @@ struct CKeyInput {
     int    m_nImageArg;              // +0x0F0
     BYTE   m_bVisible;               // +0x0F4
     char   pad_0F5[0x2F];            // +0x0F5 ~ +0x123
+
+    __forceinline int GetOffsetX() { // vtable +0x84
+        typedef int(__thiscall* tGetOffsetX)(CWidgetBase*);
+        return ((tGetOffsetX)(*(void***)this)[0x84 / 4])(this);
+    }
+    __forceinline int GetOffsetY() { // vtable +0x88
+        typedef int(__thiscall* tGetOffsetY)(CWidgetBase*);
+        return ((tGetOffsetY)(*(void***)this)[0x88 / 4])(this);
+    }
+};
+
+struct CKeyInput {
+    CWidgetBase base;
     int    m_nBgFlag;                // +0x124 0이 아니면 배경 그리기
     char   pad_128[0x0C];            // +0x128 ~ +0x133
     cFont* m_pFont;                  // +0x134
