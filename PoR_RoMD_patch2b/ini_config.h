@@ -5,22 +5,22 @@
 #include <cwctype>     // std::towlower
 #include <stdexcept>   // std::invalid_argument, std::out_of_range
 
-// ê²½ë¡œ ìœ í‹¸ë¦¬í‹° í•¨ìˆ˜
+// °æ·Î À¯Æ¿¸®Æ¼ ÇÔ¼ö
 std::wstring GetExeDirectory();
 std::wstring CombinePath(const std::wstring& dir, const std::wstring& file);
 
-// INI ì„¤ì • ë°ì´í„°ë¥¼ ì €ì¥í•˜ëŠ” êµ¬ì¡°ì²´
+// INI ¼³Á¤ µ¥ÀÌÅÍ¸¦ ÀúÀåÇÏ´Â ±¸Á¶Ã¼
 struct IniConfig 
 {
 	bool isLoaded = false;
 	std::wstring loadedFilePath;
 	std::wstring currentExePath;
 
-    // êµ¬ì¡°: [Section][Key] = Value
+    // ±¸Á¶: [Section][Key] = Value
     std::map<std::wstring, std::map<std::wstring, std::wstring>> data;
 
-	// ë¬¸ìì—´ ê°’ ì¡°íšŒ í•¨ìˆ˜
-	// ë¬¸ìì—´ ê°’ì´ ì—†ìœ¼ë©´ ê¸°ë³¸ê°’ ë°˜í™˜
+	// ¹®ÀÚ¿­ °ª Á¶È¸ ÇÔ¼ö
+	// ¹®ÀÚ¿­ °ªÀÌ ¾øÀ¸¸é ±âº»°ª ¹İÈ¯
 	std::wstring GetString(
         const std::wstring& section,
         const std::wstring& key,
@@ -41,7 +41,7 @@ struct IniConfig
         return keyIt->second;
     }
 
-	// ì •ìˆ˜ ê°’ ì¡°íšŒ í•¨ìˆ˜
+	// Á¤¼ö °ª Á¶È¸ ÇÔ¼ö
     int GetInt(
         const std::wstring& section,
         const std::wstring& key,
@@ -57,7 +57,7 @@ struct IniConfig
             size_t idx = 0;
             int result = std::stoi(value, &idx);
 
-            // "123abc" ê°™ì€ ê°’ì€ ì˜¤ë¥˜ ì²˜ë¦¬
+            // "123abc" °°Àº °ªÀº ¿À·ù Ã³¸®
             if (idx != value.length()) {
                 return default_val;
             }
@@ -72,7 +72,7 @@ struct IniConfig
         }
     }
 
-	// bool ê°’ ì¡°íšŒ í•¨ìˆ˜
+	// bool °ª Á¶È¸ ÇÔ¼ö
     bool GetBool(
         const std::wstring& section,
         const std::wstring& key,
@@ -84,7 +84,7 @@ struct IniConfig
             return default_val;
         }
 
-        // ì†Œë¬¸ìë¡œ ë³€í™˜
+        // ¼Ò¹®ÀÚ·Î º¯È¯
         for (auto& c : value) {
             c = static_cast<wchar_t>(std::towlower(c));
         }
@@ -111,10 +111,10 @@ struct IniConfig
     }
 };
 
-// ì „ì—­ ì„¤ì • ê°ì²´
+// Àü¿ª ¼³Á¤ °´Ã¼
 extern IniConfig g_Config;
 
-// INI íŒŒì¼ ë¡œë”© í•¨ìˆ˜
+// INI ÆÄÀÏ ·Îµù ÇÔ¼ö
 bool LoadSettings(const wchar_t* filePath);
 bool LoadAllIniSettings(const std::wstring& filePath);
 bool ReloadAllIniSettings(const std::wstring& filePath);
