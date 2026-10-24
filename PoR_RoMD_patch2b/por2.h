@@ -55,7 +55,7 @@ inline int getCharCode(const uint8_t c1, const uint8_t c2) {     // EUC-KR
 
 inline int getCharCode(const int charCode) {     // EUC-KR
     uint8_t c1 = static_cast<uint8_t>(charCode & 0xFF);        // 현재 바이트
-    uint8_t c2 = static_cast<uint8_t>((charCode >> 8) & 0xFF); // 다음 바이트 (4바이트 읽기)
+    uint8_t c2 = static_cast<uint8_t>((charCode >> 8) & 0xFF); // 다음 바이트
     return getCharCode(c1, c2);
 }
 

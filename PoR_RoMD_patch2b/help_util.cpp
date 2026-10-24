@@ -74,6 +74,18 @@ bool HookFunction(const uintptr_t targetAddr, const uintptr_t hookFuncAddr)
     return true;
 }
 
+void PatchRelativeCall(uintptr_t callSite, const uintptr_t newTarget)
+{
+    DWORD rel = (DWORD)newTarget - (DWORD)(callSite + 5);
+    DWORD old;
+    VirtualProtect((LPVOID)(callSite + 1), 4, PAGE_EXECUTE_READWRITE, &old);
+    *(DWORD*)(callSite + 1) = rel;
+    VirtualProtect((LPVOID)(callSite + 1), 4, old, &old);
+    FlushInstructionCache(GetCurrentProcess(), (LPCVOID)callSite, 5);
+}
+
+
+
 void patchBytes(const uintptr_t targetAddr, const void* data, const size_t bytes) 
 {
     DWORD oldProtect;

@@ -162,6 +162,7 @@
     <ClCompile Include="help_util.cpp" />
     <ClCompile Include="ini_config.cpp" />
     <ClCompile Include="KeyInput_Draw.cpp" />
+    <ClCompile Include="KeyProc.cpp" />
     <ClCompile Include="por2_hook.cpp" />
     <ClCompile Include="proxy_version.cpp" />
     <ClCompile Include="RenderShadow.cpp" />

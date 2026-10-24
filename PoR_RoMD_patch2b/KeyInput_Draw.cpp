@@ -45,7 +45,7 @@ static __forceinline RECT* GlyphRect(cFont* f, int ch)
 typedef void(__stdcall* tImageDraw)(void* image, int x, int y, int arg, 
                                     const RECT* src, int flag);
 
-static BOOL __fastcall CKeyInput_DrawBackground(CWidgetBase* self, void* edx)
+static BOOL CKeyInput_DrawBackground(CWidgetBase* self)
 {
     if (!self->m_bVisible || !self->m_pImage || !self->m_nImageArg)
         return FALSE;
@@ -143,6 +143,9 @@ static void DrawCursor(CKeyInput* self, int currX, int currY, int fontHeight)
                    self->m_nPadY + self->base.m_nY + currY, 
                    2, fontHeight, color);
 
+    const double IncBlink = *(double*)0x00621FC0;   // 커서 깜빡임 속도 상수
+    const double DecBlink = *(double*)0x00622BB8;
+
     /* 알파 페이드: 방향 0 = 증가, 1 = 감소 */
     if (!self->m_bCursorFalling) {
         self->m_nCursorAlpha += (int)((double)dt * IncBlink);
@@ -180,9 +183,9 @@ static void BltGlyph(IDirectDrawSurface7* back, IDirectDrawSurface7* glyph,
 BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
 {
     if (self->m_nBgFlag)
-        CKeyInput_DrawBackground(self, 0);
+        CKeyInput_DrawBackground(&self->base);
 
-    if (!self->m_pszText || !self->m_bVisible)
+    if (!self->m_pszText || !self->base.m_bVisible)
         return TRUE;
 
     char* _Text = self->m_pszText;
@@ -200,8 +203,6 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
     } while(charIdx < text_len);
 
     const int fontHeight = self->m_pFont->GetCharHeight('A');
-    const double IncBlink = *(double*)0x00621FC0;   // 커서 깜빡임 속도 상수
-    const double DecBlink = *(double*)0x00622BB8;
 
     int currX = 0;           // 커서 x 에도 쓰임
     int currY = 0;           // 커서 y 에도 쓰임
@@ -210,7 +211,7 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
     {
         /* ===== 한 줄 모드: 끝에서부터 역방향으로, 오른쪽 정렬 ===== */
         currX = self->m_nBoxW - 2;  // 루프 중 갱신되지 않음 → 커서는 박스 오른쪽 끝
-        int remain = currX
+        int remain = currX;
         charIdx = text_len - 1;
         do {
             if (0 < charIdx) { // 이전 글자가 2바이트 문자인지 검사
@@ -319,7 +320,7 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
                     currX += fontW;
                 }
 
-                int chCode = getCharCode(_Text, charIdx);
+                chCode = getCharCode(_Text, charIdx);
                 charIdx += (0xFF < chCode) ? 2 : 1;   // 2바이트면 +2, 아니면 +1
             } while(charIdx < text_len);
         }
