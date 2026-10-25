@@ -25,14 +25,13 @@ static int LastCharStart(const char* s, int len)
     while (i < len) {
         start = i;
 
-        uint8_t c1 = static_cast<uint8_t>(s[i] & 0xFF);        // 현재 바이트
-        uint8_t c2 = static_cast<uint8_t>((s[i+1] >> 8) & 0xFF); // 다음 바이트
+        uint8_t c1 = static_cast<uint8_t>(s[i] & 0xFF);     // 현재 바이트
+        uint8_t c2 = static_cast<uint8_t>(s[i+1] & 0xFF);   // 다음 바이트
         if (i + 1 < len && IsHangul(c1, c2)) {
             i += 2;
         } else {
             i += 1;
         }
-        // TODO here
         //if (IsDBCSLeadByte((BYTE)s[i]) && i + 1 < len) i += 2;
         //else                                          i += 1;
     }

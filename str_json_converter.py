@@ -23,9 +23,9 @@ import json
 import os
 import sys
 
-DEFAULT_STR_DIR = r'D:\workspace\Pool of Radiance\data\str'
-DEFAULT_JSON_FILE = 'str_data.json'
-DEFAULT_GLOSSARY_FILE = 'glossary.json'
+DEFAULT_STR_DIR = r'E:/Games/Pool of Radiance/Data/STR'
+DEFAULT_JSON_FILE = 'translation/str_data.json'
+DEFAULT_GLOSSARY_FILE = 'translation/str_glossary.json'
 
 # Category mapping for glossary conversion
 CATEGORY_ITEM = 'Item'
@@ -65,7 +65,7 @@ def str_to_json(str_dir: str, json_file: str) -> None:
             lines.pop()
 
         # Decode as ASCII (all files are pure ASCII)
-        data[key] = [line.decode('ascii') for line in lines]
+        data[key] = [line.decode('euc-kr') for line in lines]
 
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
