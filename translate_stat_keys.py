@@ -126,13 +126,16 @@ CAST_SPELL_TRANSLATIONS = {
     "Heal": "치유",
     "Hold Monster": "괴물 포박",
     "Hold Person": "인간형 포박",
-    "Hold Poison": "독 포박",
+    "Hold Poison": "독 중지",
+    "Hold Undead": "언데드 포박",
+    "Insect Plague - Alpha Version": "곤충 역병",
     "Improved Invisibility": "상급 투명화",
     "Incendiary Cloud": "화염 구름",
     "Inflict Critical Wounds": "치명상 입히기",
     "Inflict Serious Wounds": "심각한 상처 입히기",
     "Invisibility": "투명화",
     "Invisibility Sphere": "투명화 구체",
+    "Light Healing": "가벼운 치료",
     "Light": "빛",
     "Lightning Bolt": "번개 줄기",
     "Mage Armor": "마법사 갑옷",
@@ -189,6 +192,16 @@ CLERIC_SCROLL_PATTERN = re.compile(
 
 # Cast key pattern: "Cast <Spell Name> Level <number>[/stat combos]"
 CAST_SPELL_NAMES = sorted(CAST_SPELL_TRANSLATIONS.keys(), key=len, reverse=True)
+SORCERER_PATTERN = re.compile(
+    r'^Sorcerer Scroll of (?:' + '|'.join(re.escape(name) for name in CAST_SPELL_NAMES) + r')\s+Level \d+'
+    r'(?:/.*)?$'
+)
+
+POTION_PATTERN = re.compile(
+    r'^Potion of (?:' + '|'.join(re.escape(name) for name in CAST_SPELL_NAMES) + r')\s'
+)
+
+# Cast key pattern: "Cast <Spell Name> Level <number>[/stat combos]"
 CAST_PATTERN = re.compile(
     r'^Cast (?:' + '|'.join(re.escape(name) for name in CAST_SPELL_NAMES) + r')\s+Level \d+'
     r'(?:/.*)?$'
@@ -208,16 +221,21 @@ def is_stat_key(key):
     """Check if the key matches the stat pattern (e.g., 'WIS +1/Spell Resistance +10')."""
     return bool(STAT_PATTERN.match(key.strip()))
 
-
 def is_cleric_scroll_key(key):
     """Check if the key matches the cleric scroll pattern (e.g., 'Cleric Scroll of Cure Light Wounds Level 5')."""
     return bool(CLERIC_SCROLL_PATTERN.match(key.strip()))
 
+def is_socerer_scroll_key(key):
+    """Check if the key matches the cleric scroll pattern (e.g., 'Sorcerer Scroll of Blink Level 5')."""
+    return bool(SORCERER_PATTERN.match(key.strip()))
+
+def is_potion_key(key):
+    """Check if the key matches the potion pattern (e.g., 'Potion of Blink Level 5')."""
+    return bool(POTION_PATTERN.match(key.strip()))
 
 def is_cast_key(key):
     """Check if the key matches the cast pattern (e.g., 'Cast Bestow Curse Level 10/To Hit +5/Damage +5')."""
     return bool(CAST_PATTERN.match(key.strip()))
-
 
 def is_vs_key(key):
     """Check if the key matches the vs pattern (e.g., 'Vs. Undead: To Hit +3/Damage +3')."""
@@ -248,14 +266,14 @@ def translate_stat_key(key):
         else:
             # If no stat name matched, keep the part as-is
             translated_parts.append(part)
-    return ' / '.join(translated_parts)
+    return '/'.join(translated_parts)
 
 
 def translate_cleric_scroll_key(key):
     """Translate a cleric scroll key to Korean.
 
     Format: "Cleric Scroll of <Spell Name> Level <number>[/additional text]"
-    Result: "성직자 두루마리: <주문명> Level <number> / 추가 문장"
+    Result: "성직자 두루마리: <주문명> Level <number>/추가 문장"
     """
     key = key.strip()
     # Extract spell name and the rest
@@ -268,19 +286,58 @@ def translate_cleric_scroll_key(key):
                 level_part, additional = rest.split('/', 1)
                 level_part = level_part.strip()
                 additional = additional.strip()
-                return f"성직자 두루마리: {CLERIC_SPELL_TRANSLATIONS[name]}, Level {level_part} / {additional}"
+                return f"성직자 두루마리: {CLERIC_SPELL_TRANSLATIONS[name]}, Level {level_part}/{additional}"
             else:
                 level_part = rest.strip()
                 return f"성직자 두루마리: {CLERIC_SPELL_TRANSLATIONS[name]}, Level {level_part}"
     # Should not reach here if is_cleric_scroll_key was checked first
     return key
 
+def translate_sorcerer_scroll_key(key):
+    """Translate a sorcerer scroll key to Korean.
+
+    Format: "Sorcerer Scroll of <Spell Name> Level <number>[/additional text]"
+    Result: "소서러 두루마리: <주문명> Level <number>/추가 문장"
+    """
+    key = key.strip()
+    # Extract spell name and the rest
+    for name in CAST_SPELL_NAMES:
+        prefix = f"Sorcerer Scroll of {name} Level "
+        if key.startswith(prefix):
+            rest = key[len(prefix):]
+            # Split additional text if present (after /)
+            if '/' in rest:
+                level_part, additional = rest.split('/', 1)
+                level_part = level_part.strip()
+                additional = additional.strip()
+                return f"소서러 두루마리: {CAST_SPELL_TRANSLATIONS[name]}, Level {level_part}/{additional}"
+            else:
+                level_part = rest.strip()
+                return f"소서러 두루마리: {CAST_SPELL_TRANSLATIONS[name]}, Level {level_part}"
+    # Should not reach here if is_cleric_scroll_key was checked first
+    return key
+
+
+def translate_potion_key(key):
+    """Translate a potion key to Korean.
+
+    Format: "Potion of <Spell Name>"
+    Result: "<주문명> 물약"
+    """
+    key = key.strip()
+    # Extract spell name and the rest
+    for name in CAST_SPELL_NAMES:
+        prefix = f"Potion of {name}"
+        if key.startswith(prefix):
+            return f"{CAST_SPELL_TRANSLATIONS[name]} 물약"
+    # Should not reach here if is_cleric_scroll_key was checked first
+    return key
 
 def translate_cast_key(key):
     """Translate a cast key to Korean.
 
     Format: "Cast <Spell Name> Level <number>[/stat combos]"
-    Result: "시전: <주문명>, Level <number> / stat combos"
+    Result: "시전: <주문명>, Level <number>/stat combos"
     """
     key = key.strip()
     # Extract spell name and the rest
@@ -297,7 +354,7 @@ def translate_cast_key(key):
                     additional = additional.strip()
                     # Translate the stat combos in additional
                     translated_additional = translate_stat_key(additional)
-                    return f"시전: {CAST_SPELL_TRANSLATIONS[name]}, Level {level_part} / {translated_additional}"
+                    return f"시전: {CAST_SPELL_TRANSLATIONS[name]}, Level {level_part}/{translated_additional}"
                 else:
                     level_part = rest.strip()
                     return f"시전: {CAST_SPELL_TRANSLATIONS[name]}, Level {level_part}"
@@ -309,7 +366,7 @@ def translate_vs_key(key):
     """Translate a vs key to Korean.
 
     Format: "Vs. <Race>: <STAT>[/<STAT>...]"
-    Result: "Vs. <종족>: <STAT> / <STAT> ..."
+    Result: "Vs. <종족>: <STAT>/<STAT> ..."
     """
     key = key.strip()
     # Extract race name and the rest
@@ -327,7 +384,7 @@ def translate_vs_key(key):
 def process_file(filepath, mode):
     """Process the JSON file with the given mode.
 
-    mode: 'stat', 'cleric_scroll', 'cast', or 'vs'
+    mode: 'stat', 'cleric_scroll', 'sorcerer_scroll', 'potion', 'cast', or 'vs'
     """
     if not os.path.exists(filepath):
         print(f"Error: File not found: {filepath}")
@@ -336,7 +393,14 @@ def process_file(filepath, mode):
     with open(filepath, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    if mode == 'stat':
+    if mode == 'empty':
+        mode_name = "empty"
+        with open('empty.txt', 'w', encoding='utf-8') as f:
+            for key, value in data.items():
+                if not value['korean']:
+                    f.write(f"{key}\n")
+        return
+    elif mode == 'stat':
         key_checker = is_stat_key
         translator = translate_stat_key
         mode_name = "stat"
@@ -344,6 +408,14 @@ def process_file(filepath, mode):
         key_checker = is_cleric_scroll_key
         translator = translate_cleric_scroll_key
         mode_name = "cleric scroll"
+    elif mode == 'sorcerer_scroll':
+        key_checker = is_socerer_scroll_key
+        translator = translate_sorcerer_scroll_key
+        mode_name = "sorcerer_scroll"
+    elif mode == 'potion':
+        key_checker = is_potion_key
+        translator = translate_potion_key
+        mode_name = "potion"
     elif mode == 'cast':
         key_checker = is_cast_key
         translator = translate_cast_key
@@ -353,7 +425,7 @@ def process_file(filepath, mode):
         translator = translate_vs_key
         mode_name = "vs"
     else:
-        print(f"Error: Unknown mode '{mode}'. Use 'stat', 'cleric_scroll', 'cast', or 'vs'.")
+        print(f"Error: Unknown mode '{mode}'. Use 'stat', 'cleric_scroll', 'potion', 'cast', or 'vs'.")
         sys.exit(1)
 
     updated_count = 0
@@ -401,8 +473,11 @@ def main():
         print("Usage: python translate_stat_keys.py <mode> [filepath]")
         print("  mode: 'stat'           - translate stat keys (e.g., 'WIS +1/Spell Resistance +10')")
         print("        'cleric_scroll'  - translate cleric scroll keys (e.g., 'Cleric Scroll of Cure Light Wounds Level 5')")
+        print("        'sorcerer_scroll'- translate sorcerer scroll keys (e.g., 'Sorcerer Scroll of Blink Level 10')")
+        print("        'potion'         - translate potion keys (e.g., 'Potion of Blink Level 10')")
         print("        'cast'           - translate cast keys (e.g., 'Cast Bestow Curse Level 10/To Hit +5/Damage +5')")
         print("        'vs'             - translate vs keys (e.g., 'Vs. Undead: To Hit +3/Damage +3')")
+        print("        'empty'          - show empty keys")
         print("  filepath: optional, default is 'translation/str_glossary_latest.json'")
         sys.exit(1)
 
