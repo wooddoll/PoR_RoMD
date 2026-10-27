@@ -254,20 +254,21 @@ def print_usage():
 
 if __name__ == "__main__":
     char_list_file="./cp949_kor2350ext.txt"
-    output_dir="./font/ext"
-    draw_boxes=True
-    gap=1
-    generate_all_fonts(char_list_file=char_list_file, output_dir=output_dir, draw_boxes=draw_boxes, gap=gap)
-    exit()
+    
+    #output_dir="./font/ext"
+    #draw_boxes=True
+    #gap=1
+    #generate_all_fonts(char_list_file=char_list_file, output_dir=output_dir, draw_boxes=draw_boxes, gap=gap)
+    #exit()
 
     args = sys.argv[1:]
 
     if not args:
-        generate_all_fonts()
+        generate_all_fonts(char_list_file=char_list_file)
     elif args[0] == '--help' or args[0] == '-h':
         print_usage()
     elif args[0] == '--draw-boxes':
-        generate_all_fonts(draw_boxes=True)
+        generate_all_fonts(char_list_file=char_list_file, draw_boxes=True)
     else:
         print(f"Error: Unknown option: {args[0]}")
         print_usage()

@@ -73,10 +73,16 @@ def _is_subsequence(sub: list, full: list) -> bool:
     it = iter(full)
     return all(w in it for w in sub)
 
+def cvt_tmp(target_file: str):
+    _target = load_json(target_file)
+    target = {}
+    for k, v in _target.items():
+        target[k] = { 'korean': v[0], "category": "", 'description': '' }
+    return target
 
 def merge_glossaries(source_file: str, target_file: str, output_file: str) -> None:
     """Merge data from source glossary into target glossary."""
-    source = load_json(source_file)
+    source = cvt_tmp(source_file)
     target = load_json(target_file)
 
     # Build case-insensitive lookup for source names
@@ -94,16 +100,18 @@ def merge_glossaries(source_file: str, target_file: str, output_file: str) -> No
         target_lower = target_name.lower()
         target_info = target[target_name]
 
+        matched = False
         # Rule 1: Exact match (case-insensitive)
         if target_lower in source_lookup:
             source_name, source_info = source_lookup[target_lower]
             target_info['korean'] = source_info.get('korean', '')
-            target_info['category'] = source_info.get('category', '')
-            target_info['description'] = source_info.get('description', '')
+            #target_info['category'] = source_info.get('category', '')
+            #target_info['description'] = source_info.get('description', '')
             exact_matches += 1
+            matched = True
             continue
 
-        # Rule 2: Sentence-level match (case-insensitive)
+        '''# Rule 2: Sentence-level match (case-insensitive)
         # Check if one name's entire word sequence is contained within the other.
         target_words = _words(target_name)
         matched = False
@@ -117,7 +125,7 @@ def merge_glossaries(source_file: str, target_file: str, output_file: str) -> No
                 target_info['description'] = f'{korean} / {description}'
                 word_matches += 1
                 matched = True
-                break
+                break'''
 
         if not matched:
             no_match += 1
