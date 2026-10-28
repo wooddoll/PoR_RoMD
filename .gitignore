@@ -55,3 +55,5 @@ google_ai_key.txt
 /to_merge_fixed.json
 /translation/DnD베이직.pdf
 /PoR_RoMD_patch2b/dummy.cpp
+/install/Data/Dialogue/*.por
+/install/Data/STA/*.sta

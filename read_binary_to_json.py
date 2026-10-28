@@ -52,11 +52,11 @@ def manual_offset_to_va(exe_path, file_offset):
                 rva = file_offset - pointer_to_raw_data + virtual_address
                 final_va = rva + image_base
                 
-                print(f"[{section_name} 섹션에서 주소 발견]")
-                print(f"-> Memory VA: 0x{final_va:X}")
+                #print(f"[{section_name} 섹션에서 주소 발견]")
+                #print(f"-> Memory VA: 0x{final_va:X}")
                 return final_va
                 
-        print("해당 오프셋이 어떤 섹션 범위에도 속하지 않습니다.")
+        #print("해당 오프셋이 어떤 섹션 범위에도 속하지 않습니다.")
         return None
 
 
@@ -391,6 +391,50 @@ def find_checkdata_in_exe(json_path, exe_path):
     
     return results
 
+def check_checkdata_in_exe(json_path, exe_path):
+    if not os.path.exists(json_path):
+        print(f"오류: JSON 파일을 찾을 수 없습니다: {json_path}")
+        return False
+            
+    if not os.path.exists(exe_path):
+        print(f"오류: exe 파일을 찾을 수 없습니다: {exe_path}")
+        return False
+                
+    # JSON 로드
+    data = load_checkdata_json(json_path)
+    
+    # exe 파일 전체를 메모리에 로드
+    with open(exe_path, 'rb') as f:
+        exe_data = f.read()
+   
+    match_count = 0
+    
+    for name, info in data.items():
+        checkdata = info["checkdata"]
+        expected_va = info["address"]
+        
+        # exe 파일에서 checkdata의 모든 위치 검색
+        matches = []
+        search_start = 0
+        
+        while True:
+            found_offset = exe_data.find(checkdata, search_start)
+            if found_offset == -1:
+                break
+            
+            # 파일 오프셋을 VA로 변환
+            va = manual_offset_to_va(exe_path, found_offset)
+            matches.append(va)
+            
+            # 다음 검색 위치로 이동 (겹치지 않도록)
+            search_start = found_offset + len(checkdata)
+        
+        if len(matches) == 1:
+            if matches[0] == expected_va:
+                match_count += 1
+    
+    return match_count == len(data)
+
 
 def main():
     if len(sys.argv) < 2:
@@ -449,6 +493,9 @@ def main():
             sys.exit(1)
         
         find_checkdata_in_exe(json_path, exe_path)
+        
+        print()
+        #check = check_checkdata_in_exe(json_path, exe_path)
         return
     
     # 조회 모드

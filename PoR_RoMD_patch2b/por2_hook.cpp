@@ -145,10 +145,12 @@ void Apply_Por2_Hooks()
 // 1. 새로운 폰트 경로 (길이에 제한 없음!)
 static char g_szNewFontPath[MAX_PATH] = "./Data_kr/Fonts/font%d";
 static char g_szNewDialgouePath[MAX_PATH] = "./Data_kr/Dialogue/%s";
-static char g_szNewMonstersPath[MAX_PATH] = "./Data_kr/STR/monsters.str";
-static char g_szNewTEEPath[MAX_PATH] = "./Data_kr/STR/TEE.str";
-static char g_szNew_data_str_Path[MAX_PATH] = "Data_kr\\STR\\";
-static char g_szNew_DATA_STR_Path[MAX_PATH] = ".\\Data_kr\\STR";
+
+static char g_szNew_data_str_Path[MAX_PATH] = "Data_kr\\STR\\"; // 0051bd4e
+static char g_szNew_DATA_STR_Path[MAX_PATH] = ".\\Data_kr\\STR";    // 0052d80d
+static char g_szNewTEEPath[MAX_PATH] = "Data_kr\\STR\\TEE.str"; // 0052f772
+static char g_szNewMonstersPath[MAX_PATH] = "Data_kr\\STR\\monsters.str";   // 0052f493
+
 
 void ReadIniFilePath() 
 {
@@ -177,14 +179,14 @@ void ReadIniFilePath()
 
 void PatchResourcePath()
 {
-    ReadIniFilePath();
+    //ReadIniFilePath();
 
     // 1. 0x0043ffd1 주소의 4바이트 포인터를 문자열 주소로 교체!
     patchDWORD(0x0043ffd1, reinterpret_cast<uintptr_t>(g_szNewFontPath));
 
     uintptr_t newPathAddr = reinterpret_cast<uintptr_t>(g_szNewDialgouePath);
     uintptr_t pDialpath[] = { 
-        0x005b2b86, 0x005b2ba5, 0x005b35d6, 0x005b35f5,     // 이곳은 all.idx, all.db를 읽기 위한 부분
+        //0x005b2b86, 0x005b2ba5, 0x005b35d6, 0x005b35f5,     // 이곳은 all.idx, all.db를 읽기 위한 부분
         0x005b3832, 0x005b39d2, 0x005b3a31,0x005b3a6f, 0x005b3e3a, 0x005b44f1, 0x005b4541 
     };
     int elementCount = sizeof(pDialpath) / sizeof(pDialpath[0]);
@@ -201,12 +203,12 @@ void PatchResourcePath()
 
     //0x006d5fa4 : data\\str\\  , 사용하는 곳은 0x0051bd4f
     //0x006d8814 : .\\Data\\STR , 사용하는 곳은 0x0052d80d, ./data/str/rand.str을 읽기 위한 것인것 같다.
-    patchDWORD(0x0051bd4f, reinterpret_cast<uintptr_t>(g_szNew_data_str_Path));
+    patchDWORD(0x0051bd4e, reinterpret_cast<uintptr_t>(g_szNew_data_str_Path));
     patchDWORD(0x0052d80d, reinterpret_cast<uintptr_t>(g_szNew_DATA_STR_Path));
 	//0x006d8888 : .\\Data\\Rand\\STR , 사용하는 곳은 0x0052a8c2
 }
 
 void ApplyMemoryPatches() {
-    PatchResourcePath();
+    //PatchResourcePath();
     Apply_Por2_Hooks();
 }

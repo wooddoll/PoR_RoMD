@@ -22,7 +22,8 @@ import sys
 from dataclasses import dataclass, field
 from typing import List
 
-from PIL import Image
+#from PIL import Image
+import Image
 
 
 # ============================================================
@@ -307,6 +308,35 @@ def get_font_configs(game_dir):
 # ============================================================
 # Main execution
 # ============================================================
+def build_font(name, src_path, ext_img, ext_txt, dst_path):
+
+    if not os.path.exists(dst_path):
+        os.makedirs(dst_path, exist_ok=True)
+
+    # 1. Read original DFF file
+    src_dff = os.path.join(src_path, f"{name}.dff")
+    dff = read_binary_as_int32(src_dff)
+    if dff is None:
+        print(f"  Error: Cannot read DFF file: {src_dff}")
+        return False
+    
+    # 2. Convert DFF data to metadata list
+    meta_a = dff_to_meta_list(dff)
+    
+    # 3. Set output paths
+    output_img = os.path.join(dst_path, f"{name}.bmp")
+    output_dff = os.path.join(dst_path, f"{name}.dff")
+    
+    # 4. Execute merge
+    src_bmp = os.path.join(src_path, f"{name}.bmp")
+    return merge_bitmap_fonts(
+            img_a_path=src_bmp,
+            meta_a=meta_a,
+            img_b_path=ext_img,
+            txt_b_path=ext_txt,
+            output_img_path=output_img,
+            output_dff_path=output_dff
+        )
 
 def build_all_fonts(game_dir):
     """Generate all fonts in batch."""
