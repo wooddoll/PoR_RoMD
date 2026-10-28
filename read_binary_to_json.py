@@ -118,7 +118,7 @@ def va_to_manual_offset(exe_path, va):
         
 def read_binary_to_json(binary_path, json_path, base_address=0x00000000):
     """
-    바이너리 파일을 128바이트씩 4번 읽어서 base64로 인코딩하여 JSON에 저장합니다.
+    바이너리 파일을 128바이트씩 읽어서 base64로 인코딩하여 JSON에 저장합니다.
     
     Args:
         binary_path: 읽을 바이너리 파일 경로
