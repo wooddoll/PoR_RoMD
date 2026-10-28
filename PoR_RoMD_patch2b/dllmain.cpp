@@ -14,19 +14,22 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
     LoadOriginalDll();
     InstallBinkHooks();
 
-    plog::init(plog::error, "korean.log"); // Step2: initialize the logger
-    bool ret = LoadSettings(L"korean.ini");
+    static plog::DebugOutputAppender<plog::TxtFormatter> debugOutputAppender;
+    //plog::init(plog::error, "error.log"); // Step2: initialize the logger
+    plog::init(plog::debug, &debugOutputAppender);
+    /*
+    bool ret = LoadSettings(L"language.ini");
     resetLogLevel();
 
     if (ret) {
         //OutputDebugStringA("[version.dll proxy] korean.ini loaded.\n");
-        PLOG_DEBUG << "[version.dll proxy] korean.ini loaded.";
+        PLOG_DEBUG << "[version.dll proxy] language.ini loaded.";
     }
     else {
         //OutputDebugStringA("[version.dll proxy] korean.ini load failed.\n");
-        PLOG_ERROR << "[version.dll proxy] korean.ini load failed.";
+        PLOG_ERROR << "[version.dll proxy] language.ini load failed.";
     }
-
+    */
     ApplyMemoryPatches();
 
     return 0;

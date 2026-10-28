@@ -1,11 +1,13 @@
 #include "bink_hook.h"
 #include "sbv_parser.h"
 #include "subtitle_renderer.h"
+#include "help_util.h"
+
 #include <MinHook.h>
 #include <shlwapi.h> // PathFindFileNameA 등을 사용하기 위해 포함 (필요시 shlwapi.lib 링크)
 #pragma comment(lib, "Shlwapi.lib")
-
-#include "help_util.h"
+#include <pathcch.h>
+#pragma comment(lib, "pathcch.lib")
 
 #include <filesystem>
 #include <map>
@@ -92,6 +94,31 @@ std::wstring BuildSubtitlePath(const char* videoFileName)
     return CombinePath(fullSubPath, baseName + L".sbv");
 }
 
+std::wstring GetSubPath(const char* videoFileName) {
+    if (videoFileName == nullptr || videoFileName[0] == '\0') {
+        return L"";
+    }
+
+    // 1. const char* (ANSI) -> std::wstring (Wide) 변환 처리
+    // 필요한 버퍼 크기를 먼저 구합니다.
+    int wideLen = MultiByteToWideChar(CP_ACP, 0, videoFileName, -1, nullptr, 0);
+    if (wideLen <= 0) 
+        return L"";
+
+    std::wstring wPath(wideLen - 1, L'\0'); // \0 제외한 크기로 초기화
+    MultiByteToWideChar(CP_ACP, 0, videoFileName, -1, &wPath[0], wideLen);
+
+    // 2. Win32 API를 사용해 확장자 제거
+    // 버퍼의 실제 크기인 wPath.length() + 1을 인자로 넘깁니다.
+    HRESULT hr = PathCchRemoveExtension(&wPath[0], wPath.length() + 1);
+
+    if (SUCCEEDED(hr)) {
+        // API가 문자열을 \0으로 잘라냈으므로 실제 길이에 맞게 갱신합니다.
+        wPath.resize(wcslen(wPath.c_str()));
+    }
+
+    return wPath;
+}
 
 // BINKCOPYALL 플래그 정의
 #define BINKCOPYALL 0x80000000L
@@ -192,7 +219,9 @@ static HBINK __stdcall DetourBinkOpen(const char* name, uint32_t flags)
         g_SubtitlesMap.erase(bink);
     }
 
-    std::wstring sbvPath = BuildSubtitlePath(name);
+    //std::wstring sbvPath = BuildSubtitlePath(name);
+    std::wstring sbvPath = GetSubPath(name);
+
     if (sbvPath.empty()) {
         return bink;
     }

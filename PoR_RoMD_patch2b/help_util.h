@@ -2,6 +2,7 @@
 
 #include <plog/Log.h>
 #include <plog/Initializers/RollingFileInitializer.h>
+#include <plog/Appenders/DebugOutputAppender.h>
 
 #include <vector>
 #include <string>
