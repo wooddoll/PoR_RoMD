@@ -267,22 +267,42 @@ def read_por_file(por_path, keys):
         desc = parts[3] if len(parts) > 3 else b''
 
         # Only include entries whose key is in the keys list
-        if key in keys:
-            # Check for non-ASCII characters in .por file data (str type only)
-            # key, dialogue, speaker, desc are bytes type - decode to str for checking
-            _dialogue = dialogue.decode('euc-kr', errors='replace')
-            _speaker = speaker.decode('ascii', errors='replace')
-            _desc = desc.decode('ascii', errors='replace')
-            check_non_ascii(_dialogue, f"POR dialogue (section '{os.path.basename(por_path)}')")
-            check_non_ascii(_speaker, f"POR speaker (section '{os.path.basename(por_path)}')")
-            check_non_ascii(_desc, f"POR desc (section '{os.path.basename(por_path)}')")
+        # Check for non-ASCII characters in .por file data (str type only)
+        # key, dialogue, speaker, desc are bytes type - decode to str for checking
+        _dialogue = dialogue.decode('euc-kr', errors='replace')
+        _speaker = speaker.decode('ascii', errors='replace')
+        _desc = desc.decode('ascii', errors='replace')
+        #check_non_ascii(_dialogue, f"POR dialogue (section '{os.path.basename(por_path)}')")
+        #check_non_ascii(_speaker, f"POR speaker (section '{os.path.basename(por_path)}')")
+        #check_non_ascii(_desc, f"POR desc (section '{os.path.basename(por_path)}')")
+        entries[key] = {
+            'dialogue': _dialogue,
+            'speaker': _speaker,
+            'desc': _desc,
+        }
 
-            entries[key] = {
-                'dialogue': _dialogue,
-                'speaker': _speaker,
-                'desc': _desc,
-            }
+    return entries
 
+def read_all_por_file(por_dir):
+    if not os.path.isdir(por_dir):
+        print(f'Error: Directory not found: {por_dir}', file=sys.stderr)
+        sys.exit(1)
+
+    # Collect all .str files, sorted case-insensitively by filename
+    por_files = [f for f in os.listdir(por_dir) if f.lower().endswith('.por')]
+    por_files.sort(key=str.lower)
+
+    if not por_files:
+        print(f'Error: No .str files found in: {por_files}', file=sys.stderr)
+        sys.exit(1)
+
+    entries = {}
+    for filename in por_files:
+        filepath = os.path.join(por_dir, filename)
+        key = os.path.splitext(filename)[0]  # Remove .str extension
+
+        entries[key] = read_por_file(filepath, key)
+    
     return entries
 
 
@@ -298,6 +318,32 @@ def build_sections(sections, idx_dir):
         por_path = os.path.join(idx_dir, por_name)
         por_entries = read_por_file(por_path, section_info['keys'].keys())
 
+        if por_entries is not None:
+            por_count += 1
+            # Create KeyEntry for each key
+            section_keys = section_info['keys']
+
+            for key_name in section_keys.keys():
+                # Find matching por entry
+                matching = next((e for e in por_entries.keys() if e == key_name), None)
+                if matching:
+                    section_info['keys'][matching].update(por_entries[matching])
+
+        result[section_name] = section_info
+    
+    print(f"Imported {por_count} [.por] files")
+    print()
+    return result
+
+def build_entries(sections, entries):
+    """
+    Combines all.db section data with .por file data into a single Section structure.
+    """
+    por_count = 0
+    result = {}
+    for section_name, section_info in sections.items():
+        por_entries = entries.get(section_name, {})
+        
         if por_entries is not None:
             por_count += 1
             # Create KeyEntry for each key
@@ -423,7 +469,6 @@ def print_entries(entries):
         extra_hex = hex(entry['address'])
         print(f"[{entry['index']:4d}] section='{entry['section']}' address={extra_hex}")
 
-
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print("Usage: python read_all_idx.py <game_dir> <to_export.json> [--exclude FIELD1,FIELD2] [--drop-empty]")
@@ -469,9 +514,12 @@ if __name__ == '__main__':
 
         # Load all.db file
         sections = read_all_db(db_path, entries)
+        entries = read_all_por_file(dialogue_dir)
+
         if sections is not None:
             # Combine all.db data with .por file data
-            combined = build_sections(sections, dialogue_dir)
+            #combined = build_sections(sections, dialogue_dir)
+            combined = build_entries(sections, entries)
             #print_sections(combined)
 
             output_dir = os.path.dirname(export_json_path)

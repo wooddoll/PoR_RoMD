@@ -183,7 +183,10 @@ void PatchResourcePath()
     patchDWORD(0x0043ffd1, reinterpret_cast<uintptr_t>(g_szNewFontPath));
 
     uintptr_t newPathAddr = reinterpret_cast<uintptr_t>(g_szNewDialgouePath);
-    uintptr_t pDialpath[] = { 0x005b2b86, 0x005b2ba5, 0x005b35d6, 0x005b35f5, 0x005b3832, 0x005b39d2, 0x005b3a31,0x005b3a6f, 0x005b3e3a, 0x005b44f1, 0x005b4541 };
+    uintptr_t pDialpath[] = { 
+        0x005b2b86, 0x005b2ba5, 0x005b35d6, 0x005b35f5,     // 이곳은 all.idx, all.db를 읽기 위한 부분
+        0x005b3832, 0x005b39d2, 0x005b3a31,0x005b3a6f, 0x005b3e3a, 0x005b44f1, 0x005b4541 
+    };
     int elementCount = sizeof(pDialpath) / sizeof(pDialpath[0]);
     // 2. pDialpath[] 주소들 4바이트 포인터를 문자열 주소로 교체!
     for (int i = 0; i < elementCount; ++i) {

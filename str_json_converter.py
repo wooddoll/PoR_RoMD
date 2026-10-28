@@ -24,6 +24,7 @@ import os
 import sys
 
 DEFAULT_STR_DIR = r'E:/Games/Pool of Radiance/Data/STR'
+DEFAULT_PATCH_DIR = r'E:/Games/Pool of Radiance/Data_kr/STR'
 DEFAULT_JSON_FILE = 'translation/str_data.json'
 DEFAULT_GLOSSARY_FILE = 'translation/str_glossary.json'
 
@@ -100,7 +101,7 @@ def json_to_str(str_dir: str, json_file: str) -> None:
             if not isinstance(line, str):
                 print(f'Error: Value in "{key}" must be a string', file=sys.stderr)
                 sys.exit(1)
-            encoded_lines.append(line.encode('ascii'))
+            encoded_lines.append(line.encode('euc-kr'))
 
         content = b'\x0a'.join(encoded_lines) + b'\x0a'
 
@@ -234,62 +235,118 @@ def glossary_to_json(json_file: str, glossary_file: str) -> None:
         with open(json_file, 'r', encoding='utf-8') as f:
             original_data = json.load(f)
 
-    # Build name -> set of file keys mapping from original data
-    name_to_files = {}
-    for file_key, lines in original_data.items():
-        if isinstance(lines, list):
-            for line in lines:
-                if isinstance(line, str):
-                    if line not in name_to_files:
-                        name_to_files[line] = set()
-                    name_to_files[line].add(file_key)
-
     # Build the new str_data.json structure
     new_data = {}
-
-    for name, info in glossary.items():
-        if not isinstance(info, dict):
-            print(f'Error: Value for "{name}" must be an object', file=sys.stderr)
+    for file_key, lines in original_data.items():
+        if not isinstance(lines, list):
+            print(f'Error: Value for "{file_key}" must be a list of strings', file=sys.stderr)
             sys.exit(1)
 
-        category = info.get('category', '')
+        new_data[file_key] = []
+        for line in lines:
+            if not isinstance(line, str):
+                print(f'Error: Value in "{file_key}" must be a string', file=sys.stderr)
+                sys.exit(1)
 
-        # Determine which file(s) this name belongs to.
-        # If the name exists in the original data, use ALL files from the
-        # original data (a name may appear in multiple files, e.g. an item
-        # name that also appears in a location file).
-        if name in name_to_files:
-            target_files = sorted(name_to_files[name], key=str.lower)
-        elif category == CATEGORY_ITEM:
-            target_files = ['TEE']
-        elif category == CATEGORY_MONSTER:
-            target_files = ['monsters']
-        elif category == CATEGORY_LOCATION:
-            # If not found in original data, skip (can't determine location)
-            print(f'Warning: "{name}" not found in original data, skipping', file=sys.stderr)
-            continue
-        else:
-            print(f'Warning: Unknown category "{category}" for "{name}", skipping', file=sys.stderr)
-            continue
-
-        for file_key in target_files:
-            if file_key not in new_data:
-                new_data[file_key] = []
-            if name not in new_data[file_key]:
-                new_data[file_key].append(name)
-
-    # Sort the lines in each file to match original order where possible
-    for file_key in new_data:
-        if file_key in original_data and isinstance(original_data[file_key], list):
-            # Preserve original order for names that exist in original
-            original_order = original_data[file_key]
-            new_data[file_key].sort(key=lambda n: original_order.index(n) if n in original_order else len(original_order))
+            new_words = glossary.get(line, {})
+            if not new_words:
+                print(f'Warning: "{line}" is not in glossary', file=sys.stderr)
+                new_data[file_key].append(line)
+            else:
+                translated = new_words.get('korean', '')
+                if translated:
+                    new_data[file_key].append(translated)
+                else:
+                    new_data[file_key].append(line)
 
     with open(json_file, 'w', encoding='utf-8') as f:
         json.dump(new_data, f, ensure_ascii=False, indent=2)
 
     print(f'Converted glossary {glossary_file} to {json_file} ({len(new_data)} files)')
 
+def rebuild_glossary_to_json(str_dir: str, patch_dir: str, glossary_file: str) -> None:
+    """Read all .str files and write them to a single JSON file."""
+    if not os.path.isdir(str_dir):
+        print(f'Error: Directory not found: {str_dir}', file=sys.stderr)
+        sys.exit(1)
+
+    # Collect all .str files, sorted case-insensitively by filename
+    str_files = [f for f in os.listdir(str_dir) if f.lower().endswith('.str')]
+    str_files.sort(key=str.lower)
+
+    if not str_files:
+        print(f'Error: No .str files found in: {str_dir}', file=sys.stderr)
+        sys.exit(1)
+
+    src_data = {}
+    for filename in str_files:
+        filepath = os.path.join(str_dir, filename)
+        key = os.path.splitext(filename)[0]  # Remove .str extension
+
+        with open(filepath, 'rb') as f:
+            raw = f.read()
+
+        # Split by 0x0A and remove trailing empty string if file ends with 0x0A
+        lines = raw.split(b'\x0a')
+        if lines and lines[-1] == b'':
+            lines.pop()
+
+        # Decode as ASCII (all files are pure ASCII)
+        src_data[key] = [line.decode('ascii') for line in lines]
+    
+    patch_data = {}
+    for filename in str_files:
+        filepath = os.path.join(patch_dir, filename)
+        key = os.path.splitext(filename)[0]  # Remove .str extension
+
+        with open(filepath, 'rb') as f:
+            raw = f.read()
+
+        # Split by 0x0A and remove trailing empty string if file ends with 0x0A
+        lines = raw.split(b'\x0a')
+        if lines and lines[-1] == b'':
+            lines.pop()
+
+        # Decode as ASCII (all files are pure ASCII)
+        patch_data[key] = [line.decode('euc-kr') for line in lines]
+
+    glossary = {}
+    for file_key, lines in src_data.items():
+        if not isinstance(lines, list):
+            print(f'Error: Value for "{file_key}" must be a list of strings', file=sys.stderr)
+            sys.exit(1)
+
+        patch_lines = patch_data.get(file_key, [])
+        if len(lines) != len(patch_lines):
+            print(f'Error: Mismatch in number of lines for "{file_key}" between source and patch', file=sys.stderr)
+            sys.exit(1)
+            
+        category = _get_category(file_key)
+        for line, patch_line in zip(lines, patch_lines):
+            if not isinstance(line, str):
+                print(f'Error: Value in "{file_key}" must be a string', file=sys.stderr)
+                sys.exit(1)
+            if line not in glossary:
+                glossary[line] = {
+                    'korean': patch_line,
+                    'category': category,
+                    'description': ''
+                }
+
+    # Sort: category first (alphabetical), then word-by-word dictionary order
+    # with prefix match -> more words first
+    sorted_entries = sorted(
+        [(name, glossary[name]['category']) for name in glossary.keys()],
+        key=functools.cmp_to_key(_compare_glossary_entries)
+    )
+
+    # Rebuild ordered glossary
+    ordered_glossary = {name: glossary[name] for name, _ in sorted_entries}
+
+    with open(glossary_file, 'w', encoding='utf-8') as f:
+        json.dump(ordered_glossary, f, ensure_ascii=False, indent=2)
+
+    print(f'Rebuilt glossary with {len(ordered_glossary)} entries from source {str_dir} and patch {patch_dir} to {glossary_file}')
 
 def main():
     parser = argparse.ArgumentParser(
@@ -325,6 +382,15 @@ def main():
     from_glossary.add_argument('--glossary-file', default=DEFAULT_GLOSSARY_FILE,
                                help=f'Input glossary file (default: {DEFAULT_GLOSSARY_FILE})')
 
+    # rebuild-glossary subcommand
+    rebuild_glossary = subparsers.add_parser('rebuild-glossary', help='Rebuild glossary format back to JSON')
+    rebuild_glossary.add_argument('--str-dir', default=DEFAULT_STR_DIR,
+                                  help=f'Directory containing .str files (default: {DEFAULT_STR_DIR})')
+    rebuild_glossary.add_argument('--patch-dir', default=DEFAULT_PATCH_DIR,
+                                  help=f'Directory containing .str files (default: {DEFAULT_PATCH_DIR})')
+    rebuild_glossary.add_argument('--glossary-file', default=DEFAULT_GLOSSARY_FILE,
+                                  help=f'Input glossary file (default: {DEFAULT_GLOSSARY_FILE})')
+
     args = parser.parse_args()
 
     if args.command == 'to-json':
@@ -335,6 +401,8 @@ def main():
         json_to_glossary(args.json_file, args.glossary_file)
     elif args.command == 'from-glossary':
         glossary_to_json(args.json_file, args.glossary_file)
+    elif args.command == 'rebuild-glossary':
+        rebuild_glossary_to_json(args.str_dir, args.patch_dir, args.glossary_file)
 
 
 if __name__ == '__main__':
