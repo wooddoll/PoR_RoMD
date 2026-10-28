@@ -15,25 +15,23 @@
     1. 
 1. 사용법 체크
     1. font
-        '''
-        #kor font sheet 생성
-        python draw_font_sheet.py
-        #kor font .bmp/.dff 생성
-        python build_fonts.py "D:/workspace/Pool of Radiance"
-        '''
+        # kor font sheet 생성
+        '''python draw_font_sheet.py'''
+        # kor font .bmp/.dff 생성
+        '''python build_fonts.py "D:/workspace/Pool of Radiance"'''
+        
     1. str
-        '''
-        #str to json
-        python str_json_converter.py to-json --str-dir "D:/workspace/Pool of Radiance/Data/STR" --json-file "translation/str_data.json"
-        #json to glossary
-        python str_json_converter.py to-glossary --json-file "translation/str_data.json" --glossary-file "translation/str_glossary_test.json"
-        #glossary to json, !! json을 덮어씀
-        python str_json_converter.py from-glossary --glossary-file "translation/str_glossary_test.json" --json-file "translation/str_data.json" 
-        #json to str
-        python str_json_converter.py from-json --json-file "translation/str_data.json" --str-dir "D:/workspace/Pool of Radiance/Data_kr/STR"
-        #rebuild json to compare
-        python str_json_converter.py rebuild-glossary --str-dir "D:/workspace/Pool of Radiance/Data/STR" --patch-dir "D:/workspace/Pool of Radiance/Data_kr/STR" --glossary-file "translation/str_glossary_kor.json"
-        '''
+        # str to json
+        '''python str_json_converter.py to-json --str-dir "D:/workspace/Pool of Radiance/Data/STR" --json-file "translation/str_data.json"'''
+        # json to glossary
+        '''python str_json_converter.py to-glossary --json-file "translation/str_data.json" --glossary-file "translation/str_glossary_test.json"'''
+        # glossary to json, !! json을 덮어씀
+        '''python str_json_converter.py from-glossary --glossary-file "translation/str_glossary_test.json" --json-file "translation/str_data.json"''' 
+        # json to str
+        '''python str_json_converter.py from-json --json-file "translation/str_data.json" --str-dir "D:/workspace/Pool of Radiance/Data_kr/STR"'''
+        # rebuild json to compare
+        '''python str_json_converter.py rebuild-glossary --str-dir "D:/workspace/Pool of Radiance/Data/STR" --patch-dir "D:/workspace/Pool of Radiance/Data_kr/STR" --glossary-file "translation/str_glossary_kor.json"'''
+
     1. dialoue
         '''
         #.por to json
