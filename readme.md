@@ -39,7 +39,7 @@
         #.por to json
         python read_por_files.py por-json "../Pool of Radiance/Data/Dialogue" "dump/str_data_en.json"
         #json to .por
-        python read_por_files.py json-por "dump/str_data_kr.json" "../Pool of Radiance/Data_kr/Dialogue"
+        python read_por_files.py json-por "../Pool of Radiance/Data/Dialogue" "dump/str_data_kr.json" "../Pool of Radiance/Data_kr/Dialogue"
         #rebuild json to compare
         python read_por_files.py combined "../Pool of Radiance/Data/Dialogue" "../Pool of Radiance/Data_kr/Dialogue" "dump/merged_en_kr_re.json"
         ```

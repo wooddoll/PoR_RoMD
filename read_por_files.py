@@ -54,20 +54,30 @@ def write_por_file(section, por_path):
 
     #print(f"Total {len(section)} keys written to {por_path} file")
 
-def write_por_files(json_path, dialogue_dir):
+def write_por_files(en_dialoure_dir, json_path, dialogue_dir):
+    en_entries = read_all_por_file(en_dialoure_dir)
+    
     with open(json_path, 'rb') as f:
         raw_data = f.read()
         # Read as latin-1 to preserve all bytes, then parse JSON
-        entries = json.loads(raw_data.decode('utf-8'))
+        kr_entries = json.loads(raw_data.decode('utf-8'))
 
-        if entries is not None:
-            for key_name, key_data in entries.items():
-                por_name = key_name + ".por"
-                por_path = os.path.join(dialogue_dir, por_name)
+        if kr_entries and en_entries:
+            for key_name, key_data in en_entries.items():
+                kr_data = kr_entries.get(key_name, {})
+                if kr_data:
+                    # Merge English and Korean dialogues
+                    for sub_key in key_data.keys():
+                        kr_dialogue = kr_data.get(sub_key, {}).get('dialogue', {})
+                        if kr_dialogue:
+                            en_entries[key_name][sub_key]['dialogue'] = kr_dialogue
 
-                write_por_file(key_data, por_path)
+        for key_name, key_data in en_entries.items():
+            por_name = key_name + ".por"
+            por_path = os.path.join(dialogue_dir, por_name)
+            write_por_file(key_data, por_path)
 
-        print(f"Total {len(entries)} keys written to {dialogue_dir}")
+        print(f"Total {len(kr_entries)} keys written to {dialogue_dir}")
 
 
 def convert_test(json_path, export_json):
@@ -130,7 +140,7 @@ def rebuild_json(en_dialoure, kr_dialoure, export_json):
 if __name__ == '__main__':
     if len(sys.argv) < 3:
         print("Usage: python read_all_idx.py por-json <dialogue_dir> <to_export.json>")
-        print("       python read_all_idx.py json-por <to_export.json> <dialogue_dir>")
+        print("       python read_all_idx.py json-por <en_dialoure_dir> <to_export.json> <dialogue_dir>")
         print("       python read_all_idx.py combined <eng_dialogue_dir> <kor_dialogue_dir> <to_export.json>")
         print("  <dialogue_dir>     - Path to the game directory (e.g., '../Pool of Radiance/Data/Dialogue')")
         print("  <to_export.json> - JSON file containing combined dialogue data")
@@ -141,9 +151,10 @@ if __name__ == '__main__':
         json_path = sys.argv[3]
         read_por_files(dialogue_dir, json_path)
     elif sys.argv[1] == 'json-por':
-        json_path = sys.argv[2]
-        dialogue_dir = sys.argv[3]
-        write_por_files(json_path, dialogue_dir)
+        en_dialoure_dir = sys.argv[2]
+        json_path = sys.argv[3]
+        dialogue_dir = sys.argv[4]
+        write_por_files(en_dialoure_dir, json_path, dialogue_dir)
     elif sys.argv[1] == 'combined':
         eng_dialogue_dir = sys.argv[2]
         kor_dialogue_dir = sys.argv[3]
