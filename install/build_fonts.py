@@ -22,8 +22,8 @@ import sys
 from dataclasses import dataclass, field
 from typing import List
 
-from PIL import Image
-
+#from PIL import Image
+from tinyImage import read_image, blit_region, save_as_bmp
 
 # ============================================================
 # DFF binary reading (from read_font.py)
@@ -33,18 +33,18 @@ from PIL import Image
 class DffData:
     """Data structure for parsed DFF binary file."""
     header: List[int] = field(default_factory=list)          # 3 values: count, width, height
-    array_5x256: List[List[int]] = field(default_factory=list)  # 256 lines of (index, x0, y0, x1, y1)
+    array_5xN: List[List[int]] = field(default_factory=list)  # count lines of (index, x0, y0, x1, y1)
     fair_count: int = 0                                      # fair count value
-    array_2x256: List[List[int]] = field(default_factory=list)  # 256 pairs, actual index values
+    array_2xM: List[List[int]] = field(default_factory=list)  # fair_count pairs, actual index values
 
 
 def read_binary_as_int32(file_path):
     """
     Reads a binary file and returns a DffData structure.
     - header: 3 values (count, width, height)
-    - array_5x256: 256 lines of (index, x0, y0, x1, y1), index starts at 0
+    - array_5xN: count lines of (index, x0, y0, x1, y1), index starts at 0
     - fair_count: 1 value
-    - array_2x256: 256 pairs, actual index values
+    - array_2xM: fair_count pairs, actual index values
     """
     try:
         with open(file_path, 'rb') as f:
@@ -70,19 +70,16 @@ def read_binary_as_int32(file_path):
 
     # Header: first 3 values (count, width, height)
     result.header = values[:3]
-
-    # array_5x256: next 256 lines, 5 values per line (index, x0, y0, x1, y1)
+    count = result.header[0]
+    # array_5xN: next count lines, 5 values per line (index, x0, y0, x1, y1)
     pos = 3
-    for _ in range(256):
+    for _ in range(count):
         if pos >= num_ints:
             break
         end = min(pos + 5, num_ints)
         ixy01_5 = values[pos:end]
         index = ixy01_5[0]
-        # If index is between -1 and -128, add 256
-        if -128 <= index <= -1:
-            ixy01_5[0] += 256
-        result.array_5x256.append(ixy01_5)
+        result.array_5xN.append(ixy01_5)
         pos = end
 
     # fair_count: next 1 value
@@ -90,12 +87,12 @@ def read_binary_as_int32(file_path):
         result.fair_count = values[pos]
         pos += 1
 
-    # array_2x256: next 256 pairs, actual index values
-    for _ in range(256):
+    # array_2xM: next fair_count pairs, actual index values
+    for _ in range(result.fair_count):
         if pos >= num_ints:
             break
         end = min(pos + 2, num_ints)
-        result.array_2x256.append(values[pos:end])
+        result.array_2xM.append(values[pos:end])
         pos = end
 
     return result
@@ -104,13 +101,12 @@ def read_binary_as_int32(file_path):
 def dff_to_meta_list(dff):
     """Convert DFF data to metadata list. (Processed in memory, no TXT file)"""
     meta_list = []
-    for idx, rect in enumerate(dff.array_5x256):
-        asciicode = idx if idx < 128 else idx - 256
+    for code, rect in enumerate(dff.array_5xN):
         x0 = rect[1]
         y0 = rect[2]
         x1 = rect[3]
         y1 = rect[4]
-        meta_list.append([asciicode, x0, y0, x1, y1])
+        meta_list.append([code, x0, y0, x1, y1])
     return meta_list
 
 
@@ -155,8 +151,10 @@ def merge_bitmap_fonts(img_a_path, meta_a, img_b_path, txt_b_path, output_img_pa
     # 1. Load metadata and images
     meta_b = load_font_meta(txt_b_path)
 
-    img_a = Image.open(img_a_path).convert('RGB')
-    img_b = Image.open(img_b_path).convert('RGB')
+    #img_a = Image.open(img_a_path).convert('RGB')
+    #img_b = Image.open(img_b_path).convert('RGB')
+    w_a, h_a, img_a = read_image(img_a_path)
+    w_b, h_b, img_b = read_image(img_b_path)
 
     # Merge A, B in order (no duplicate char codes)
     combined_meta = meta_a + meta_b
@@ -223,15 +221,19 @@ def merge_bitmap_fonts(img_a_path, meta_a, img_b_path, txt_b_path, output_img_pa
     print(f"  Final image size: {pot_width} x {canvas_height}")
 
     # 5. Create new image and blit fonts
-    new_image = Image.new('RGB', (pot_width, canvas_height), (0, 0, 0, 0))
+    #new_image = Image.new('RGB', (pot_width, canvas_height), (0, 0, 0, 0))
+    new_image = [[0] * (pot_width * 3) for _ in range(canvas_height)]
 
     for c in chars_info:
         # Crop font image and paste to new image
-        char_crop = c['src_img'].crop(c['box'])
+        #char_crop = c['src_img'].crop(c['box'])
+        sx0, sy0, sx1, sy1 = c['box']
+
         dx0, dy0 = c['dest_x'], c['dest_y']
         dx1, dy1 = dx0 + c['w'], dy0 + c['h']
 
-        new_image.paste(char_crop, (dx0, dy0))
+        #new_image.paste(char_crop, (dx0, dy0))
+        blit_region(new_image, c['src_img'], dx0, dy0, sx0, sy0, c['w'], c['h'])
 
         c['new_bbox'] = (dx0, dy0, dx1 - 1, dy1 - 1)
 
@@ -253,7 +255,8 @@ def merge_bitmap_fonts(img_a_path, meta_a, img_b_path, txt_b_path, output_img_pa
             out_b.write(struct.pack('<ii', c, idx))
 
     # Save image
-    new_image.save(output_img_path)
+    #new_image.save(output_img_path)
+    save_as_bmp(output_img_path, pot_width, canvas_height, new_image)
     print(f"  Generated: {output_img_path}, {output_dff_path}")
     return True
 
@@ -270,36 +273,36 @@ def get_font_configs(game_dir):
             "name": "font0",
             "dff": os.path.join(fonts_dir, "font0.dff"),
             "img_a": os.path.join(fonts_dir, "font0.bmp"),
-            "img_b": "font/Umdot14.ttf_18.png",
-            "txt_b": "font/Umdot14.ttf_18.txt",
+            "img_b": "Data/font/Umdot14.ttf_18.png",
+            "txt_b": "Data/font/Umdot14.ttf_18.txt",
         },
         {
             "name": "font1",
             "dff": os.path.join(fonts_dir, "font1.dff"),
             "img_a": os.path.join(fonts_dir, "font1.bmp"),
-            "img_b": "font/Umdot12.ttf_16.png",
-            "txt_b": "font/Umdot12.ttf_16.txt",
+            "img_b": "Data/font/Umdot12.ttf_16.png",
+            "txt_b": "Data/font/Umdot12.ttf_16.txt",
         },
         {
             "name": "font2",
             "dff": os.path.join(fonts_dir, "font2.dff"),
             "img_a": os.path.join(fonts_dir, "font2.bmp"),
-            "img_b": "font/Umdot20-Bold.ttf_28.png",
-            "txt_b": "font/Umdot20-Bold.ttf_28.txt",
+            "img_b": "Data/font/Umdot20-Bold.ttf_28.png",
+            "txt_b": "Data/font/Umdot20-Bold.ttf_28.txt",
         },
         {
             "name": "font3",
             "dff": os.path.join(fonts_dir, "font3.dff"),
             "img_a": os.path.join(fonts_dir, "font3.bmp"),
-            "img_b": "font/Galmuri9.ttf_13.png",
-            "txt_b": "font/Galmuri9.ttf_13.txt",
+            "img_b": "Data/font/Galmuri9.ttf_13.png",
+            "txt_b": "Data/font/Galmuri9.ttf_13.txt",
         },
         {
             "name": "font4",
             "dff": os.path.join(fonts_dir, "font4.dff"),
             "img_a": os.path.join(fonts_dir, "font4.bmp"),
-            "img_b": "font/Galmuri11.ttf_15.png",
-            "txt_b": "font/Galmuri11.ttf_15.txt",
+            "img_b": "Data/font/Galmuri11.ttf_15.png",
+            "txt_b": "Data/font/Galmuri11.ttf_15.txt",
         },
     ]
 
@@ -343,7 +346,7 @@ def build_all_fonts(game_dir):
     game_dir = os.path.normpath(game_dir)
 
     # Output directory: <game_dir>/data/font_kr
-    output_dir = os.path.join(game_dir, "Data_kr/Fonts")
+    output_dir = os.path.join(game_dir, "Data_kr2/Fonts")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
 
@@ -391,7 +394,8 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Usage: python build_fonts.py <Pool of Radiance path>")
         print("Example: python build_fonts.py ../Pool of Radiance")
-        sys.exit(1)
-
-    game_path = sys.argv[1]
+        #sys.exit(1)
+        game_path = "../../Pool of Radiance/"
+    else:
+        game_path = sys.argv[1]
     build_all_fonts(game_path)
