@@ -265,6 +265,7 @@ def main():
     parser.add_argument('input', help='입력 파일 또는 폴더 경로')
     parser.add_argument('output', help='출력 파일 또는 폴더 경로')
     parser.add_argument('--to-utf8', action='store_true', help='EUC-KR -> UTF-8 변환 (기본값)')
+    parser.add_argument('--to-utf16', action='store_true', help='EUC-KR -> UTF-16 변환')
     parser.add_argument('--to-euckr', action='store_true', help='UTF-8 -> EUC-KR 변환')
     parser.add_argument('--overwrite', action='store_true', help='출력 파일이 이미 존재해도 덮어쓰기')
     parser.add_argument('--dir', action='store_true', help='폴더 단위 일괄 변환 모드')

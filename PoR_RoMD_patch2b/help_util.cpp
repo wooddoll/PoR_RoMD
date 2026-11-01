@@ -131,6 +131,9 @@ void GetCurrentCall(const int charCode, const uintptr_t retAddr)
     else if (retAddr >= ptrcheck_FUN_00438830 && retAddr <= ptrcheck_FUN_00438830_end) {
         PLOG_DEBUG << "[check_FUN_00438830] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
     }
+    else if (retAddr >= 0x0043b4f0 && retAddr <= 0x0043b896) {
+        PLOG_DEBUG << "[cTextManager_DrawMenu_0043b4f0] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
+    }
     else {
         PLOG_ERROR << "[!!!ELSE!!!] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
     }

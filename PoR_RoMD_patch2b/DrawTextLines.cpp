@@ -54,6 +54,8 @@ BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*
 
     /* ---- 폰트 서피스 Lock ---- */
     DDSURFACEDESC2 ddsdSrc;
+    memset(&ddsdSrc, 0, sizeof(ddsdSrc));
+    ddsdSrc.dwSize = sizeof(DDSURFACEDESC2);
     if (pSrc->Lock(NULL, &ddsdSrc, 0, NULL) != 0) {
         pDst->Unlock(NULL);
         return FALSE;
@@ -75,17 +77,17 @@ BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*
             int chCode = getCharCode(self->m_ppLinesA[lineIdx], charIdx);
             RECT* rc = self->m_pFont->GetCharRect(chCode);
 
-            int width = rc->right - rc->left;
-            int height = rc->bottom - rc->top;
+            int charW = rc->right - rc->left;
+            int charH = rc->bottom - rc->top;
 
             /* 16bpp 에서만 그린다 (다른 모드는 폭 전진만 한다) */
-            if (0 < width && mode == 2 && 0 < height) 
+            if (0 < charW && mode == 2 && 0 < charH)
             {
                 const WORD* srcRow = (const WORD*)srcBase + (rc->top * srcPitchW + rc->left);
                 WORD* dstRow = (WORD*)dstBase + (yOffset * dstPitchW + xOffset);
 
-                for (int iy = 0; iy < height; iy++) {
-                    for (int ix = 0; ix < width; ix++) {
+                for (int iy = 0; iy < charH; iy++) {
+                    for (int ix = 0; ix < charW; ix++) {
                         if (srcRow[ix] != 0)         // 0 = 투명
                             dstRow[ix] = textColor;
                     }
