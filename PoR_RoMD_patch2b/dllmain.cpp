@@ -13,11 +13,11 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
 
     LoadOriginalDll();
     InstallBinkHooks();
-#ifndef GLYPH_TRACKING
+#if GLYPH_TRACKING
+    plog::init(plog::debug, "error.log"); // Step2: initialize the logger
+#else
     static plog::DebugOutputAppender<plog::TxtFormatter> debugOutputAppender;
     plog::init(plog::error, &debugOutputAppender);
-#else
-    plog::init(plog::debug, "error.log"); // Step2: initialize the logger
 #endif
     
     /*

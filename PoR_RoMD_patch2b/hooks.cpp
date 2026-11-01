@@ -1,4 +1,4 @@
-#ifdef GLYPH_TRACKING
+#if GLYPH_TRACKING
 
 #include <intrin.h>
 #include <stdint.h>
