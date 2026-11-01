@@ -1,4 +1,4 @@
-#ifndef GLYPH_TRACKING
+#if !GLYPH_TRACKING
 
 #include "por2.h"
 

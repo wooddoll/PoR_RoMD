@@ -57,3 +57,6 @@ google_ai_key.txt
 /PoR_RoMD_patch2b/dummy.cpp
 /install/Data/Dialogue/*.por
 /install/Data/STA/*.sta
+/.venv
+/font/ext
+/install/Data

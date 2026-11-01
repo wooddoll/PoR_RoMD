@@ -9,20 +9,23 @@
 inline constexpr uintptr_t ptr_malloc = 0x005EA8FD;
 inline constexpr uintptr_t ptr_free = 0x005EA8F2;
 
-inline constexpr uintptr_t ptrWordWrap = 0x00444890;
-inline constexpr uintptr_t ptrWordWrap_end = 0x00444CAB;
-inline constexpr uintptr_t ptrRenderShadow = 0x00444D40;
-inline constexpr uintptr_t ptrRenderShadow_end = 0x0043BF00;
-inline constexpr uintptr_t ptrCalculateTextExtents = 0x0043BF40;
-inline constexpr uintptr_t ptrCalculateTextExtents_end = 0x0043C00F;
-inline constexpr uintptr_t ptrDrawTextLines = 0x0043BC80;
-inline constexpr uintptr_t ptrDrawTextLines_end = 0x00445039;
-inline constexpr uintptr_t ptrSprintfMeasure = 0x00476820;
-inline constexpr uintptr_t ptrSprintfMeasure_end = 0x00476adc;
+inline constexpr uintptr_t ptr_FindGlyphIndex = 0x004355C0;
+
 inline constexpr uintptr_t ptrcheck_FUN_00438830 = 0x00438830;
 inline constexpr uintptr_t ptrcheck_FUN_00438830_end = 0x00438b0f;
 
-inline constexpr uintptr_t ptr_FindGlyphIndex = 0x004355C0;
+inline constexpr uintptr_t ptrCalculateTextExtents = 0x0043BF40;
+inline constexpr uintptr_t ptrCalculateTextExtents_end = 0x0043C00F;
+inline constexpr uintptr_t ptrDrawTextLines = 0x0043BC80;
+inline constexpr uintptr_t ptrDrawTextLines_end = 0x0043bef3;
+inline constexpr uintptr_t ptrWordWrap = 0x00444890;
+inline constexpr uintptr_t ptrWordWrap_end = 0x00444CAB;
+inline constexpr uintptr_t ptrRenderShadow = 0x00444D40;
+inline constexpr uintptr_t ptrRenderShadow_end = 0x00445039;
+
+inline constexpr uintptr_t ptrSprintfMeasure = 0x00476820;
+inline constexpr uintptr_t ptrSprintfMeasure_end = 0x00476adc;
+
 
 
 /* ------------------------------------------------------------------ */

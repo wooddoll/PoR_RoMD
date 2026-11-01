@@ -102,7 +102,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;PORROMDPATCH2B_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;PORROMDPATCH2B_EXPORTS;_WINDOWS;_USRDLL;GLYPH_TRACKING=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -157,9 +157,11 @@
   <ItemGroup>
     <ClCompile Include="bink_hook.cpp" />
     <ClCompile Include="CalculateTextExtents.cpp" />
+    <ClCompile Include="cTextLabel_Calc.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="DrawMenu.cpp" />
     <ClCompile Include="DrawTextLines.cpp" />
+    <ClCompile Include="cTextLabel_Draw.cpp" />
     <ClCompile Include="help_util.cpp" />
     <ClCompile Include="hooks.cpp" />
     <ClCompile Include="ini_config.cpp" />
