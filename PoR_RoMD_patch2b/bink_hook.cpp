@@ -117,7 +117,7 @@ std::wstring GetSubPath(const char* videoFileName) {
         wPath.resize(wcslen(wPath.c_str()));
     }
 
-    return wPath;
+    return wPath + L".sbv";
 }
 
 // BINKCOPYALL 플래그 정의

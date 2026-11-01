@@ -158,8 +158,10 @@
     <ClCompile Include="bink_hook.cpp" />
     <ClCompile Include="CalculateTextExtents.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="DrawMenu.cpp" />
     <ClCompile Include="DrawTextLines.cpp" />
     <ClCompile Include="help_util.cpp" />
+    <ClCompile Include="hooks.cpp" />
     <ClCompile Include="ini_config.cpp" />
     <ClCompile Include="KeyInput_Draw.cpp" />
     <ClCompile Include="KeyProc.cpp" />

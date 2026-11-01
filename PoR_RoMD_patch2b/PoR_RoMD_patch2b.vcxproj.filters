@@ -48,10 +48,16 @@
     <ClCompile Include="KeyInput_Draw.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="KeyProc.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="DrawMenu.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
     <ClCompile Include="por2_hook.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="KeyProc.cpp">
+    <ClCompile Include="hooks.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>

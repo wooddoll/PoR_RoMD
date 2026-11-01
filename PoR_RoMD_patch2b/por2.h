@@ -172,7 +172,7 @@ struct cTextLayout {
     }
 };
 
-struct cSpriteBase {            // 폭/높이를 가진 계열 (이름 임시)
+struct cRenderTarget {            // 폭/높이를 가진 계열 (이름 임시)
     void* vftable;              // +0x00  vtable +0x54 : 서피스 반환
     char  pad_004[0x124];       // +0x04
     int   m_nWidth;             // +0x128
@@ -186,7 +186,9 @@ struct cSpriteBase {            // 폭/높이를 가진 계열 (이름 임시)
 
 struct cTextManager {
     void*  vftable;             // +0x000
-    char   pad_004[0x124];      // +0x004
+    char   pad_004[0x2C];       // +0x004
+    int    m_nWidth30;          // +0x030  '>' 우측 정렬 기준 폭 (※ +0x128 과 다름, 확인 필요)
+    char   pad_034[0xF4];       // +0x034
     int    m_nWidth;            // +0x128
     int    m_nHeight;           // +0x12C
     char   pad_130[0x0C];       // +0x130
@@ -194,16 +196,23 @@ struct cTextManager {
     int    m_nLineHeight;       // +0x140  가장 큰 글자 높이        (출력)
     int    m_nBoxWidth;         // +0x144  가장 긴 줄 폭 + 여백     (출력)
     int    m_nTotalHeight;      // +0x148  m_nLineCount * 줄 높이   (출력)
-    int    unknown_14C[16];     // +0x14C ~ +0x18B
+    int    unknown_14C[0xB];    // +0x14C
+    WORD   m_wNormalColor;      // +0x178
+    WORD   m_wSelColor;         // +0x17A
+    char   pad_17C[0x10];       // +0x17C
     char** m_ppLinesA;          // +0x18C  to Draw
     int    m_nLineCountA;       // +0x190  to Draw
     int    unknown_194;         // +0x194
     char** m_ppLinesB;          // +0x198  to Calculate
     int    unknown_19C;         // +0x19C 
     cFont* m_pFont;             // +0x1A0
-    char   pad_1A4[0x10];       // +0x1A4
-    cSpriteBase* m_pPart[3];    // +0x1B4, +0x1B8, +0x1BC
-    cSpriteBase* m_pTarget;     // +0x1C0
+    BYTE*  m_pTruncFlags;       // +0x1A4  줄별 "잘렸음" 플래그
+    char   pad_1A8[0xC];        // +0x1A8
+    cRenderTarget* m_pPart[2];    // +0x1B4, +0x1B8
+	cRenderTarget* m_pPartBottom; // +0x1BC
+    cRenderTarget* m_pTarget;   // +0x1C0
+    char   pad_1C4[8];          // +0x1C4
+    BYTE*  m_pSelFlags;         // +0x1CC  줄별 "선택됨" 플래그
 };
 
 struct CWidgetBase {

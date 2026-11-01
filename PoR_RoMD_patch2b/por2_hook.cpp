@@ -1,3 +1,5 @@
+#ifndef GLYPH_TRACKING
+
 #include "por2.h"
 
 #include <shlwapi.h> // PathFindFileNameA 등을 사용하기 위해 포함 (필요시 shlwapi.lib 링크)
@@ -15,6 +17,8 @@ BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*
 
 BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/);
 int __cdecl Input_Hook(int /*a1*/, int /*a2*/, int ch);
+
+BOOL __fastcall cTextManager_DrawMenu_Hook(cTextManager* self, void* /*edx*/);
 
 typedef BOOL (__fastcall* tWordWrap)(cTextLayout*, void*);
 tWordWrap g_origWordWrap = NULL;
@@ -139,6 +143,9 @@ void Apply_Por2_Hooks()
     
     patchDWORD(0x00622E24, reinterpret_cast<uintptr_t>(CKeyInput_Draw_Hook));   // vtable 슬롯 교체
     PatchRelativeCall(0x0049EDCE, reinterpret_cast<uintptr_t>(Input_Hook));
+
+    patchDWORD(0x622C78, reinterpret_cast<uintptr_t>(cTextManager_DrawMenu_Hook));   // vtable 슬롯 교체
+    patchDWORD(0x622D40, reinterpret_cast<uintptr_t>(cTextManager_DrawMenu_Hook));   // vtable 슬롯 교체
 #endif
 }
 
@@ -212,3 +219,5 @@ void ApplyMemoryPatches() {
     //PatchResourcePath();
     Apply_Por2_Hooks();
 }
+
+#endif // GLYPH_TRACKING
