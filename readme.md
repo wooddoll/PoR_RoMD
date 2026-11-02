@@ -5,6 +5,10 @@
 - directx8.0a
     - fast memory copy인가? 키면 안됨
 
+
+[![Pool of Radiance2 (2001) 한글화 테스트 1](https://youtu.be/ZXoTMiSzAwU)](https://youtu.be/ZXoTMiSzAwU)
+
+
 ## TODO
 1. .ini
     1. korean.ini -> language.ini
