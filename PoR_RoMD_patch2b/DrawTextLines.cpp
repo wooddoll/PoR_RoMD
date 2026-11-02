@@ -81,7 +81,7 @@ BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*
             int charH = rc->bottom - rc->top;
 
             /* 16bpp 에서만 그린다 (다른 모드는 폭 전진만 한다) */
-            if (0 < charW && mode == 2 && 0 < charH)
+            if (mode == 2 && 0 < charW && 0 < charH)
             {
                 const WORD* srcRow = (const WORD*)srcBase + (rc->top * srcPitchW + rc->left);
                 WORD* dstRow = (WORD*)dstBase + (yOffset * dstPitchW + xOffset);

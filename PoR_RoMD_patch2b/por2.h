@@ -2,6 +2,8 @@
 
 #include <intrin.h>
 #include <cstdint>
+#include <stddef.h>
+
 #define WIN32_LEAN_AND_MEAN // 불필요한 Windows 헤더 제외 (선택 사항)
 #include <windows.h>
 #include <ddraw.h>          // IDirectDrawSurface7 및 DirectDraw 핵심 헤더
@@ -9,15 +11,28 @@
 inline constexpr uintptr_t ptr_malloc = 0x005EA8FD;
 inline constexpr uintptr_t ptr_free = 0x005EA8F2;
 
+inline constexpr uintptr_t ptrKeyInput = 0x00406d60;
 inline constexpr uintptr_t ptr_FindGlyphIndex = 0x004355C0;
 
 inline constexpr uintptr_t ptrcheck_FUN_00438830 = 0x00438830;
 inline constexpr uintptr_t ptrcheck_FUN_00438830_end = 0x00438b0f;
 
+inline constexpr uintptr_t ptrKeyInputDraw = 0x0043a4d0;
+inline constexpr uintptr_t ptrKeyInputDraw_end = 0x0043ab99;
+
+inline constexpr uintptr_t ptrDrawMenu = 0x0043b4f0;
+inline constexpr uintptr_t ptrDrawMenu_end = 0x0043b896;
+
 inline constexpr uintptr_t ptrCalculateTextExtents = 0x0043BF40;
 inline constexpr uintptr_t ptrCalculateTextExtents_end = 0x0043C00F;
 inline constexpr uintptr_t ptrDrawTextLines = 0x0043BC80;
 inline constexpr uintptr_t ptrDrawTextLines_end = 0x0043bef3;
+
+inline constexpr uintptr_t ptrCalcExtentTextLabel = 0x004428B0;
+inline constexpr uintptr_t ptrCalcExtentTextLabel_end = 0x00442980;
+inline constexpr uintptr_t ptrDrawTextTextLabel = 0x00442590;
+inline constexpr uintptr_t ptrDrawTextTextLabel_end = 0x00442876;
+
 inline constexpr uintptr_t ptrWordWrap = 0x00444890;
 inline constexpr uintptr_t ptrWordWrap_end = 0x00444CAB;
 inline constexpr uintptr_t ptrRenderShadow = 0x00444D40;
@@ -25,6 +40,7 @@ inline constexpr uintptr_t ptrRenderShadow_end = 0x00445039;
 
 inline constexpr uintptr_t ptrSprintfMeasure = 0x00476820;
 inline constexpr uintptr_t ptrSprintfMeasure_end = 0x00476adc;
+
 
 
 
@@ -83,12 +99,19 @@ struct cCharCodeMap {
         return reinterpret_cast<tFn>(ptr_FindGlyphIndex)(this, chCode);
     }
 };
+static_assert(offsetof(cCharCodeMap, count) == 0x0, "");
+static_assert(offsetof(cCharCodeMap, keys) == 0x4, "");
+static_assert(offsetof(cCharCodeMap, values) == 0x8, "");
 
 struct cGlyph {
     int charCode;                   // +0x00
 	RECT rect;                      // +0x04: x0, +0x08: y0, +0x0C: x1, +0x10: y1
     IDirectDrawSurface7* pSurface;  // +0x14,    IDirectDrawSurface*
 };
+static_assert(offsetof(cGlyph, charCode) == 0x0, "");
+static_assert(offsetof(cGlyph, rect) == 0x4, "");
+static_assert(offsetof(cGlyph, pSurface) == 0x14, "");
+
 
 struct cFont_vtable {
 	virtual HFONT CreateFontDIB(LPCSTR pszFaceName, DWORD dwCharSet, int nHeight) = 0;  // +0x00
@@ -142,7 +165,16 @@ struct cFont {
         return this->pSurface;
     }
 };
-
+static_assert(offsetof(cFont, vtable) == 0x0, "");
+static_assert(offsetof(cFont, glyphCount) == 0x4, "");
+static_assert(offsetof(cFont, pGlyphs) == 0x8, "");
+static_assert(offsetof(cFont, pCharMap) == 0xC, "");
+static_assert(offsetof(cFont, pSurface) == 0x14, "");
+static_assert(offsetof(cFont, hdc) == 0x18, "");
+static_assert(offsetof(cFont, dibBitmap) == 0x1C, "");
+static_assert(offsetof(cFont, dibBits) == 0x20, "");
+static_assert(offsetof(cFont, atlasWidth) == 0x24, "");
+static_assert(offsetof(cFont, atlasHeight) == 0x28, "");
 
 
 struct cTextLayout {
@@ -174,6 +206,20 @@ struct cTextLayout {
         return ((tFn)(*(void***)this)[0x54 / 4])(this);
     }
 };
+static_assert(offsetof(cTextLayout, m_pFont) == 0x124, "");
+static_assert(offsetof(cTextLayout, m_pszText) == 0x128, "");
+static_assert(offsetof(cTextLayout, m_nAlign) == 0x130, "");
+static_assert(offsetof(cTextLayout, m_nLineCount) == 0x138, "");
+static_assert(offsetof(cTextLayout, m_pLineEndIndices) == 0x13C, "");
+static_assert(offsetof(cTextLayout, m_pLineWidths) == 0x140, "");
+static_assert(offsetof(cTextLayout, m_nMaxLineWidth) == 0x144, "");
+static_assert(offsetof(cTextLayout, m_nTotalHeight) == 0x148, "");
+static_assert(offsetof(cTextLayout, m_nLineHeight) == 0x14C, "");
+static_assert(offsetof(cTextLayout, m_wTextColor) == 0x150, "");
+static_assert(offsetof(cTextLayout, m_wShadowColor) == 0x154, "");
+static_assert(offsetof(cTextLayout, m_bShadow) == 0x164, "");
+
+
 
 struct cRenderTarget {            // 폭/높이를 가진 계열 (이름 임시)
     void* vftable;              // +0x00  vtable +0x54 : 서피스 반환
@@ -186,6 +232,10 @@ struct cRenderTarget {            // 폭/높이를 가진 계열 (이름 임시)
         return ((tFn)(*(void***)this)[0x54 / 4])(this);
     }
 };
+static_assert(offsetof(cRenderTarget, m_nWidth) == 0x128, "");
+static_assert(offsetof(cRenderTarget, m_nHeight) == 0x12C, "");
+
+
 
 struct cTextManager {
     void*  vftable;             // +0x000
@@ -217,6 +267,26 @@ struct cTextManager {
     char   pad_1C4[8];          // +0x1C4
     BYTE*  m_pSelFlags;         // +0x1CC  줄별 "선택됨" 플래그
 };
+static_assert(offsetof(cTextManager, m_nWidth30) == 0x30, "");
+static_assert(offsetof(cTextManager, m_nWidth) == 0x128, "");
+static_assert(offsetof(cTextManager, m_nHeight) == 0x12C, "");
+static_assert(offsetof(cTextManager, m_nLineCountB) == 0x13C, "");
+static_assert(offsetof(cTextManager, m_nLineHeight) == 0x140, "");
+static_assert(offsetof(cTextManager, m_nBoxWidth) == 0x144, "");
+static_assert(offsetof(cTextManager, m_nTotalHeight) == 0x148, "");
+static_assert(offsetof(cTextManager, m_wNormalColor) == 0x178, "");
+static_assert(offsetof(cTextManager, m_wSelColor) == 0x17A, "");
+static_assert(offsetof(cTextManager, m_ppLinesA) == 0x18C, "");
+static_assert(offsetof(cTextManager, m_nLineCountA) == 0x190, "");
+static_assert(offsetof(cTextManager, m_ppLinesB) == 0x198, "");
+static_assert(offsetof(cTextManager, m_pFont) == 0x1A0, "");
+static_assert(offsetof(cTextManager, m_pTruncFlags) == 0x1A4, "");
+static_assert(offsetof(cTextManager, m_pPart) == 0x1B4, "");
+static_assert(offsetof(cTextManager, m_pPartBottom) == 0x1BC, "");
+static_assert(offsetof(cTextManager, m_pTarget) == 0x1C0, "");
+static_assert(offsetof(cTextManager, m_pSelFlags) == 0x1CC, "");
+
+
 
 struct CWidgetBase {
     void* vftable;                  // +0x000
@@ -241,6 +311,16 @@ struct CWidgetBase {
         return ((tGetOffsetY)(*(void***)this)[0x88 / 4])(this);
     }
 };
+static_assert(offsetof(CWidgetBase, m_nX) == 0x4, "");
+static_assert(offsetof(CWidgetBase, m_nY) == 0x8, "");
+static_assert(offsetof(CWidgetBase, m_rcScreen) == 0xBC, "");
+static_assert(offsetof(CWidgetBase, m_rcFrame) == 0xCC, "");
+static_assert(offsetof(CWidgetBase, m_rcClip) == 0xDC, "");
+static_assert(offsetof(CWidgetBase, m_pImage) == 0xEC, "");
+static_assert(offsetof(CWidgetBase, m_nImageArg) == 0xF0, "");
+static_assert(offsetof(CWidgetBase, m_bVisible) == 0xF4, "");
+
+
 
 struct CKeyInput {
     CWidgetBase base;
@@ -262,3 +342,46 @@ struct CKeyInput {
     BYTE   m_bCursorFalling;         // +0x1B0 1이면 알파 감소 중
     BYTE   m_bRightAlign;            // +0x1B1 1이면 넘칠 때 끝부분만 오른쪽 정렬
 };
+static_assert(offsetof(CKeyInput, m_nBgFlag) == 0x124, "");
+static_assert(offsetof(CKeyInput, m_pFont) == 0x134, "");
+static_assert(offsetof(CKeyInput, m_pszText) == 0x138, "");
+static_assert(offsetof(CKeyInput, m_nStopIdx) == 0x13c, "");
+static_assert(offsetof(CKeyInput, m_nPadX) == 0x140, "");
+static_assert(offsetof(CKeyInput, m_nPadY) == 0x144, "");
+static_assert(offsetof(CKeyInput, m_nBoxW) == 0x148, "");
+static_assert(offsetof(CKeyInput, m_nBoxH) == 0x14C, "");
+static_assert(offsetof(CKeyInput, m_bCursorOn) == 0x150, "");
+static_assert(offsetof(CKeyInput, m_dwLastTick) == 0x158, "");
+static_assert(offsetof(CKeyInput, m_aBreakCache) == 0x15C, "");
+static_assert(offsetof(CKeyInput, m_nCursorAlpha) == 0x1AC, "");
+static_assert(offsetof(CKeyInput, m_bCursorFalling) == 0x1B0, "");
+static_assert(offsetof(CKeyInput, m_bRightAlign) == 0x1B1, "");
+
+
+struct cTextLabel {                            // vtable 0x00623038 / 0x00623040 ...
+    void*   vftable;                    // +0x000
+    char    pad_004[0x140];             // +0x004
+    int     m_nLineHeight;              // +0x144  (출력) 가장 큰 글자 높이
+    int     m_nTotalHeight;             // +0x148  (출력) 줄 수 × 줄 높이
+    int     m_nBoxWidth;                // +0x14C  (출력) 가장 긴 줄의 끝 x + 20
+    char    pad_150[8];                 // +0x150 ~ +0x157
+    int     m_nLineCount;               // +0x158
+    char**  m_ppLines;                  // +0x15C
+    char    pad_160[4];                 // +0x160
+    cFont*  m_pFont;                    // +0x164
+    WORD    m_wColor;                   // +0x168
+    char    pad_16A[0x0A];              // +0x16A
+    cRenderTarget*   m_pTarget;         // +0x174
+    char    pad_178[0x30];              // +0x178
+    int     m_nLeft;                    // +0x1A8
+};
+
+static_assert(offsetof(cTextLabel, m_nLineHeight) == 0x144, "");
+static_assert(offsetof(cTextLabel, m_nTotalHeight) == 0x148, "");
+static_assert(offsetof(cTextLabel, m_nBoxWidth) == 0x14C, "");
+static_assert(offsetof(cTextLabel, m_nLineCount) == 0x158, "");
+static_assert(offsetof(cTextLabel, m_ppLines) == 0x15C, "");
+static_assert(offsetof(cTextLabel, m_pFont) == 0x164, "");
+static_assert(offsetof(cTextLabel, m_wColor) == 0x168, "");
+static_assert(offsetof(cTextLabel, m_pTarget) == 0x174, "");
+static_assert(offsetof(cTextLabel, m_nLeft) == 0x1A8, "");
