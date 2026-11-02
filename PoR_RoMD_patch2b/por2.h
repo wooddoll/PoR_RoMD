@@ -311,8 +311,8 @@ struct CWidgetBase {
         return ((tGetOffsetY)(*(void***)this)[0x88 / 4])(this);
     }
 };
-static_assert(offsetof(CWidgetBase, m_nX) == 0x4, "");
-static_assert(offsetof(CWidgetBase, m_nY) == 0x8, "");
+static_assert(offsetof(CWidgetBase, m_nX) == 0x38, "");
+static_assert(offsetof(CWidgetBase, m_nY) == 0x3C, "");
 static_assert(offsetof(CWidgetBase, m_rcScreen) == 0xBC, "");
 static_assert(offsetof(CWidgetBase, m_rcFrame) == 0xCC, "");
 static_assert(offsetof(CWidgetBase, m_rcClip) == 0xDC, "");

@@ -60,3 +60,4 @@ google_ai_key.txt
 /.venv
 /font/ext
 /install/Data
+/install/__pycache__

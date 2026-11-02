@@ -113,14 +113,14 @@ const char* OutputEucKrChar(unsigned char byte1, unsigned char byte2)
 }
 const char* OutputEucKrChar(int chCode) 
 {
-    uint8_t c1 = static_cast<uint8_t>(charCode & 0xFF);
-    uint8_t c2 = static_cast<uint8_t>((charCode >> 8) & 0xFF);
-    uint8_t c3 = static_cast<uint8_t>((charCode >> 16) & 0xFF);
-    uint8_t c4 = static_cast<uint8_t>((charCode >> 24) & 0xFF);
-    _eucKrStr_[0] = static_cast<char>(byte1);
-    _eucKrStr_[1] = static_cast<char>(byte2);
-    _eucKrStr_[2] = static_cast<char>(byte3);
-    _eucKrStr_[3] = static_cast<char>(byte4);
+    uint8_t c1 = static_cast<uint8_t>(chCode & 0xFF);
+    uint8_t c2 = static_cast<uint8_t>((chCode >> 8) & 0xFF);
+    uint8_t c3 = static_cast<uint8_t>((chCode >> 16) & 0xFF);
+    uint8_t c4 = static_cast<uint8_t>((chCode >> 24) & 0xFF);
+    _eucKrStr_[0] = static_cast<char>(c1);
+    _eucKrStr_[1] = static_cast<char>(c2);
+    _eucKrStr_[2] = static_cast<char>(c3);
+    _eucKrStr_[3] = static_cast<char>(c4);
     _eucKrStr_[4] = '\0';
     return _eucKrStr_;
 }
