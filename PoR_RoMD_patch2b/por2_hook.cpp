@@ -20,6 +20,15 @@ int __cdecl Input_Hook(int /*a1*/, int /*a2*/, int ch);
 
 BOOL __fastcall cTextManager_DrawMenu_Hook(cTextManager* self, void* /*edx*/);
 
+BOOL __fastcall cTextLabel_CalcExtents_Hook(cTextLabel* self, void* /*edx*/);
+BOOL __fastcall cTextLabel_DrawText_Hook(cTextLabel* self, void* /*edx*/, int /*unusedStackArg*/);
+
+
+#define USING_MINHOOK   0
+
+//------- for debug
+#if USING_MINHOOK
+
 typedef BOOL (__fastcall* tWordWrap)(cTextLayout*, void*);
 tWordWrap g_origWordWrap = NULL;
 
@@ -35,9 +44,6 @@ tDrawTextLines g_origDrawTextLines = NULL;
 typedef BOOL (__fastcall* tCKeyInput_Draw)(CKeyInput*, void*);
 tCKeyInput_Draw g_origCKeyInput_Draw = NULL;
 
-#define USING_MINHOOK   0
-//------- for debug
-#if USING_MINHOOK
 BOOL __fastcall _cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/) {
     if(g_origWordWrap == NULL) {
         PLOG_ERROR << "[PoR2] g_origWordWrap is NULL!";
@@ -136,16 +142,24 @@ void Apply_Por2_Hooks()
         fclose(fp);
 	}
 #endif
-    HookFunction(ptrWordWrap, reinterpret_cast<uintptr_t>(cTextLayout_WordWrap_Hook));
-    HookFunction(ptrRenderShadow, reinterpret_cast<uintptr_t>(cTextLayout_RenderShadow_Hook));
-    HookFunction(ptrCalculateTextExtents, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));
-    HookFunction(ptrDrawTextLines, reinterpret_cast<uintptr_t>(cTextManager_DrawTextLines_Hook));
-    
+
     patchDWORD(0x00622E24, reinterpret_cast<uintptr_t>(CKeyInput_Draw_Hook));   // vtable 슬롯 교체
     PatchRelativeCall(0x0049EDCE, reinterpret_cast<uintptr_t>(Input_Hook));
 
-    patchDWORD(0x622C78, reinterpret_cast<uintptr_t>(cTextManager_DrawMenu_Hook));   // vtable 슬롯 교체
-    patchDWORD(0x622D40, reinterpret_cast<uintptr_t>(cTextManager_DrawMenu_Hook));   // vtable 슬롯 교체
+    patchDWORD(0x00622C78, reinterpret_cast<uintptr_t>(cTextManager_DrawMenu_Hook));   // vtable 슬롯 교체
+    patchDWORD(0x00622D40, reinterpret_cast<uintptr_t>(cTextManager_DrawMenu_Hook));   // vtable 슬롯 교체    
+
+    PatchRelativeCall(0x0043c614, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));
+    PatchRelativeCall(0x0043e9fd, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));
+    PatchRelativeCall(0x0043c73f, reinterpret_cast<uintptr_t>(cTextManager_DrawTextLines_Hook));
+
+    patchDWORD(0x00623040, reinterpret_cast<uintptr_t>(cTextLabel_CalcExtents_Hook));   // vtable 슬롯 교체
+    patchDWORD(0x00623038, reinterpret_cast<uintptr_t>(cTextLabel_DrawText_Hook));   // vtable 슬롯 교체
+
+    PatchRelativeCall(0x00444642, reinterpret_cast<uintptr_t>(cTextLayout_WordWrap_Hook));
+    PatchRelativeCall(0x00444671, reinterpret_cast<uintptr_t>(cTextLayout_RenderShadow_Hook));
+    PatchRelativeCall(0x00445184, reinterpret_cast<uintptr_t>(cTextLayout_RenderShadow_Hook));
+    
 #endif
 }
 

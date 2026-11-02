@@ -40,15 +40,6 @@ void resetLogLevel()
     }
 }
 
-thread_local char _eucKrStr_[3];
-const char* OutputEucKrChar(unsigned char byte1, unsigned char byte2) 
-{
-    _eucKrStr_[0] = static_cast<char>(byte1);
-    _eucKrStr_[1] = static_cast<char>(byte2);
-    _eucKrStr_[2] = '\0';
-    return _eucKrStr_;
-}
-
 void OutputDebugStringFormat(const char* format, ...)
 {
     char str[256];
@@ -58,7 +49,6 @@ void OutputDebugStringFormat(const char* format, ...)
     OutputDebugStringA(str);
     va_end(args);
 }
-
 
 bool HookFunction(const uintptr_t targetAddr, const uintptr_t hookFuncAddr)
 {
@@ -74,50 +64,78 @@ bool HookFunction(const uintptr_t targetAddr, const uintptr_t hookFuncAddr)
     return true;
 }
 
-void PatchRelativeCall(uintptr_t callSite, const uintptr_t newTarget)
+bool PatchRelativeCall(uintptr_t callSite, const uintptr_t newTarget)
 {
-    DWORD rel = (DWORD)newTarget - (DWORD)(callSite + 5);
-    DWORD old;
-    VirtualProtect((LPVOID)(callSite + 1), 4, PAGE_EXECUTE_READWRITE, &old);
-    *(DWORD*)(callSite + 1) = rel;
-    VirtualProtect((LPVOID)(callSite + 1), 4, old, &old);
+    DWORD oldProtect;
+    if (!VirtualProtect((LPVOID)(callSite + 1), 4, PAGE_EXECUTE_READWRITE, &oldProtect))
+        return false;
+
+    *(DWORD*)(callSite + 1) = (DWORD)newTarget - (DWORD)(callSite + 5);
+
+    VirtualProtect((LPVOID)(callSite + 1), 4, oldProtect, &oldProtect);
     FlushInstructionCache(GetCurrentProcess(), (LPCVOID)callSite, 5);
+    return true;
 }
 
-
-
-void patchBytes(const uintptr_t targetAddr, const void* data, const size_t bytes) 
+bool patchBytes(const uintptr_t targetAddr, const void* data, const size_t bytes) 
 {
     DWORD oldProtect;
-    if (VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, PAGE_EXECUTE_READWRITE, &oldProtect)) {
-        memcpy(reinterpret_cast<void*>(targetAddr), data, bytes);
-        VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, oldProtect, &oldProtect);
-        FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), bytes);
-    }
+    if (!VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, PAGE_EXECUTE_READWRITE, &oldProtect))
+        return false;
+        
+    memcpy(reinterpret_cast<void*>(targetAddr), data, bytes);
+
+    VirtualProtect(reinterpret_cast<void*>(targetAddr), bytes, oldProtect, &oldProtect);
+    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), bytes);
+    return true;
 }
 
-void patchDWORD(const uintptr_t targetAddr, const uint32_t dword)
+bool patchDWORD(const uintptr_t targetAddr, const uint32_t dword)
 {
     DWORD oldProtect;
-    if (VirtualProtect(reinterpret_cast<void*>(targetAddr), 4, PAGE_EXECUTE_READWRITE, &oldProtect)) {
-		*reinterpret_cast<uint32_t*>(targetAddr) = dword;
-        VirtualProtect(reinterpret_cast<void*>(targetAddr), 4, oldProtect, &oldProtect);
-        FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), 4);
-    }
+    if (!VirtualProtect(reinterpret_cast<void*>(targetAddr), 4, PAGE_EXECUTE_READWRITE, &oldProtect))
+        return false;
+
+	*reinterpret_cast<uint32_t*>(targetAddr) = dword;
+
+    VirtualProtect(reinterpret_cast<void*>(targetAddr), 4, oldProtect, &oldProtect);
+    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), 4);
+    return true;
 }
 
+thread_local char _eucKrStr_[5];
+const char* OutputEucKrChar(unsigned char byte1, unsigned char byte2) 
+{
+    _eucKrStr_[0] = static_cast<char>(byte1);
+    _eucKrStr_[1] = static_cast<char>(byte2);
+    _eucKrStr_[2] = '\0';
+    return _eucKrStr_;
+}
+const char* OutputEucKrChar(int chCode) 
+{
+    uint8_t c1 = static_cast<uint8_t>(charCode & 0xFF);
+    uint8_t c2 = static_cast<uint8_t>((charCode >> 8) & 0xFF);
+    uint8_t c3 = static_cast<uint8_t>((charCode >> 16) & 0xFF);
+    uint8_t c4 = static_cast<uint8_t>((charCode >> 24) & 0xFF);
+    _eucKrStr_[0] = static_cast<char>(byte1);
+    _eucKrStr_[1] = static_cast<char>(byte2);
+    _eucKrStr_[2] = static_cast<char>(byte3);
+    _eucKrStr_[3] = static_cast<char>(byte4);
+    _eucKrStr_[4] = '\0';
+    return _eucKrStr_;
+}
 
 void GetCurrentCall(const int charCode, const uintptr_t retAddr)
 {
     uint8_t c1 = static_cast<uint8_t>(charCode & 0xFF);
     uint8_t c2 = static_cast<uint8_t>((charCode >> 8) & 0xFF);
-    const char* extChar = OutputEucKrChar(c1, c2);
+    const char* extChar = OutputEucKrChar(charCode);
 
-    if (retAddr >= ptrWordWrap && retAddr <= ptrWordWrap_end) {
-        PLOG_DEBUG << "[WordWrap] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
+    if (retAddr >= ptrcheck_FUN_00438830 && retAddr <= ptrcheck_FUN_00438830_end) {
+        PLOG_DEBUG << "[check_FUN_00438830] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
     }
-    else if (retAddr >= ptrRenderShadow && retAddr <= ptrRenderShadow_end) {
-        PLOG_DEBUG << "[RenderShadow] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
+    else if (retAddr >= ptrDrawMenu && retAddr <= ptrDrawMenu_end) {
+        PLOG_DEBUG << "[ptrDrawMenu] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
     }
     else if (retAddr >= ptrCalculateTextExtents && retAddr <= ptrCalculateTextExtents_end) {
         PLOG_DEBUG << "[CalculateTextExtents] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
@@ -125,14 +143,20 @@ void GetCurrentCall(const int charCode, const uintptr_t retAddr)
     else if (retAddr >= ptrDrawTextLines && retAddr <= ptrDrawTextLines_end) {
         PLOG_DEBUG << "[DrawTextLines] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
     }
+    else if (retAddr >= ptrCalcExtentTextLabel && retAddr <= ptrCalcExtentTextLabel_end) {
+        PLOG_DEBUG << "[CalcExtentTextLabel] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
+    }
+    else if (retAddr >= ptrDrawTextTextLabel && retAddr <= ptrDrawTextTextLabel_end) {
+        PLOG_DEBUG << "[DrawTextTextLabel] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
+    }
+    else if (retAddr >= ptrWordWrap && retAddr <= ptrWordWrap_end) {
+        PLOG_DEBUG << "[WordWrap] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
+    }
+    else if (retAddr >= ptrRenderShadow && retAddr <= ptrRenderShadow_end) {
+        PLOG_DEBUG << "[RenderShadow] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
+    }
     else if (retAddr >= ptrSprintfMeasure && retAddr <= ptrSprintfMeasure_end) {
         PLOG_DEBUG << "[SprintfMeasure] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
-    }
-    else if (retAddr >= ptrcheck_FUN_00438830 && retAddr <= ptrcheck_FUN_00438830_end) {
-        PLOG_DEBUG << "[check_FUN_00438830] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
-    }
-    else if (retAddr >= 0x0043b4f0 && retAddr <= 0x0043b896) {
-        PLOG_DEBUG << "[cTextManager_DrawMenu_0043b4f0] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
     }
     else {
         PLOG_ERROR << "[!!!ELSE!!!] retAddr=0x" << std::hex << retAddr << ", charCode=0x" << std::hex << (int)c1 << ",0x" << std::hex << (int)c2 << ", " << extChar;
