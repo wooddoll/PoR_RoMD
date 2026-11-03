@@ -9,7 +9,7 @@
 | 분류 | 심각도 | 항목 수 | 주요 내용 |
 | :--- | :---: | :---: | :--- |
 | **C++ 훅 패치 (`PoR_RoMD_patch2b`)** | Major ~ Minor | 4건 | 서피스 Lock 실패 처리 누락, CP949 전각/특수문자 판정 누락, MinHook 활성화 플래그 오류, WordWrap 줄바꿈 인덱스 언더플로우 |
-| **Python 데이터/번역 스크립트** | Critical ~ Major | 4건 | `translation_str_ai.py` 미정의 식별자 및 스코프 크래시, `all.idx` 고정 20바이트 레코드 규격 불일치, `rebuild_all_db.py` 함수 재정의 누락 |
+| **Python 데이터/번역 스크립트** | Critical ~ Major | 4건 | `translation_str_ai.py` 미정의 식별자 및 스코프 크래시, `all.idx` 파서와 빌더 간의 null 바이트 종료 처리 불일치, `rebuild_all_db.py` 함수 재정의 누락 |
 | **인스톨러 및 폰트 빌더 (`install/`, `build_fonts.py`)** | Major ~ Minor | 3건 | 인스톨러 파일 수 하드코딩 및 경로 불일치, 이미지 처리 모듈 임포트 비표준화, 누락된 f-string |
 
 ---
@@ -87,23 +87,26 @@
 - **영향:** 해당 스크립트 실행 시 첫 번째 요청 및 배치 처리 과정에서 즉시 크래시되어 번역 작업 진행 불가.
 - **해결 방안:** 주석 해제 및 `genai.Client` 초기화 복구, `sub_proc` 내부에 `nonlocal processed_count` 선언, `len(words_to_send)`로 변수명 교정.
 
-#### [Major] 2. `rebuild_all_db.py`의 `write_all_idx` 바이너리 구조 규격 불일치
-- **위치:** `rebuild_all_db.py:141-149`
+#### [Major] 2. `rebuild_all_db.py`의 `write_all_idx`와 `read_all_idx.py` 간의 널(Null) 구분자 처리 불일치
+- **위치:** `rebuild_all_db.py:141-149` vs `read_all_idx.py:70-77`
 - **현상:**
-  - 주석 및 `dialogue.md` 명세: 각 엔트리는 고정 20바이트. 12바이트(null 패딩)의 섹션명(`.all` 포함) + 4바이트 0x00 + 4바이트 주소.
-  - 실제 구현:
+  - `dialogue.md` 명세에 따르면 `all.idx`의 각 엔트리는 **고정 20바이트가 아니라 가변 크기(최대 12바이트의 섹션 이름 문자열 + 8바이트 예약/주소 데이터 = 최대 20바이트)** 구조입니다.
+  - `read_all_idx.py`의 읽기 로직에서는 `0x00` 바이트를 만날 때까지(또는 최대 12바이트까지) 문자열을 읽고, 그 직후 위치부터 8바이트(`extra_bytes = data[pos:pos+8]`, 즉 4바이트 0x00 + 4바이트 주소)를 읽도록 파싱합니다.
+  - 그러나 `rebuild_all_db.py`의 `write_all_idx` 구현에서는:
     ```python
     name_bytes = (sec_name + '.all').encode('ascii')
-    f.write(name_bytes) # 패딩 없이 가변 길이로 쓰여짐!
+    f.write(name_bytes)
+    # 널 문자(\x00) 종단 없이 바로 8바이트(4바이트 0x00000000 + 4바이트 주소) 작성
     f.write(b'\x00\x00\x00\x00')
     f.write(struct.pack('<I', sec_data['new_address']))
     ```
-    이름의 길이가 12바이트 미만(예: `dw1c005.all`은 11바이트)인 경우 `12 - len(name_bytes)`만큼 `\x00` 패딩을 해주지 않아 엔트리 전체 길이가 20바이트가 아닌 19바이트 등으로 축소되어 `all.idx` 전체 오프셋이 파괴됩니다.
-- **영향:** `rebuild_all_db.py`로 재생성한 `all.idx`를 게임 엔진 또는 `read_all_idx.py`에서 읽을 때 섹션 주소가 전부 밀려 대화 데이터 로딩 실패 및 크래시 발생.
+    섹션 이름 문자열이 12바이트 미만(예: `dw1c005.all`은 11바이트)인 경우, 문자열 끝에 널 종료 문자(`\x00`)를 넣지 않은 채 바로 뒤의 예약 영역 `0x00000000`의 첫 번째 `\x00`을 만나 루프를 탈출하게 됩니다. 이때 `pos`는 예약 영역의 첫 바이트 위치에 머물게 되어, 뒤이어 읽는 8바이트가 1바이트씩 앞으로 밀려(`hi_bytes`가 0이 아니게 되거나 주소가 왜곡됨) `Warning: first 4 bytes should be zero` 경고가 발생하고 파싱이 중단될 수 있습니다.
+- **영향:** `write_all_idx`로 저장한 파일을 `read_all_idx.py`나 게임 엔진의 널 종단 문자열 기반 파서가 읽을 때 예약 영역 바이트가 널 종단 문자로 오인되어 오프셋 어긋남이 발생할 수 있음.
 - **해결 방안:**
+  섹션 이름 문자열 뒤에 명시적으로 널 바이트(`b'\x00'`)를 추가하거나 규격에 맞게 기록하도록 보완:
   ```python
-  name_bytes = (sec_name + '.all').encode('ascii')
-  f.write(name_bytes.ljust(12, b'\x00'))
+  name_bytes = (sec_name + '.all').encode('ascii') + b'\x00'
+  f.write(name_bytes)
   f.write(b'\x00\x00\x00\x00')
   f.write(struct.pack('<I', sec_data['new_address']))
   ```
@@ -147,7 +150,7 @@
 ## 3. 종합 개선 제안 로드맵
 
 1. **안정성 최우선 패치 (1단계)**
-   - `rebuild_all_db.py`: `all.idx` 12바이트 패딩 로직 적용.
+   - `rebuild_all_db.py`: `all.idx` 섹션명 기록 시 널 구분자 명시 및 읽기 로직과의 정합성 유지.
    - `translation_str_ai.py`: API 클라이언트 초기화 및 스코프 변수 수정.
    - `PoR_RoMD_patch2b/DrawMenu.cpp`: 서피스 Lock 반환값 검증 및 Unlock 누수 보완.
    - `PoR_RoMD_patch2b/por2.h`: 완성형 특수기호 대역(`0xA1~0xA3`) 포함하도록 `IsHangul` 보정.
