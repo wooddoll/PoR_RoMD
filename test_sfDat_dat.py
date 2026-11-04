@@ -58,12 +58,9 @@ def decode_sfdat(path):
         text = raw16.decode("utf-16le").rstrip("\x00")
 
         strings[i] = text
+        strings[f'{i}_kr'] = ''
 
     return strings
-
-
-import struct
-
 
 def encode_sfdat(strings, out_path, encoding="utf-16le"):
     entry_count = len(strings)
@@ -74,7 +71,10 @@ def encode_sfdat(strings, out_path, encoding="utf-16le"):
     current_char_pos = 0
 
     for i in range(entry_count):
-        text = strings[i]
+        text = strings.get(i, None)
+        if text is None:
+            entry_count = i
+            break
 
         raw = text.encode(encoding)
 
