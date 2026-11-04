@@ -46,7 +46,12 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
         if (self->m_nAlign == 1) {
             xOffset = (self->m_nMaxLineWidth - self->m_pLineWidths[lineIdx]) / 2;
         }
-        
+#if 0
+        const char sometext[] = "Disrupt Undead";
+        if (strncmp(self->m_pszText + charIdx, sometext, strlen(sometext)) == 0) {
+			__nop();
+        }
+#endif
         int chCode = getCharCode(_Text, charIdx);
 
         if (charIdx <= self->m_pLineEndIndices[lineIdx])

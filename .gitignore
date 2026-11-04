@@ -61,3 +61,7 @@ google_ai_key.txt
 /font/ext
 /install/Data
 /install/__pycache__
+/install/.venv
+/install/build_fonts.py.bak
+/translation/data_str.json.bak
+/translation/merged_en_kr.json.bak

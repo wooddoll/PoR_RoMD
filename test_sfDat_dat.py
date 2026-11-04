@@ -1,3 +1,4 @@
+import argparse
 import struct
 import os
 import json
@@ -71,20 +72,23 @@ def encode_sfdat(strings, out_path, encoding="utf-16le"):
     current_char_pos = 0
 
     for i in range(entry_count):
-        text = strings.get(i, None)
+        text = strings.get(f'{i}', None)
         if text is None:
             entry_count = i
             break
 
-        raw = text.encode(encoding)
+        str = text.encode(encoding)
+        str_kor = strings.get(f'{i}_kr', None)
+        if str_kor is not None and str_kor:
+            str = str_kor.encode(encoding)
 
-        if len(raw) % 2 != 0:
+        if len(str) % 2 != 0:
             raise ValueError(f"문자열 {i}번의 인코딩 결과가 2바이트 단위가 아닙니다.")
 
         offsets.append(current_char_pos)
-        plain_data.extend(raw)
+        plain_data.extend(str)
 
-        current_char_pos += len(raw) // 2
+        current_char_pos += len(str) // 2
 
     total_chars = current_char_pos
 
@@ -133,12 +137,108 @@ def encode_sfdat(strings, out_path, encoding="utf-16le"):
 
         f.write(encrypted_data)
 
-# --- 실행 코드 ---
-if __name__ == "__main__":
-    lines = decode_sfdat("D:/workspace/Pool of Radiance/sfDat.dat")
+def _xor_entries(plain_data, offsets, total_chars):
+    """엔트리별 키로 XOR (decode/encode 공통, XOR은 대칭)."""
+    data = bytearray(plain_data)
+    entry_count = len(offsets)
+    for i in range(entry_count):
+        start = offsets[i]
+        end = offsets[i + 1] if i + 1 < entry_count else total_chars
+        key_low = (i + 0x55) & 0xFF
+        key_high = (i - 0x45) & 0xFF
+        for pos in range(start, end):
+            data[pos * 2] ^= key_low
+            data[pos * 2 + 1] ^= key_high
+    return data
 
-    output_txt_path = 'sfDat.json'
-    with open(output_txt_path, 'w', encoding='utf-8') as out_f:
-        json.dump(lines, out_f, ensure_ascii=False, indent=2)
-    
-    encode_sfdat(lines, 'sfDat_dump.bin')
+
+def cp949_to_wide(text, byte_pos="low"):
+    """
+    CP949 문자열을 '1바이트 = 1 UTF-16 유닛'으로 펼친다.
+    byte_pos="low" : [b, 0x00] (ASCII의 UTF-16LE와 동일한 배치, 기본값)
+    byte_pos="high": [0x00, b]
+    """
+    raw = text.encode("cp949")  # cp949로 표현 불가능한 문자가 있으면 UnicodeEncodeError
+    out = bytearray()
+    for b in raw:
+        if byte_pos == "low":
+            out.append(b)
+            out.append(0)
+        else:
+            out.append(0)
+            out.append(b)
+    return bytes(out)
+
+
+def encode_sfdat_cp949(strings, out_path, byte_pos="low"):
+    """
+    '{i}_kr' 이 있으면 CP949로 인코딩하여 바이트당 2바이트(1 유닛)로 배분,
+    없으면 기존 방식(UTF-16LE)으로 원문을 그대로 인코딩한다.
+    """
+    offsets = []
+    plain_data = bytearray()
+    current_char_pos = 0
+
+    i = 0
+    while True:
+        text = strings.get(f'{i}', None)
+        if text is None:
+            break
+
+        kr = strings.get(f'{i}_kr', None)
+        if kr:
+            try:
+                encoded = cp949_to_wide(kr, byte_pos)
+            except UnicodeEncodeError as e:
+                raise ValueError(f"문자열 {i}번에 CP949로 표현할 수 없는 문자가 있습니다: {e}")
+        else:
+            encoded = text.encode("utf-16le")
+
+        offsets.append(current_char_pos)
+        plain_data.extend(encoded)
+        current_char_pos += len(encoded) // 2
+        i += 1
+
+    entry_count = len(offsets)
+    total_chars = current_char_pos
+    encrypted = _xor_entries(plain_data, offsets, total_chars)
+
+    with open(out_path, "wb") as f:
+        f.write(struct.pack("<I", entry_count))
+        f.write(struct.pack("<I", total_chars))
+        for off in offsets:
+            f.write(struct.pack("<I", off))
+        f.write(encrypted)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Decode sfDat.dat to JSON or encode JSON back to sfDat.dat."
+    )
+    parser.add_argument(
+        "-m", "--mode",
+        required=True,
+        choices=("decode", "encode", "encode_kr"),
+        help="operation to perform",
+    )
+    parser.add_argument("input_path", help="path to the input file")
+    parser.add_argument("output_path", help="path to the output file")
+    args = parser.parse_args()
+
+    if args.mode == "decode":
+        strings = decode_sfdat(args.input_path)
+        with open(args.output_path, "w", encoding="utf-8") as out_file:
+            json.dump(strings, out_file, ensure_ascii=False, indent=2)
+    else:
+        with open(args.input_path, "r", encoding="utf-8") as in_file:
+            json_strings = json.load(in_file)
+        if not isinstance(json_strings, dict):
+            parser.error("The input JSON must have an object at the top level.")
+
+        if args.mode == "encode":
+            encode_sfdat(json_strings, args.output_path)
+        else:
+            encode_sfdat_cp949(json_strings, args.output_path)
+
+
+if __name__ == "__main__":
+    main()

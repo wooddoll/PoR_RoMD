@@ -8,7 +8,7 @@ The life energy of New Phlan
 is being devoured by 
 the pool of radiance in Myth Drannor.
 미스 드라노어에 있는 
-'광휘의 웅덩이'에 집어삼켜지고 있네.
+'광채의 웅덩이'에 집어삼켜지고 있네.
 
 3
 00:00:11,340 --> 00:00:14,356
@@ -36,12 +36,12 @@ From far away, someone opens a gate.
 
 7
 00:00:26,087 --> 00:00:29,700
-*All hope is lost..., Someone help us!*
+By all that’s holy, help us!
 모두 끝장이다... 제발 누구든 우릴 도와줘!
 
 8
 00:00:29,700 --> 00:00:33,240
-Cries Athans, you leap to his aid.
+The cry is Athan’s! You leap to his aid...
 ...아산이 외치고, 그대는 그를 돕기 위해 뛰어들지.
 
 9
