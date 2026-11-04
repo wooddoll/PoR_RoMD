@@ -100,7 +100,8 @@ def read_binary_as_int32(file_path):
 def dff_to_meta_list(dff):
     """Convert DFF data to metadata list. (Processed in memory, no TXT file)"""
     meta_list = []
-    for code, rect in enumerate(dff.array_5xN):
+    for rect in dff.array_5xN:
+        code = rect[0]
         x0 = rect[1]
         y0 = rect[2]
         x1 = rect[3]

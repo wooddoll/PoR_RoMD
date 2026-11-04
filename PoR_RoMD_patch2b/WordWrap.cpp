@@ -4,6 +4,10 @@
 #define WIN32_LEAN_AND_MEAN // 불필요한 Windows 헤더 제외 (선택 사항)
 #include <windows.h>        // COM 및 기본 Windows API 정의 (ddraw.h보다 먼저 포함되어야 함)
 
+#ifndef MAX
+#define MAX(a, b) (((a) > (b)) ? (a) : (b))
+#endif
+
 /* ------------------------------------------------------------------ */
 /*  int 배열 뒤에 값 하나 추가 (기존 new 로 만든 배열은 free 후 delete 함)   */
 /*  nLineCount = 추가 될 배열 크기                                        */
@@ -51,7 +55,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
         do {
             if (chCode == '\n') {
                 /* 줄바꿈 처리: 현재 줄 확정 */
-                PushLineValue(&self->m_pLineEndIndices, nLineCount, std::max(0, charIdx - 1));   // WARN!!: 문장의 시작위치에 '\n'이 있으면 -1 위치를 읽게 됨
+                PushLineValue(&self->m_pLineEndIndices, nLineCount, MAX(0, charIdx - 1));   // WARN!!: 문장의 시작위치에 '\n'이 있으면 -1 위치를 읽게 됨
                 PushLineValue(&self->m_pLineWidths, nLineCount, nCurrentLineWidth);
 
                 if (nMaxWidth < nCurrentLineWidth)
