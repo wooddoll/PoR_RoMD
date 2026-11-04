@@ -210,6 +210,24 @@ def encode_sfdat_cp949(strings, out_path, byte_pos="low"):
             f.write(struct.pack("<I", off))
         f.write(encrypted)
 
+
+def verify_cp949(strings, path, byte_pos="low"):
+    """생성한 파일을 decode_sfdat으로 다시 읽어, 각 엔트리가 의도한 CP949 바이트와 같은지 검사."""
+    decoded = decode_sfdat(path)   # 키 i -> 문자열(UTF-16LE 디코드)
+    # 디코드된 문자열에서 1유닛=1바이트를 복원
+    bad = []
+    i = 0
+    while strings.get(str(i)) is not None:
+        kr = strings.get(f'{i}_kr')
+        expected = kr.encode("cp949") if kr else None
+        raw = decoded[i].encode("utf-16le")          # 엔트리의 원시 바이트
+        got = raw[0::2] if byte_pos == "low" else raw[1::2]
+        if expected is not None and got != expected:
+            bad.append(i)
+        i += 1
+    print("mismatch:", bad[:20], "총", len(bad))
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Decode sfDat.dat to JSON or encode JSON back to sfDat.dat."
@@ -238,6 +256,15 @@ def main():
             encode_sfdat(json_strings, args.output_path)
         else:
             encode_sfdat_cp949(json_strings, args.output_path)
+
+def test():
+        # 오프셋/크기 분포도 확인
+    import struct
+    with open("sfDat_kr.dat", "rb") as f:
+        n, total = struct.unpack("<II", f.read(8))
+        offs = struct.unpack("<" + "I"*n, f.read(4*n))
+    print("entries:", n, "total units:", total, "max offset:", max(offs))
+    print("파일 크기:", 8 + 4*n + total*2)
 
 
 if __name__ == "__main__":
