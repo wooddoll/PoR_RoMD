@@ -22,9 +22,7 @@ import sys
 from dataclasses import dataclass, field
 from typing import List
 
-#from PIL import Image
-import Image
-
+from PIL import Image
 
 # ============================================================
 # DFF binary reading (from read_font.py)

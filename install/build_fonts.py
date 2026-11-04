@@ -22,7 +22,6 @@ import sys
 from dataclasses import dataclass, field
 from typing import List
 
-#from PIL import Image
 from tinyImage import read_image, blit_region, save_as_bmp
 
 # ============================================================

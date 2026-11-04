@@ -9,6 +9,9 @@
 [![Pool of Radiance2 (2001) 한글화 테스트 1](http://img.youtube.com/vi/ZXoTMiSzAwU/0.jpg)](https://youtu.be/ZXoTMiSzAwU)
 
 
+## check
+* sfDat.dat: test_sfDat_dat.py,
+
 ## TODO
 1. .ini
     1. korean.ini -> language.ini
@@ -66,6 +69,7 @@
 ## Dialogue
 ### 파일
 * dialogue.md 참고
+* all.idx나 all.db는 수정할 필요없음
 * 별다른 태그나 기호가 없어서 내용만 번역하면 됨.
 ### 번역
 * 구글 api를 통해 번역하고 검수함

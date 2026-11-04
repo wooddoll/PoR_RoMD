@@ -36,7 +36,10 @@ BOOL __fastcall cTextManager_DrawMenu_Hook(cTextManager* self, void* /*edx*/)
     DDSURFACEDESC2 ddsdSrc;
     memset(&ddsdSrc, 0, sizeof(ddsdSrc));
     ddsdSrc.dwSize = sizeof(DDSURFACEDESC2);
-    pSrc->Lock(NULL, &ddsdSrc, 0, NULL);
+    if (pSrc->Lock(NULL, &ddsdSrc, 0, NULL) != 0) {
+        pDst->Unlock(NULL);
+        return FALSE;
+    }
     BYTE* srcBase = (BYTE*)ddsdSrc.lpSurface;
     int   srcPitchW = (int)((unsigned)ddsdSrc.lPitch >> 1);
 

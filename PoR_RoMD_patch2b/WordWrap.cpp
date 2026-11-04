@@ -51,7 +51,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
         do {
             if (chCode == '\n') {
                 /* 줄바꿈 처리: 현재 줄 확정 */
-                PushLineValue(&self->m_pLineEndIndices, nLineCount, charIdx - 1);   // WARN!!: 문장의 시작위치에 '\n'이 있으면 -1 위치를 읽게 됨
+                PushLineValue(&self->m_pLineEndIndices, nLineCount, std::max(0, charIdx - 1));   // WARN!!: 문장의 시작위치에 '\n'이 있으면 -1 위치를 읽게 됨
                 PushLineValue(&self->m_pLineWidths, nLineCount, nCurrentLineWidth);
 
                 if (nMaxWidth < nCurrentLineWidth)

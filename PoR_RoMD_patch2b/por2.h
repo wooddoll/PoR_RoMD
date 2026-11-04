@@ -62,7 +62,7 @@ inline bool IsSpaceCh(const int charCode) {
 }
 
 inline bool IsHangul(const uint8_t c1, const uint8_t c2) {     // EUC-KR
-    return (c1 >= 0xA4 && c1 <= 0xC8 && c2 >= 0xA1 && c2 <= 0xFE);
+    return (0xA1 <= c1 && c1 <= 0xC8 && 0xA1 <= c2 && c2 <= 0xFE);
 }
 
 inline int getCharCode(const uint8_t c1, const uint8_t c2) {     // EUC-KR

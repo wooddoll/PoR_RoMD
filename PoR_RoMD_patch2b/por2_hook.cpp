@@ -99,21 +99,21 @@ void Apply_Por2_Hooks()
         PLOG_ERROR << "[PoR2] cTextLayout_WordWrap_Hook hook failed.";
     }
 
-    MH_CreateHook((LPVOID)ptrRenderShadow, &_cTextLayout_RenderShadow_Hook, (LPVOID*)&g_origRenderShadow);
+    st = MH_CreateHook((LPVOID)ptrRenderShadow, &_cTextLayout_RenderShadow_Hook, (LPVOID*)&g_origRenderShadow);
     if (st == MH_OK) {
         MH_EnableHook((LPVOID)ptrRenderShadow);
     } else {
         PLOG_ERROR << "[PoR2] cTextLayout_RenderShadow_Hook hook failed.";
     }
     
-    MH_CreateHook((LPVOID)ptrCalculateTextExtents, &_cTextManager_CalculateTextExtents_Hook, (LPVOID*)&g_origCalcExtents);
+    st = MH_CreateHook((LPVOID)ptrCalculateTextExtents, &_cTextManager_CalculateTextExtents_Hook, (LPVOID*)&g_origCalcExtents);
     if (st == MH_OK) {
         MH_EnableHook((LPVOID)ptrCalculateTextExtents);
     } else {
         PLOG_ERROR << "[PoR2] cTextManager_CalculateTextExtents_Hook hook failed.";
     }
     
-    MH_CreateHook((LPVOID)ptrDrawTextLines, &_cTextBox_DrawTextLines_Hook, (LPVOID*)&g_origDrawTextLines);
+    st = MH_CreateHook((LPVOID)ptrDrawTextLines, &_cTextBox_DrawTextLines_Hook, (LPVOID*)&g_origDrawTextLines);
     if (st == MH_OK) {
         MH_EnableHook((LPVOID)ptrDrawTextLines);    
     } else {
