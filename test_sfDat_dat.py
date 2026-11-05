@@ -191,19 +191,19 @@ def encode_sfdat_cp949(strings, out_path, byte_pos="low"):
     current_char_pos = 0
 
     i = 0
-    while True:
+    while True:        
         text = strings.get(f'{i}', None)
         if text is None:
             break
 
-        kr = strings.get(f'{i}_kr', None)
+        kr = text.get('kr', None)
         if kr:
             try:
                 encoded = cp949_to_wide(kr, byte_pos)
             except UnicodeEncodeError as e:
                 raise ValueError(f"문자열 {i}번에 CP949로 표현할 수 없는 문자가 있습니다: {e}")
         else:
-            encoded = text.encode("utf-16le")
+            encoded = text.get('en', '').encode("utf-16le")
 
         offsets.append(current_char_pos)
         plain_data.extend(encoded)
@@ -302,8 +302,8 @@ def remerge():
     with open(output_path, "w", encoding="utf-8") as out_file:
         json.dump(jsonA_strings, out_file, ensure_ascii=False, indent=2)
 
-INPUT_PATH = "translation/sfDat.json"
-sfDat_data = load_json(INPUT_PATH)
+#INPUT_PATH = "translation/sfDat.json"
+#sfDat_data = load_json(INPUT_PATH)
 def translation_sfDat(sfDat: dict, batch_size: int = 10):
     strings = {}
     for idx, value in sfDat.items():
@@ -360,9 +360,27 @@ def translation_sfDat(sfDat: dict, batch_size: int = 10):
     print("모든 번역 작업이 완료되었습니다.")
 
     return result
-result = translation_sfDat(sfDat_data, 10)
+#result = translation_sfDat(sfDat_data, 10)
 
+def convert():
+    src_Path = "translation/sfDat_old.json"
+    dst_Path = "translation/sfDat.json"
+
+    with open(src_Path, "r", encoding="utf-8") as in_file:
+        json_strings = json.load(in_file)
+
+    result = {}
+    for key, value in json_strings.items():
+        if key.endswith("_kr"):
+            idx = int(key[:-3])
+            result[idx]['kr'] = value
+        else:
+            idx = int(key)
+            result[idx] = { 'en': value }
+            
+    with open(dst_Path, "w", encoding="utf-8") as out_file:
+        json.dump(result, out_file, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
     main()
-    #remerge()
+    #convert()
