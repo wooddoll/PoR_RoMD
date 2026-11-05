@@ -5,6 +5,17 @@ import json
 
 import struct
 
+def load_json(json_path):
+    with open(json_path, 'rb') as f:
+        raw_data = f.read()
+        data = json.loads(raw_data.decode('utf-8'))
+        return data
+    return {}
+
+def save_json(json_path, json_data):
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(json_data, f, ensure_ascii=False, indent=2)
+
 def decode_sfdat(path):
     with open(path, "rb") as f:
         entry_count = struct.unpack("<I", f.read(4))[0]
@@ -291,6 +302,67 @@ def remerge():
     with open(output_path, "w", encoding="utf-8") as out_file:
         json.dump(jsonA_strings, out_file, ensure_ascii=False, indent=2)
 
+INPUT_PATH = "translation/sfDat.json"
+sfDat_data = load_json(INPUT_PATH)
+def translation_sfDat(sfDat: dict, batch_size: int = 10):
+    strings = {}
+    for idx, value in sfDat.items():
+        if idx.endswith("_kr"):
+            i = int(idx[:-3])
+            if strings.get(i, None) is None:
+                strings[i] = {}
+            strings[i]['kr'] = value
+        else:
+            i = int(idx)
+            if strings.get(i, None) is None:
+                strings[i] = {}
+            strings[i]['en'] = value
+    
+    pending_idx = []
+    pending_items = []
+    for idx, value in strings.items():
+        str_en = value.get('en', '')
+        str_kr = value.get('kr', '')
+        if not str_kr and len(str_en) > 2:
+            pending_idx.append(idx)
+            pending_items.append(str_en)
+
+    total_pending = len(pending_items)
+    print(f"총 번역 대상 수: {total_pending}개 (배치 크기: {batch_size})")
+    processed_count = 0
+
+    result = {}
+    def sub_proc(idx_list, text_list):
+        nonlocal processed_count  # 바깥 함수의 변수임을 명시하여 UnboundLocalError 방지
+        # 2. batch_size 단위로 끊어서 번역 진행
+        for i in range(0, len(text_list), batch_size):
+            idx_to_send = idx_list[i : i + batch_size]
+            words_to_send = text_list[i : i + batch_size]
+
+            time.sleep(2)  # Rate Limit 완화
+            kor_words = _request_gemini_translation(words_to_send)
+
+            # 번역 결과 매핑 및 갱신
+            if kor_words:
+                for idx, trans_result in zip(idx_to_send, kor_words):
+                    result[idx] = trans_result
+                    processed_count += 1
+
+                print(f"[{processed_count}/{total_pending}] 번역 완료 (진행률: {processed_count/total_pending*100:.1f}%)")
+                # 매 배치 완료 후 중간 저장
+                save_json(OUTPUT_PATH, result)
+            else:
+                print(f"배치 번역 실패 ({i} ~ {i + len(words_to_send)} 항목). 다음 배치를 진행합니다.")
+          
+            break
+
+    sub_proc(pending_items, "아이템명")
+    print("모든 번역 작업이 완료되었습니다.")
+
+    return result
+result = translation_sfDat(sfDat_data, 10)
+
+
 if __name__ == "__main__":
-    #main()
-    remerge()
+    main()
+    #remerge()
