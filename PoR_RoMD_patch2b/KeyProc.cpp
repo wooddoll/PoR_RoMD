@@ -7,26 +7,26 @@
 #define g_nInputMode   (*(int*)  0x006AC960)
 #define g_bInputActive (*(char*) 0x006AC970)
 #define g_nInputLen    (*(unsigned int*)0x00701304)
-#define g_szInput      ((char*)  0x007011D8)          // 256¹ÙÀÌÆ® (+0xFF = 0x007012D7)
+#define g_szInput      ((char*)  0x007011D8)          // 256ë°”ì´íŠ¸ (+0xFF = 0x007012D7)
 #define g_pUIObj       (*(void**)0x00727294)
 
-/* FUN_0047e4c0 : thiscall, ½ºÅÃ ÀÎÀÚ 18°³ (callee Á¤¸®) ¡æ __fastcall ·Î Ç¥Çö */
+/* FUN_0047e4c0 : thiscall, ìŠ¤íƒ ì¸ì 18ê°œ (callee ì •ë¦¬) â†’ __fastcall ë¡œ í‘œí˜„ */
 typedef int(__fastcall* tOnEnter)(void* self, void* edx,
     int a1, int a2, int a3, int a4, int a5, int a6,
     int a7, int a8, int a9, int a10, int a11, int a12,
     int a13, int a14, int a15, int a16, int a17, int a18);
 #define game_OnEnter ((tOnEnter)0x0047E4C0)
 
-/* ¾Õ¿¡¼­ºÎÅÍ ÈÈ¾î ¸¶Áö¸· ±ÛÀÚÀÇ ½ÃÀÛ ÀÎµ¦½º¸¦ ±¸ÇÑ´Ù.
-   (µÚ¿¡¼­ °Å²Ù·Î lead byte ¸¦ ÆÇÁ¤ÇÏ¸é ¿ÀÆÇÇÏ¹Ç·Î ¾Õ¿¡¼­ºÎÅÍ) */
+/* ì•ì—ì„œë¶€í„° í›‘ì–´ ë§ˆì§€ë§‰ ê¸€ìì˜ ì‹œì‘ ì¸ë±ìŠ¤ë¥¼ êµ¬í•œë‹¤.
+   (ë’¤ì—ì„œ ê±°ê¾¸ë¡œ lead byte ë¥¼ íŒì •í•˜ë©´ ì˜¤íŒí•˜ë¯€ë¡œ ì•ì—ì„œë¶€í„°) */
 static int LastCharStart(const char* s, int len)
 {
     int i = 0, start = 0;
     while (i < len) {
         start = i;
 
-        uint8_t c1 = static_cast<uint8_t>(s[i] & 0xFF);     // ÇöÀç ¹ÙÀÌÆ®
-        uint8_t c2 = static_cast<uint8_t>(s[i+1] & 0xFF);   // ´ÙÀ½ ¹ÙÀÌÆ®
+        uint8_t c1 = static_cast<uint8_t>(s[i] & 0xFF);     // í˜„ì¬ ë°”ì´íŠ¸
+        uint8_t c2 = static_cast<uint8_t>(s[i+1] & 0xFF);   // ë‹¤ìŒ ë°”ì´íŠ¸
         if (i + 1 < len && IsHangul(c1, c2)) {
             i += 2;
         } else {
@@ -38,7 +38,7 @@ static int LastCharStart(const char* s, int len)
     return start;
 }
 
-/* ¿øº»: cdecl, ¹İÈ¯ Ç×»ó 0.  3¹øÂ° ÀÎÀÚ(ch) ¿Ü¿¡´Â »ç¿ëÇÏÁö ¾ÊÀ½ */
+/* ì›ë³¸: cdecl, ë°˜í™˜ í•­ìƒ 0.  3ë²ˆì§¸ ì¸ì(ch) ì™¸ì—ëŠ” ì‚¬ìš©í•˜ì§€ ì•ŠìŒ */
 int __cdecl Input_Hook(int /*a1*/, int /*a2*/, int ch)
 {
     if (g_nInputMode != 4 || !g_bInputActive)
@@ -48,7 +48,7 @@ int __cdecl Input_Hook(int /*a1*/, int /*a2*/, int ch)
     {
         if (g_nInputLen == 0)
             return 0;
-        g_nInputLen = (unsigned)LastCharStart(g_szInput, (int)g_nInputLen);  // 1 ¶Ç´Â 2¹ÙÀÌÆ®
+        g_nInputLen = (unsigned)LastCharStart(g_szInput, (int)g_nInputLen);  // 1 ë˜ëŠ” 2ë°”ì´íŠ¸
         g_szInput[g_nInputLen] = 0;
         return 0;
     }
@@ -62,14 +62,14 @@ int __cdecl Input_Hook(int /*a1*/, int /*a2*/, int ch)
         return 0;
     }
 
-    /* ÀÏ¹İ ¹ÙÀÌÆ®: ¿øº»°ú µ¿ÀÏÇÏ°Ô 1¹ÙÀÌÆ®¾¿ ÀúÀå */
+    /* ì¼ë°˜ ë°”ì´íŠ¸: ì›ë³¸ê³¼ ë™ì¼í•˜ê²Œ 1ë°”ì´íŠ¸ì”© ì €ì¥ */
     if (g_nInputLen >= 0x100)
         return 0;
 
     g_szInput[g_nInputLen++] = (char)ch;
     if (g_nInputLen == 0x100) {
         g_nInputLen = 0xFF;
-        g_szInput[0xFF] = 0;                       /* ¿øº»: DAT_007012d7 = 0 */
+        g_szInput[0xFF] = 0;                       /* ì›ë³¸: DAT_007012d7 = 0 */
         return 0;
     }
     g_szInput[g_nInputLen] = 0;
@@ -82,7 +82,7 @@ typedef int (__cdecl* tInput)(int, int, int);
 tInput g_origInput = NULL;
 MH_CreateHook((LPVOID)0x00406D60, &Input_Hook, (LPVOID*)&g_origInput);
 MH_EnableHook((LPVOID)0x00406D60);
-XREF°¡ 0049edce(c) ÇÏ³ª»ÓÀÌ¶ó, ±× CALLÀÇ »ó´ë ÁÖ¼Ò¸¦ Á÷Á¢ ÆĞÄ¡ÇØµµ µË´Ï´Ù.
+XREFê°€ 0049edce(c) í•˜ë‚˜ë¿ì´ë¼, ê·¸ CALLì˜ ìƒëŒ€ ì£¼ì†Œë¥¼ ì§ì ‘ íŒ¨ì¹˜í•´ë„ ë©ë‹ˆë‹¤.
 
 //
 */

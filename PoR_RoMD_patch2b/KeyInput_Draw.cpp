@@ -1,7 +1,7 @@
 #include "por2.h"
 
 #include <string.h>
-#define WIN32_LEAN_AND_MEAN // ºÒÇÊ¿äÇÑ Windows Çì´õ Á¦¿Ü (¼±ÅÃ »çÇ×)
+#define WIN32_LEAN_AND_MEAN // ë¶ˆí•„ìš”í•œ Windows í—¤ë” ì œì™¸ (ì„ íƒ ì‚¬í•­)
 #include <windows.h>
 #define DIRECTDRAW_VERSION 0x0700
 #define DIRECT3D_VERSION   0x0600
@@ -9,7 +9,7 @@
 #include <d3d.h>
 
 /* ------------------------------------------------------------------ */
-/*  ±¸Á¶Ã¼ (¸ğµç ¿ÀÇÁ¼ÂÀº ¾î¼Àºí¸®¿¡¼­ È®ÀÎ)                              */
+/*  êµ¬ì¡°ì²´ (ëª¨ë“  ì˜¤í”„ì…‹ì€ ì–´ì…ˆë¸”ë¦¬ì—ì„œ í™•ì¸)                              */
 /* ------------------------------------------------------------------ */
 
 struct GfxContext {                  // [DAT_00727290 + 0x18]
@@ -19,15 +19,15 @@ struct GfxContext {                  // [DAT_00727290 + 0x18]
     IDirect3DDevice3*    pD3DDevice;    // +0x40
 };
 
-struct GameGlobal {                  // *(void**)0x00727290, ·±Å¸ÀÓ¿¡ Ã¤¿öÁü
+struct GameGlobal {                  // *(void**)0x00727290, ëŸ°íƒ€ì„ì— ì±„ì›Œì§
     char        pad_00[4];
-    DWORD       dwTick;              // +0x04 ¸Å ÇÁ·¹ÀÓ °»½ÅµÇ´Â ms ½Ã°¢
+    DWORD       dwTick;              // +0x04 ë§¤ í”„ë ˆì„ ê°±ì‹ ë˜ëŠ” ms ì‹œê°
     char        pad_08[0x10];
     GfxContext* pGfx;                // +0x18
 };
 #define g_pGame (*(GameGlobal**)0x00727290)
 
-/* GetCharRect °¡ NULL ÀÌ¸é °ø¹é ±Û¸®ÇÁ·Î ´ëÃ¼ (¿øº» µ¿ÀÛ) */
+/* GetCharRect ê°€ NULL ì´ë©´ ê³µë°± ê¸€ë¦¬í”„ë¡œ ëŒ€ì²´ (ì›ë³¸ ë™ì‘) */
 static __forceinline RECT* GlyphRect(cFont* f, int ch)
 {
     RECT* rc = f->GetCharRect(ch);
@@ -39,8 +39,8 @@ static __forceinline RECT* GlyphRect(cFont* f, int ch)
 }
 
 /* ------------------------------------------------------------------ */
-/*  FUN_004366e0 : ¹è°æ ÀÌ¹ÌÁö¸¦ Å¬¸®ÇÎÇØ¼­ ±×¸² (thiscall, ÀÎÀÚ ¾øÀ½)        */
-/*  0x84 / 0x88 = À§Á¬ÀÇ X / Y ¿ÀÇÁ¼ÂÀ» µ¹·ÁÁÖ´Â °¡»ó ÇÔ¼ö·Î º¸ÀÓ (È®ÀÎ ÇÊ¿ä)  */
+/*  FUN_004366e0 : ë°°ê²½ ì´ë¯¸ì§€ë¥¼ í´ë¦¬í•‘í•´ì„œ ê·¸ë¦¼ (thiscall, ì¸ì ì—†ìŒ)        */
+/*  0x84 / 0x88 = ìœ„ì ¯ì˜ X / Y ì˜¤í”„ì…‹ì„ ëŒë ¤ì£¼ëŠ” ê°€ìƒ í•¨ìˆ˜ë¡œ ë³´ì„ (í™•ì¸ í•„ìš”)  */
 /* ------------------------------------------------------------------ */
 typedef void(__stdcall* tImageDraw)(void* image, int x, int y, int arg, 
                                     const RECT* src, int flag);
@@ -86,13 +86,13 @@ static BOOL CKeyInput_DrawBackground(CWidgetBase* self)
 
 
 /* ------------------------------------------------------------------ */
-/*  FUN_0043aba0 : Ä¿¼­ »ç°¢Çü ±×¸®±â (cdecl, ÀÎÀÚ 5°³)                     */
-/*  È£ÃâºÎ°¡ ADD ESP,0x14 ·Î Á¤¸®ÇÏ¹Ç·Î 5°³. µğÄÄÆÄÀÏÀº ¸¶Áö¸· color ¸¦ ³õÄ§     */
+/*  FUN_0043aba0 : ì»¤ì„œ ì‚¬ê°í˜• ê·¸ë¦¬ê¸° (cdecl, ì¸ì 5ê°œ)                     */
+/*  í˜¸ì¶œë¶€ê°€ ADD ESP,0x14 ë¡œ ì •ë¦¬í•˜ë¯€ë¡œ 5ê°œ. ë””ì»´íŒŒì¼ì€ ë§ˆì§€ë§‰ color ë¥¼ ë†“ì¹¨     */
 /* ------------------------------------------------------------------ */
 struct TLVertex { 
     float x, y, z, rhw; 
     DWORD color; 
-};      // 0x14 ¹ÙÀÌÆ®
+};      // 0x14 ë°”ì´íŠ¸
 
 static void __cdecl DrawCursorQuad(int x, int y, int w, int h, DWORD color)
 {
@@ -138,15 +138,15 @@ static void DrawCursor(CKeyInput* self, int currX, int currY, int fontHeight)
     DWORD now = g_pGame->dwTick;
     int   dt = (int)(now - self->m_dwLastTick);
     self->m_dwLastTick = now;
-    DWORD color = ((DWORD)self->m_nCursorAlpha << 24) | 0x00FFFFFF;   // °»½Å Àü ¾ËÆÄ »ç¿ë
+    DWORD color = ((DWORD)self->m_nCursorAlpha << 24) | 0x00FFFFFF;   // ê°±ì‹  ì „ ì•ŒíŒŒ ì‚¬ìš©
     DrawCursorQuad(self->m_nPadX + self->base.m_nX + currX, 
                    self->m_nPadY + self->base.m_nY + currY, 
                    2, fontHeight, color);
 
-    const double IncBlink = *(double*)0x00621FC0;   // Ä¿¼­ ±ôºıÀÓ ¼Óµµ »ó¼ö
+    const double IncBlink = *(double*)0x00621FC0;   // ì»¤ì„œ ê¹œë¹¡ì„ ì†ë„ ìƒìˆ˜
     const double DecBlink = *(double*)0x00622BB8;
 
-    /* ¾ËÆÄ ÆäÀÌµå: ¹æÇâ 0 = Áõ°¡, 1 = °¨¼Ò */
+    /* ì•ŒíŒŒ í˜ì´ë“œ: ë°©í–¥ 0 = ì¦ê°€, 1 = ê°ì†Œ */
     if (!self->m_bCursorFalling) {
         self->m_nCursorAlpha += (int)((double)dt * IncBlink);
         if (self->m_nCursorAlpha >= 0xFF) {
@@ -165,7 +165,7 @@ static void DrawCursor(CKeyInput* self, int currX, int currY, int fontHeight)
     dev->SetRenderState(D3DRENDERSTATE_ALPHABLENDENABLE, FALSE);
 }
 /* ------------------------------------------------------------------ */
-/*  ±Û¸®ÇÁ ÇÑ °³ Blt (ÄÃ·¯Å° Åõ¸í)                                        */
+/*  ê¸€ë¦¬í”„ í•œ ê°œ Blt (ì»¬ëŸ¬í‚¤ íˆ¬ëª…)                                        */
 /* ------------------------------------------------------------------ */
 static void BltGlyph(IDirectDrawSurface7* back, IDirectDrawSurface7* glyph,
                      RECT* src, int dx, int dy, int w, int h)
@@ -178,7 +178,7 @@ static void BltGlyph(IDirectDrawSurface7* back, IDirectDrawSurface7* glyph,
 }
 
 /* ------------------------------------------------------------------ */
-/*  º»Ã¼  (¿øº»: thiscall, RET ÀÎÀÚ ¾øÀ½)                                  */
+/*  ë³¸ì²´  (ì›ë³¸: thiscall, RET ì¸ì ì—†ìŒ)                                  */
 /* ------------------------------------------------------------------ */
 BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
 {
@@ -192,32 +192,32 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
     IDirectDrawSurface7* pGlyph = self->m_pFont->GetSurface();
     IDirectDrawSurface7* pBack = g_pGame->pGfx->pBackBuffer;
 
-    /* ---- ÀüÃ¼ Æø ÃøÁ¤ ---- */
+    /* ---- ì „ì²´ í­ ì¸¡ì • ---- */
     int text_len = (int)strlen(_Text);
     int totalWidth = 0;
     int charIdx = 0;
     do {
         int chCode = getCharCode(_Text, charIdx);
         totalWidth += self->m_pFont->GetCharWidth(chCode);
-        charIdx += (0xFF < chCode) ? 2 : 1;   // 2¹ÙÀÌÆ®¸é +2, ¾Æ´Ï¸é +1
+        charIdx += (0xFF < chCode) ? 2 : 1;   // 2ë°”ì´íŠ¸ë©´ +2, ì•„ë‹ˆë©´ +1
     } while(charIdx < text_len);
 
     const int fontHeight = self->m_pFont->GetCharHeight('A');
 
-    int currX = 0;           // Ä¿¼­ x ¿¡µµ ¾²ÀÓ
-    int currY = 0;           // Ä¿¼­ y ¿¡µµ ¾²ÀÓ
+    int currX = 0;           // ì»¤ì„œ x ì—ë„ ì“°ì„
+    int currY = 0;           // ì»¤ì„œ y ì—ë„ ì“°ì„
 
     if (self->m_bRightAlign && self->m_nBoxW < totalWidth)
     {
-        /* ===== ÇÑ ÁÙ ¸ğµå: ³¡¿¡¼­ºÎÅÍ ¿ª¹æÇâÀ¸·Î, ¿À¸¥ÂÊ Á¤·Ä ===== */
-        currX = self->m_nBoxW - 2;  // ·çÇÁ Áß °»½ÅµÇÁö ¾ÊÀ½ ¡æ Ä¿¼­´Â ¹Ú½º ¿À¸¥ÂÊ ³¡
+        /* ===== í•œ ì¤„ ëª¨ë“œ: ëì—ì„œë¶€í„° ì—­ë°©í–¥ìœ¼ë¡œ, ì˜¤ë¥¸ìª½ ì •ë ¬ ===== */
+        currX = self->m_nBoxW - 2;  // ë£¨í”„ ì¤‘ ê°±ì‹ ë˜ì§€ ì•ŠìŒ â†’ ì»¤ì„œëŠ” ë°•ìŠ¤ ì˜¤ë¥¸ìª½ ë
         int remain = currX;
         charIdx = text_len - 1;
         do {
-            if (0 < charIdx) { // ÀÌÀü ±ÛÀÚ°¡ 2¹ÙÀÌÆ® ¹®ÀÚÀÎÁö °Ë»ç
+            if (0 < charIdx) { // ì´ì „ ê¸€ìê°€ 2ë°”ì´íŠ¸ ë¬¸ìì¸ì§€ ê²€ì‚¬
                 uint8_t c1 = static_cast<uint8_t>(_Text[charIdx - 1]);
                 uint8_t c2 = static_cast<uint8_t>(_Text[charIdx]);
-                if (IsHangul(c1, c2))   // 2¹ÙÀÌÆ® ÁßÀÇ Å×ÀÏ¹ÙÀÌÆ®ÀÌ¸é ÇÑ¹ÙÀÌÆ® ´õ ÀÌµ¿
+                if (IsHangul(c1, c2))   // 2ë°”ì´íŠ¸ ì¤‘ì˜ í…Œì¼ë°”ì´íŠ¸ì´ë©´ í•œë°”ì´íŠ¸ ë” ì´ë™
                     --charIdx;
             }
             int chCode = getCharCode(_Text, charIdx);
@@ -231,11 +231,11 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
             
             --charIdx;
         } while(0 <= charIdx && 0 < remain);
-        /* ÀÌ °æ·Î¿¡¼­´Â ÁÙ¹Ù²Ş Ä³½Ã Á¤¸®¸¦ °Ç³Ê¶Ú´Ù */
+        /* ì´ ê²½ë¡œì—ì„œëŠ” ì¤„ë°”ê¿ˆ ìºì‹œ ì •ë¦¬ë¥¼ ê±´ë„ˆë›´ë‹¤ */
     }
     else
     {
-        /* ===== ÀÏ¹İ ¸ğµå: ¹Ú½º ¾È¿¡¼­ ÁÙ¹Ù²ŞÇÏ¸ç ¿ŞÂÊºÎÅÍ ===== */
+        /* ===== ì¼ë°˜ ëª¨ë“œ: ë°•ìŠ¤ ì•ˆì—ì„œ ì¤„ë°”ê¿ˆí•˜ë©° ì™¼ìª½ë¶€í„° ===== */
         if (text_len < self->m_nStopIdx)
             self->m_nStopIdx = -1;
 
@@ -259,7 +259,7 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
 
                 if (charIdx == self->m_aBreakCache[lineIdx])
                 {
-                    /* Ä³½ÃµÈ ÁÙ¹Ù²Ş À§Ä¡: ¿©±â¼­ºÎÅÍ ³¡±îÁö°¡ ÇöÀç ÁÙ¿¡ ¾È µé¾î°¡¸é ÁÙ¹Ù²Ş ÀçÇö */
+                    /* ìºì‹œëœ ì¤„ë°”ê¿ˆ ìœ„ì¹˜: ì—¬ê¸°ì„œë¶€í„° ëê¹Œì§€ê°€ í˜„ì¬ ì¤„ì— ì•ˆ ë“¤ì–´ê°€ë©´ ì¤„ë°”ê¿ˆ ì¬í˜„ */
                     bool overflow = false;
                     
                     int  acc = 0;
@@ -271,7 +271,7 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
                             overflow = true; 
                             break; 
                         }
-                        _chIdx += (0xFF < _chCode) ? 2 : 1;   // 2¹ÙÀÌÆ®¸é +2, ¾Æ´Ï¸é +1
+                        _chIdx += (0xFF < _chCode) ? 2 : 1;   // 2ë°”ì´íŠ¸ë©´ +2, ì•„ë‹ˆë©´ +1
                     } while(_chIdx < text_len);
 
                     if (overflow && lineIdx < 19) {
@@ -279,34 +279,34 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
                         currX = 0;
                         charIdx = self->m_aBreakCache[lineIdx];          // (= charIdx)
                         ++lineIdx;
-                        continue;       // °ø¹é ±ÛÀÚ´Â ±×¸®Áö ¾Ê°í °Ç³Ê¶Ü
+                        continue;       // ê³µë°± ê¸€ìëŠ” ê·¸ë¦¬ì§€ ì•Šê³  ê±´ë„ˆëœ€
                     }
-                    self->m_aBreakCache[lineIdx] = -1;                 // ´Ù µé¾î°¡¹Ç·Î Ä³½Ã ÇØÁ¦ ÈÄ Á¤»ó Ã³¸®
+                    self->m_aBreakCache[lineIdx] = -1;                 // ë‹¤ ë“¤ì–´ê°€ë¯€ë¡œ ìºì‹œ í•´ì œ í›„ ì •ìƒ ì²˜ë¦¬
                 }
 
                 if (self->m_nBoxW < currX + fontW)
                 {
-                    /* Æø ÃÊ°ú ¡æ »õ ÁÙ */
+                    /* í­ ì´ˆê³¼ â†’ ìƒˆ ì¤„ */
                     currY += fontH;
                     if (self->m_nBoxH < currY + fontH  || lineIdx == 19) {
-                        currY -= fontH;                       // ¼¼·Îµµ ³ÑÄ§: ¿©±â¼­ Áß´Ü
+                        currY -= fontH;                       // ì„¸ë¡œë„ ë„˜ì¹¨: ì—¬ê¸°ì„œ ì¤‘ë‹¨
                         self->m_nStopIdx = charIdx;
                     }
                     else {
                         currX = 0;
                         self->m_nStopIdx = -1;
                         if (lastSpace != -1) {
-                            charIdx = lastSpace;               // ¸¶Áö¸· °ø¹éÀ¸·Î µÇµ¹¾Æ°¨
+                            charIdx = lastSpace;               // ë§ˆì§€ë§‰ ê³µë°±ìœ¼ë¡œ ë˜ëŒì•„ê°
                             lastSpace = -1;
-                            self->m_aBreakCache[lineIdx] = charIdx;   // Ä³½Ã¿¡ ±â·Ï
+                            self->m_aBreakCache[lineIdx] = charIdx;   // ìºì‹œì— ê¸°ë¡
                             ++lineIdx;
                         }
-                        else {  // °ø¹éÀÌ ¾øÀ¸¸é °°Àº ±ÛÀÚ¸¦ »õ ÁÙ¿¡¼­ Àç½Ãµµ
+                        else {  // ê³µë°±ì´ ì—†ìœ¼ë©´ ê°™ì€ ê¸€ìë¥¼ ìƒˆ ì¤„ì—ì„œ ì¬ì‹œë„
                             --charIdx;
-                            if (0 < charIdx) { // ÀÌÀü ±ÛÀÚ°¡ 2¹ÙÀÌÆ® ¹®ÀÚÀÎÁö °Ë»ç
+                            if (0 < charIdx) { // ì´ì „ ê¸€ìê°€ 2ë°”ì´íŠ¸ ë¬¸ìì¸ì§€ ê²€ì‚¬
                                 uint8_t c1 = static_cast<uint8_t>(_Text[charIdx - 1]);
                                 uint8_t c2 = static_cast<uint8_t>(_Text[charIdx]);
-                                if (IsHangul(c1, c2))   // 2¹ÙÀÌÆ® ÁßÀÇ Å×ÀÏ¹ÙÀÌÆ®ÀÌ¸é ÇÑ¹ÙÀÌÆ® ´õ ÀÌµ¿
+                                if (IsHangul(c1, c2))   // 2ë°”ì´íŠ¸ ì¤‘ì˜ í…Œì¼ë°”ì´íŠ¸ì´ë©´ í•œë°”ì´íŠ¸ ë” ì´ë™
                                     --charIdx;
                             }
                         }
@@ -321,11 +321,11 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
                 }
 
                 chCode = getCharCode(_Text, charIdx);
-                charIdx += (0xFF < chCode) ? 2 : 1;   // 2¹ÙÀÌÆ®¸é +2, ¾Æ´Ï¸é +1
+                charIdx += (0xFF < chCode) ? 2 : 1;   // 2ë°”ì´íŠ¸ë©´ +2, ì•„ë‹ˆë©´ +1
             } while(charIdx < text_len);
         }
 
-        /* Ä³½Ã Áß ¹®ÀÚ¿­ ±æÀÌ ÀÌ»óÀÎ Ç×¸ñ ¹«È¿È­ */
+        /* ìºì‹œ ì¤‘ ë¬¸ìì—´ ê¸¸ì´ ì´ìƒì¸ í•­ëª© ë¬´íš¨í™” */
         for (int lineIdx = 0; lineIdx < 20; ++lineIdx) {
             if (text_len <= self->m_aBreakCache[lineIdx]) {
                 self->m_aBreakCache[lineIdx] = -1;
@@ -333,7 +333,7 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
         }
     }
 
-    /* ===== Ä¿¼­ ===== */
+    /* ===== ì»¤ì„œ ===== */
     if (self->m_bCursorOn) {
         DrawCursor(self, currX, currY, fontHeight);
     }
@@ -342,17 +342,17 @@ BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/)
 }
 
 /*
-ÈÅ ¹æ¹ı
+í›… ë°©ë²•
 
-ÀÌ ÇÔ¼ö´Â vtable ½½·Ô(0x00622E24)¿¡¼­ ÂüÁ¶µË´Ï´Ù. ¹æ¹ıÀº µÎ °¡ÁöÀÔ´Ï´Ù.
+ì´ í•¨ìˆ˜ëŠ” vtable ìŠ¬ë¡¯(0x00622E24)ì—ì„œ ì°¸ì¡°ë©ë‹ˆë‹¤. ë°©ë²•ì€ ë‘ ê°€ì§€ì…ë‹ˆë‹¤.
 
-// (1) ÀÎ¶óÀÎ ÈÅ (MinHook)
+// (1) ì¸ë¼ì¸ í›… (MinHook)
 typedef BOOL(__fastcall* tKeyDraw)(CKeyInput*, void*);
 tKeyDraw g_origKeyDraw = NULL;
 MH_CreateHook((LPVOID)0x0043A4D0, &CKeyInput_Draw_Hook, (LPVOID*)&g_origKeyDraw);
 MH_EnableHook((LPVOID)0x0043A4D0);
 
-// (2) vtable ½½·Ô ±³Ã¼: ´Ù¸¥ °÷¿¡¼­ Á÷Á¢ È£ÃâÇÏÁö ¾Ê´Â´Ù¸é ÀÌÂÊÀÌ ´õ ¾ÈÀü
+// (2) vtable ìŠ¬ë¡¯ êµì²´: ë‹¤ë¥¸ ê³³ì—ì„œ ì§ì ‘ í˜¸ì¶œí•˜ì§€ ì•ŠëŠ”ë‹¤ë©´ ì´ìª½ì´ ë” ì•ˆì „
 DWORD old;
 VirtualProtect((LPVOID)0x00622E24, 4, PAGE_READWRITE, &old);
 *(void**)0x00622E24 = (void*)&CKeyInput_Draw_Hook;
