@@ -267,5 +267,30 @@ def test():
     print("파일 크기:", 8 + 4*n + total*2)
 
 
+
+def remerge():
+    srcA_Path = "D:/workspace/PoR_RoMD/sfDat_backup.json"
+    srcB_Path = "D:/workspace/PoR_RoMD/translation/sfDat.json"
+
+    with open(srcA_Path, "r", encoding="utf-8") as in_file:
+        jsonA_strings = json.load(in_file)
+
+    with open(srcB_Path, "r", encoding="utf-8") as in_file:
+        jsonB_strings = json.load(in_file)
+
+    # A의 원문을 B의 번역으로 덮어쓰기
+    for key in jsonB_strings:
+        if key.endswith("_kr"):
+            Bidx = int(key[:-3])
+            Aidx = Bidx if Bidx < 900 else Bidx + 1
+            
+            if f'{Aidx}' in jsonA_strings and jsonB_strings[f'{Bidx}_kr']:
+                jsonA_strings[f'{Aidx}_kr'] = jsonB_strings[f'{Bidx}_kr']   
+
+    output_path = "D:/workspace/PoR_RoMD/translation/sfDat_merged.json"
+    with open(output_path, "w", encoding="utf-8") as out_file:
+        json.dump(jsonA_strings, out_file, ensure_ascii=False, indent=2)
+
 if __name__ == "__main__":
-    main()
+    #main()
+    remerge()

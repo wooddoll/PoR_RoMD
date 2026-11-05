@@ -42,6 +42,8 @@
 /font/Umdot20-Bold.ttf_28.png
 /font/Umdot20-Bold.ttf_28.txt
 /font/Umdot20-Bold.ttf_29.png
+*.bak
+*.backup
 *.avi
 *.zip
 google_ai_key.txt
