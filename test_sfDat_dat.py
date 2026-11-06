@@ -364,7 +364,7 @@ def translation_sfDat(sfDat: dict, batch_size: int = 10):
 
 def convert():
     src_Path = "translation/sfDat_old.json"
-    dst_Path = "translation/sfDat.json"
+    dst_Path = "translation/sfDat_new.json"
 
     with open(src_Path, "r", encoding="utf-8") as in_file:
         json_strings = json.load(in_file)
@@ -382,5 +382,5 @@ def convert():
         json.dump(result, out_file, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
-    main()
-    #convert()
+    #main()
+    convert()
