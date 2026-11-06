@@ -382,5 +382,5 @@ def convert():
         json.dump(result, out_file, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
-    #main()
-    convert()
+    main()
+    #convert()
