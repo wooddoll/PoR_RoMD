@@ -28,6 +28,9 @@ static void PushLineValue(int** ppArr, int nLineCount, int value)
     *ppArr = pNew;
 }
 
+static inline bool IsOpenBracket(int c) { return c == '(' || c == '[' || c == '{'; }
+static inline bool IsCloseBracket(int c) { return c == ')' || c == ']' || c == '}'; }
+// " ' 도 추가
 /* ------------------------------------------------------------------ */
 /*  WordWrap 객체                                                       */
 /*  원본: BOOL __thiscall (원본 함수) 을 위해 __fastcall + dummy edx        */
@@ -174,3 +177,58 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
     return TRUE;
 }
 #undef _Text
+
+
+/*
+
+교체할 부분 (if (nLastWordIdx == nLineStartIdx) { ... } 블록)
+
+    if (nLastWordIdx == nLineStartIdx) {
+    // 글자 단위 강제 줄바꿈: 현재 글자를 제외
+    nCurrentLineWidth -= self->m_pFont->GetCharWidth(chCode);
+
+    // 다음 줄 시작 위치. 괄호 금칙 때문에 앞으로 당길 수 있음
+    int breakIdx = charIdx;
+
+    for (;;) {
+        bool moved = false;
+
+        // 여는 괄호 바로 뒤에서는 끊지 않음
+        if (breakIdx - 1 > nLineStartIdx && IsOpenBracket((uint8_t)_Text[breakIdx - 1])) {
+            breakIdx -= 1;                 // '(' 는 1바이트
+            moved = true;
+        }
+        // 닫는 괄호 바로 앞에서는 끊지 않음 (직전 글자를 같이 넘김)
+        else if (IsCloseBracket((uint8_t)_Text[breakIdx]) && breakIdx - 1 > nLineStartIdx) {
+            int p = breakIdx - 1;
+            if (0 < p && IsHangul((uint8_t)_Text[p - 1], (uint8_t)_Text[p]))
+                --p;                       // 직전 글자가 2바이트면 2바이트 이동
+            if (p > nLineStartIdx) {
+                breakIdx = p;
+                moved = true;
+            }
+        }
+        if (!moved) break;
+    }
+
+    // 줄에서 빠지는 글자들의 폭을 뺀다 ([breakIdx, charIdx))
+    for (int k = breakIdx; k < charIdx; ) {
+        int code = getCharCode(_Text, k);
+        nCurrentLineWidth -= self->m_pFont->GetCharWidth(code);
+        k += (0xFF < code) ? 2 : 1;
+    }
+
+    if (nMaxWidth < nCurrentLineWidth)
+        nMaxWidth = nCurrentLineWidth;
+
+    PushLineValue(&self->m_pLineEndIndices, nLineCount, breakIdx - 1);
+    PushLineValue(&self->m_pLineWidths, nLineCount, nCurrentLineWidth);
+
+    nCurrentLineWidth = 0;
+    nLineCount++;
+    charIdx = breakIdx;          // 줄 끝에서 빠진 글자부터 다시 처리
+    nLastWordIdx = breakIdx;
+    nLineStartIdx = breakIdx;
+}
+
+*/
