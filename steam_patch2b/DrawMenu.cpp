@@ -114,3 +114,45 @@ BOOL __cdecl cTextManager_MenuDraw_Hook(cTextManager* self)
     pSrc->Unlock(NULL);
     return 1;
 }
+
+// 5. china_pass_594a68d0 후킹 함수
+cGlyphResult* __cdecl china_pass_Hook(cGlyphResult* out_result, cFont* pFont, const char* text, int textLen) 
+{
+    if (!out_result) {
+        return NULL;
+    }
+    if (!text || textLen < 1 || !pFont) {
+        out_result->charCode = 0;
+        out_result->byteLength = 0;
+        out_result->width = 0;
+        out_result->height = 0;
+        out_result->originalText[0] = '\0';
+        return out_result;
+    }
+
+    // 텍스트가 2바이트 이상 남아있고, 한글인 경우
+    if (textLen >= 2 && IsHangul((unsigned char)text[0], (unsigned char)text[1])) 
+    {
+        out_result->charCode = ((unsigned char)text[0] << 8) | (unsigned char)text[1];
+        out_result->byteLength = 2;
+        out_result->originalText[0] = text[0];
+        out_result->originalText[1] = text[1];
+        out_result->originalText[2] = '\0';
+    } else {
+        out_result->charCode = text[0];
+        out_result->byteLength = 1;
+        out_result->originalText[0] = text[0];
+        out_result->originalText[1] = '\0';
+    }
+    
+    RECT* pRect = pFont->GetCharRect(out_result->charCode);
+    if (pRect != nullptr) {
+        out_result->width = pRect->right - pRect->left;
+        out_result->height = pRect->bottom - pRect->top;
+    } else {
+        out_result->width = 0;
+        out_result->height = 0;
+    }
+
+    return out_result;
+}
