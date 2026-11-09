@@ -192,6 +192,26 @@ def installBink(gamePath, embedded_data_path):
     print("ok")
     return copied_count == 10
 
+def installSFDat(gamePath, embedded_data_path):
+    sfDatPath = os.path.join(gamePath, 'sfDat.dat')
+
+    print("sfDat.dat 파일을 sfDat.dat.backup 으로 보관합니다.")
+    if not os.path.exists(sfDatPath + '.backup'):
+        os.rename(sfDatPath, sfDatPath + '.backup')
+    else:
+        print(f"⚠️ 경고: '{sfDatPath}.backup' 파일이 이미 존재합니다.")
+        print(f"이전 백업이 유효하다고 가정하고 백업하지 않고 진행합니다.", end='')
+        inputYN()
+            
+    print("sfDat.dat 파일을 복사합니다... ", end='')
+
+    source_dir = os.path.join(embedded_data_path, 'sfDat.dat')
+    shutil.copy2(source_dir, sfDatPath)
+
+    print("ok")
+    return True
+
+
 if __name__ == "__main__":
     print("""
 ======================================================================
@@ -272,6 +292,7 @@ if __name__ == "__main__":
     installDll(gamePath, embedded_data_path)
     installBink(gamePath, embedded_data_path)
     installFont(gamePath, embedded_data_path)
+    installSFDat(gamePath, embedded_data_path)
     installDialogue(gamePath, embedded_data_path)
     installSTR(gamePath, embedded_data_path)
 

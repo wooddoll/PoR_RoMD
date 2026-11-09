@@ -105,8 +105,17 @@ std::wstring GetSubPath(const char* videoFileName) {
     if (wideLen <= 0) 
         return L"";
 
-    std::wstring wPath(wideLen - 1, L'\0'); // \0 제외한 크기로 초기화
-    MultiByteToWideChar(CP_ACP, 0, videoFileName, -1, &wPath[0], wideLen);
+    std::wstring wPath(wideLen, L'\0');
+
+    int converted = MultiByteToWideChar(
+        CP_ACP, 0, videoFileName, -1,
+        wPath.data(), static_cast<int>(wPath.size()));
+
+    if (converted <= 0) {
+        return L"";
+    }
+
+    wPath.resize(static_cast<size_t>(converted - 1));
 
     // 2. Win32 API를 사용해 확장자 제거
     // 버퍼의 실제 크기인 wPath.length() + 1을 인자로 넘깁니다.
