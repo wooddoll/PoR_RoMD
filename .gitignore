@@ -67,3 +67,9 @@ google_ai_key.txt
 /install/build_fonts.py.bak
 /translation/data_str.json.bak
 /translation/merged_en_kr.json.bak
+/translation
+/install/build
+/install/dist
+/install/install.spec
+/install/por2_kor_patch.spec
+/install/Pool2.ico
