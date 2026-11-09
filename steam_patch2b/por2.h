@@ -86,6 +86,22 @@ inline int getCharCode(const char* text, int charIdx)
 }
 
 
+
+
+struct cGlyphResult {
+    unsigned int charCode;   // 0x00: 렌더링할 문자 코드
+    unsigned int byteLength; // 0x04: 원본 문자열에서 읽어들인 바이트 수
+    int width;               // 0x08: 글리프 너비 (Right - Left)
+    int height;              // 0x0C: 글리프 높이 (Bottom - Top)
+    char originalText[4];    // 0x10: 원본 문자 데이터 (널 종료 문자열 형태)
+};
+static_assert(offsetof(cGlyphResult, charCode) == 0x0, "");
+static_assert(offsetof(cGlyphResult, byteLength) == 0x4, "");
+static_assert(offsetof(cGlyphResult, width) == 0x8, "");
+static_assert(offsetof(cGlyphResult, height) == 0xC, "");
+static_assert(offsetof(cGlyphResult, originalText) == 0x10, "");
+
+
 struct cCharCodeMap {
     int count;                 // +0x00
     int** keys;                // +0x04
@@ -123,6 +139,8 @@ struct cFont_vtable {
 	virtual RECT* GetCharRect(int charCode) = 0;                                        // +0x24
 	virtual IDirectDrawSurface7* GetSurface() = 0;                                      // +0x28, return IDirectDrawSurface*
 };
+
+
 
 extern RECT g_dummyZeroRect;
 struct cFont {
@@ -382,3 +400,4 @@ static_assert(offsetof(cTextLabel, m_pFont) == 0x164, "");
 static_assert(offsetof(cTextLabel, m_wColor) == 0x168, "");
 static_assert(offsetof(cTextLabel, m_pTarget) == 0x174, "");
 static_assert(offsetof(cTextLabel, m_nLeft) == 0x1A8, "");
+
