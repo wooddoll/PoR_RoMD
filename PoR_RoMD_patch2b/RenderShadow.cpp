@@ -109,3 +109,101 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
     return TRUE;
 }
 #undef _Text
+
+
+/*
+
+typedef bool (__cdecl* tIsAltTarget)(void* surf);                   // FUN_59524530
+typedef char (__cdecl* tAltRender)(cTextLayout*, void* surf);       // FUN_595249a0
+typedef bool (__cdecl* tNoShadowMode)(void);                        // FUN_595815b0
+
+#define IMG_BASE 0x59460000u
+static BYTE* g_mod;
+#define A(va) ((void*)(g_mod + ((va) - IMG_BASE)))
+
+static inline bool IsSpaceByte(char c)           // 원본: signed 비교 인라인
+{ return (c >= 9 && c <= 0x0D) || c == 0x20; }
+
+BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* //edx)
+{
+    IDirectDrawSurface7* pDst = self->GetTargetSurface();          // vtable +0x54
+
+    // [추가 1] 대체 렌더 경로: 원본 함수를 그대로 호출
+    if (((tIsAltTarget)A(0x59524530))(pDst))
+        return ((tAltRender)A(0x595249A0))(self, pDst) != 0;
+
+    IDirectDrawSurface7* pSrc = (IDirectDrawSurface7*)self->m_pFont->GetSurface();
+    const char* text = self->m_pszText;
+    const int   len  = (int)strlen(text);
+
+    // [추가 2] 그림자 조건
+    bool shadow = false;
+    if (self->m_bShadow)
+        shadow = !((tNoShadowMode)A(0x595815B0))();
+
+    int xOffset = (self->m_nAlign == 1)
+        ? (self->m_nMaxLineWidth - self->m_pLineWidths[0]) / 2 : 0;
+
+    // [변경] ddsd 분리 + FAILED 검사
+    DDSURFACEDESC2 dd = {}; dd.dwSize = 0x7C;
+    if (FAILED(pDst->Lock(NULL, &dd, 0, NULL)))
+        return FALSE;
+    WORD* dstBase = (WORD*)dd.lpSurface;
+    int   dstPitchW = (int)((unsigned)dd.lPitch >> 1);
+
+    DDSURFACEDESC2 sd = {}; sd.dwSize = 0x7C;
+    if (FAILED(pSrc->Lock(NULL, &sd, 0, NULL))) {
+        pDst->Unlock(NULL);
+        return FALSE;
+    }
+    WORD* srcBase = (WORD*)sd.lpSurface;
+    int   srcPitchW = (int)((unsigned)sd.lPitch >> 1);
+
+    int idx = 0, penY = 0;
+    for (int line = 0; line < self->m_nLineCount; line++)
+    {
+        if (idx < len && idx <= self->m_pLineEndIndices[line])
+        {
+            do {
+                int   code = getCharCode(text, idx);
+                RECT* rc   = self->m_pFont->GetCharRect(code);
+
+                if (rc) {                                       // [추가 3] NULL 이면 건너뜀
+                    int w = rc->right - rc->left;
+                    int h = rc->bottom - rc->top;
+                    const WORD* s = srcBase + rc->top * srcPitchW + rc->left;
+                    WORD*       d = dstBase + penY * dstPitchW + xOffset;
+                    for (int y = 0; y < h; y++) {
+                        for (int x = 0; x < w; x++) {
+                            WORD px = s[x];
+                            if (!px) continue;
+                            if (px == 0xFFFF) px = self->m_wTextColor;
+                            d[x] = px;
+                            if (shadow)
+                                d[x + dstPitchW * 2 + 2] = self->m_wShadowColor;
+                        }
+                        s += srcPitchW; d += dstPitchW;
+                    }
+                }
+                xOffset += self->m_pFont->GetCharWidth(code);   // WordWrap 훅과 같은 폭 사용
+                idx     += (0xFF < code) ? 2 : 1;
+            } while (text[idx] && idx <= self->m_pLineEndIndices[line]);
+        }
+
+        // 줄 사이 공백 스킵 (현재 글자가 공백일 때만)
+        if (IsSpaceByte(text[idx])) {
+            do { idx++; } while (text[idx] && IsSpaceByte(text[idx]));
+        }
+
+        xOffset = 0;
+        if (self->m_nAlign == 1 && line + 1 < self->m_nLineCount)
+            xOffset = (self->m_nMaxLineWidth - self->m_pLineWidths[line + 1]) / 2;
+        penY += self->m_nLineHeight;
+    }
+
+    pSrc->Unlock(NULL);
+    pDst->Unlock(NULL);
+    return TRUE;
+}
+
+*/

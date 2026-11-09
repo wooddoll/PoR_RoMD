@@ -33,7 +33,7 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
         PLOG_ERROR << "[version.dll proxy] language.ini load failed.";
     }
     */
-    ApplyMemoryPatches();
+    //ApplyMemoryPatches();
 
     return 0;
 }
