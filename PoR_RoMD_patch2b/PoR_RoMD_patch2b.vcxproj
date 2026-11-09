@@ -72,10 +72,10 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <TargetName>version</TargetName>
-    <OutDir>E:\Games\Pool of Radiance\</OutDir>
+    <OutDir>G:\SteamLibrary\steamapps\common\Pool of Radiance Ruins of Myth Drannor</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>E:\Games\Pool of Radiance\</OutDir>
+    <OutDir>G:\SteamLibrary\steamapps\common\Pool of Radiance Ruins of Myth Drannor\</OutDir>
     <TargetName>version</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
