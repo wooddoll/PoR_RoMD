@@ -16,6 +16,7 @@ bool HookFunction(const uintptr_t targetAddr, const uintptr_t hookFuncAddr);
 bool PatchRelativeCall(uintptr_t callSite, const uintptr_t newTarget);
 bool patchBytes(const uintptr_t targetAddr, const void* data, const size_t bytes);
 bool patchDWORD(const uintptr_t targetAddr, const uint32_t dword);
+bool patchBYTE(const uintptr_t targetAddr, const uint8_t byte);
 
 typedef void (*PatchFunc_t)(uintptr_t baseAddress);
 bool patchLazyDLL(const wchar_t* dllName, PatchFunc_t patchFunc);

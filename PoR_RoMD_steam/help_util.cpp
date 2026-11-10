@@ -86,6 +86,19 @@ bool patchDWORD(const uintptr_t targetAddr, const uint32_t dword)
     return true;
 }
 
+bool patchBYTE(const uintptr_t targetAddr, const uint8_t byte)
+{
+    DWORD oldProtect;
+    if (!VirtualProtect(reinterpret_cast<void*>(targetAddr), 1, PAGE_EXECUTE_READWRITE, &oldProtect))
+        return false;
+
+	*reinterpret_cast<uint8_t*>(targetAddr) = byte;
+
+    VirtualProtect(reinterpret_cast<void*>(targetAddr), 1, oldProtect, &oldProtect);
+    FlushInstructionCache(GetCurrentProcess(), reinterpret_cast<void*>(targetAddr), 1);
+    return true;
+}
+
 thread_local char _eucKrStr_[5];
 const char* OutputEucKrChar(unsigned char byte1, unsigned char byte2) 
 {
