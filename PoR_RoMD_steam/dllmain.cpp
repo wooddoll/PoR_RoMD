@@ -23,8 +23,8 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
 #endif
     LoadOriginalDll();
     InstallBinkHooks();
-
-    patchLazyDLL(L"sneg.dll", ApplyMemoryPatches);
+    patchLazyDLL(L"sneg.dll", ApplySNEGPatches);
+    ApplyMemoryPatches();
 
     return 0;
 }
