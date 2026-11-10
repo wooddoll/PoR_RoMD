@@ -120,6 +120,7 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
 
 
     {
+#if 0
         if (g_watch == nullptr) {
             uintptr_t vtable = *reinterpret_cast<uintptr_t*>(pDst);
             uintptr_t targetAddr = vtable + 0x64;
@@ -129,7 +130,7 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
 
             patchDWORD(targetAddr, reinterpret_cast<uintptr_t>(Lock_Spy));
         }
-#if 0
+
 		int xOffset = 0;
         int yOffset = 0;
         int dstRowOffset = dstPitchW * yOffset;

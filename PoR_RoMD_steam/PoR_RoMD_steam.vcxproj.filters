@@ -57,6 +57,15 @@
     <ClCompile Include="lazy_patch.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="sneg_hook.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="DrawTextLines.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="KeyInput_Draw.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="subtitle_renderer.h">

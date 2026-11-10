@@ -14,15 +14,13 @@ void ApplyMemoryPatches(uintptr_t baseAddress)
     UNREFERENCED_PARAMETER(baseAddress);
 
     uint8_t ESPtoEAX_I[5] = { 0x8b, 0x44, 0x24, 0x04, 0x90 };
-    patchBytes(0x00435e00, ESPtoEAX_I, 5); // GetCharHeight_00435e00
-    patchBytes(0x00435e30, ESPtoEAX_I, 5); // GetCharWidth_00435e30
+    //patchBytes(0x00435e00, ESPtoEAX_I, 5); // GetCharHeight_00435e00
+    //patchBytes(0x00435e30, ESPtoEAX_I, 5); // GetCharWidth_00435e30
 
-    //patchDWORD(0x00622E24, reinterpret_cast<uintptr_t>(CKeyInput_Draw_Hook)); // TODO
     PatchRelativeCall(0x0049EDCE, reinterpret_cast<uintptr_t>(Input_Hook));
 
-    PatchRelativeCall(0x0043c614, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));
-    PatchRelativeCall(0x0043e9fd, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));
-    //PatchRelativeCall(0x0043c73f, reinterpret_cast<uintptr_t>(cTextManager_DrawTextLines_Hook));  // TODO
+    //PatchRelativeCall(0x0043c614, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));
+    //PatchRelativeCall(0x0043e9fd, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));
 
-    patchDWORD(0x00623040, reinterpret_cast<uintptr_t>(cTextLabel_CalcExtents_Hook));
+    //patchDWORD(0x00623040, reinterpret_cast<uintptr_t>(cTextLabel_CalcExtents_Hook));
 }
