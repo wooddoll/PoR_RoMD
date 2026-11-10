@@ -217,23 +217,21 @@ static HBINK __stdcall DetourBinkOpen(const char* name, uint32_t flags)
     if (!fpBinkOpen || !name) {
         return nullptr;
     }
-    OutputDebugStringA("[PoR] DetourBinkOpen entered\n");
-    OutputDebugStringA("[PoR] before fpBinkOpen\n");
 
     HBINK bink = fpBinkOpen(name, flags);
     if (!bink) {
         PLOG_ERROR << "[Subtitle] Not found: " << name << ": " << bink;
         return bink;
     }
-    OutputDebugStringA("[PoR] fpBinkOpened\n");
+
     {
         std::lock_guard<std::mutex> lock(g_SubtitleMutex);
         g_SubtitlesMap.erase(bink);
     }
-    OutputDebugStringA("[PoR] g_SubtitlesMap.erase(bink)\n");
+
     //std::wstring sbvPath = BuildSubtitlePath(name);
     std::wstring sbvPath = GetSubPath(name);
-    OutputDebugStringA("[PoR] GetSubPath()\n");
+
 
     if (sbvPath.empty()) {
         return bink;

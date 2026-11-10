@@ -155,13 +155,16 @@
     <ClCompile Include="cTextLabel_Draw.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="DrawMenu.cpp" />
+    <ClCompile Include="DrawTextLines.cpp" />
     <ClCompile Include="help_util.cpp" />
+    <ClCompile Include="KeyInput_Draw.cpp" />
     <ClCompile Include="KeyProc.cpp" />
     <ClCompile Include="lazy_patch.cpp" />
     <ClCompile Include="por2_hook.cpp" />
     <ClCompile Include="proxy_version.cpp" />
     <ClCompile Include="RenderShadow.cpp" />
     <ClCompile Include="sbv_parser.cpp" />
+    <ClCompile Include="sneg_hook.cpp" />
     <ClCompile Include="WordWrap.cpp" />
   </ItemGroup>
   <ItemGroup>

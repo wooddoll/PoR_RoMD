@@ -1,8 +1,8 @@
 #include "por2.h"
 #include <string.h>
 
-#define WIN32_LEAN_AND_MEAN // 불필요한 Windows 헤더 제외 (선택 사항)
-#include <windows.h>        // COM 및 기본 Windows API 정의 (ddraw.h보다 먼저 포함되어야 함)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 
 #ifndef MAX
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -20,40 +20,49 @@ static void PushLineValue(int** ppArr, int nLineCount, int value)
     unsigned int cb = (unsigned int)nLineCount * 4;
     int* pNew = (int*)_malloc(cb);
 
-    if (cb > 4)
+    if (cb > 4 && *ppArr)
         memcpy(pNew, *ppArr, cb - 4);
     pNew[nLineCount - 1] = value;
 
-    _free(*ppArr);
+    if (*ppArr)
+        _free(*ppArr);
     *ppArr = pNew;
 }
 
-static inline bool IsOpenBracket(int c) { return c == '(' || c == '[' || c == '{'; }
-static inline bool IsCloseBracket(int c) { return c == ')' || c == ']' || c == '}'; }
-// " ' 도 추가
+// 행말 금칙: 줄 끝에 올 수 없는 문자 (여는 괄호, 따옴표 등)
+static inline bool IsOpenBracket(int c) {
+    return c == '(' || c == '[' || c == '{' || c == '<' || c == '"' || c == '\'';
+}
+
+// 행두 금칙: 줄 시작에 올 수 없는 문자 (닫는 괄호, 따옴표, 마침표, 쉼표 등)
+static inline bool IsCloseBracket(int c) {
+    return c == ')' || c == ']' || c == '}' || c == '>' || c == '"' || c == '\'' ||
+        c == ',' || c == '.' || c == '!' || c == '?' || c == ':' || c == ';';
+}
+
 /* ------------------------------------------------------------------ */
 /*  WordWrap 객체                                                       */
 /*  원본: BOOL __thiscall (원본 함수) 을 위해 __fastcall + dummy edx        */
 /* ------------------------------------------------------------------ */
-#define _Text (self->m_pszText)
-
 BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
 {
-    if (!self || !self->m_pszText || !self->m_pFont) 
-        return false;
+    if (!self || !self->m_pszText || !self->m_pFont)
+        return FALSE;
 
     int charIdx = 0;
-    int nMaxWidth = 0;   // local_18 : 최대 줄 너비 값
+    int nMaxWidth = 0;        // local_18 : 최대 줄 너비 값
     int nMaxLineHeight = 0;   // local_8
     int nCurrentLineWidth = 0;
-    int nLineCount = 1;   // local_14
-    int nLastWordIdx = 0;   // 마지막 "단어 시작" 인덱스
-    int nLineStartIdx = 0;   // 현재 줄 시작 인덱스 (무한 루프 방지)
+    int nLineCount = 1;       // local_14
+    int nLastWordIdx = 0;     // 마지막 "단어 시작" 인덱스
+    int nLineStartIdx = 0;    // 현재 줄 시작 인덱스 (무한 루프 방지)
 
     int nBoxMaxWidth = self->GetMaxWidth();
 
     self->m_nMaxLineWidth = 0;
     self->m_nTotalHeight = 0;
+
+    const char* _Text = self->m_pszText;
 
     int chCode = getCharCode(_Text, charIdx);
     if (chCode != '\0')
@@ -61,7 +70,8 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
         do {
             if (chCode == '\n') {
                 /* 줄바꿈 처리: 현재 줄 확정 */
-                PushLineValue(&self->m_pLineEndIndices, nLineCount, MAX(0, charIdx - 1));   // WARN!!: 문장의 시작위치에 '\n'이 있으면 -1 위치를 읽게 됨
+                // [버그 수정 3] charIdx == 0일 때 -1이 저장되어야 RenderShadow가 빈 줄을 정상 처리함
+                PushLineValue(&self->m_pLineEndIndices, nLineCount, charIdx - 1);
                 PushLineValue(&self->m_pLineWidths, nLineCount, nCurrentLineWidth);
 
                 if (nMaxWidth < nCurrentLineWidth)
@@ -71,12 +81,13 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                 nLineCount++;
                 charIdx++;
                 nLineStartIdx = charIdx;   // 새 줄 시작 인덱스 갱신
+                nLastWordIdx = charIdx;
             }
             else {
                 // 문장의 처음이거나 이전 문자가 공백인 경우
                 if (!IsSpaceCh(chCode)) {
                     if (charIdx == 0 ||
-                        (0 < charIdx && IsSpaceCh(_Text[charIdx - 1])))
+                        (0 < charIdx && IsSpaceCh((uint8_t)_Text[charIdx - 1])))
                     {
                         nLastWordIdx = charIdx;
                     }
@@ -95,7 +106,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                         /* 글자 단위 강제 줄바꿈: 현재 글자를 제외하고 줄 저장 */
                         nCurrentLineWidth -= self->m_pFont->GetCharWidth(chCode);
 
-                        /* 다음 줄 시작 위치. 괄호 금칙 때문에 앞으로 당길 수 있음 */
+                        /* 다음 줄 시작 위치. 괄호/기호 금칙 때문에 앞으로 당길 수 있음 */
                         int breakIdx = charIdx;
 
                         bool moved;
@@ -103,11 +114,11 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                             moved = false;
                             /* 여는 괄호 바로 뒤에서는 끊지 않음 */
                             if (breakIdx - 1 > nLineStartIdx && IsOpenBracket((uint8_t)_Text[breakIdx - 1])) {
-                                    breakIdx -= 1;                 // '(' 는 1바이트
-                                    moved = true;
+                                breakIdx -= 1;
+                                moved = true;
                             }
-                            /* 닫는 괄호 바로 앞에서는 끊지 않음 (직전 글자를 같이 넘김) */
-                            else if (IsCloseBracket((uint8_t)_Text[breakIdx]) && breakIdx - 1 > nLineStartIdx) {
+                            /* 닫는 괄호/마침표 바로 앞에서는 끊지 않음 (직전 글자를 같이 넘김) */
+                            else if (breakIdx > nLineStartIdx && IsCloseBracket((uint8_t)_Text[breakIdx])) {
                                 int p = breakIdx - 1;
                                 if (0 < p && IsHangul((uint8_t)_Text[p - 1], (uint8_t)_Text[p]))
                                     --p;                       // 직전 글자가 2바이트면 2바이트 이동
@@ -116,8 +127,8 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                                     moved = true;
                                 }
                             }
-                        } while(moved);
-                    
+                        } while (moved);
+
                         /* 줄에서 빠지는 글자들의 폭을 뺀다 ([breakIdx, charIdx)) */
                         for (int k = breakIdx; k < charIdx; ) {
                             int code = getCharCode(_Text, k);
@@ -128,7 +139,8 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                         if (nMaxWidth < nCurrentLineWidth)
                             nMaxWidth = nCurrentLineWidth;
 
-                        PushLineValue(&self->m_pLineEndIndices, nLineCount, charIdx - 1);
+                        // [버그 수정 1] charIdx - 1 대신 당겨진 breakIdx - 1을 저장해야 글자 중복 출력을 방지함
+                        PushLineValue(&self->m_pLineEndIndices, nLineCount, breakIdx - 1);
                         PushLineValue(&self->m_pLineWidths, nLineCount, nCurrentLineWidth);
 
                         nCurrentLineWidth = 0;
@@ -151,15 +163,16 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                                 }
                                 chCode = getCharCode(_Text, charIdx);
                             } while (nLastWordIdx <= charIdx);
-                        }   
-                        // nCharIdx는 nLastWordIdx보다 1바이트 앞을 가르킴. 
-                        // nLastWordIdx는 공백의 다음 위치이므로 현재 nCharIdx는 항상 공백문자 위치
+                        }
 
                         /* 뒤따르는 공백 문자 제거 */
-                        if (IsSpaceCh(chCode)) {
+                        // [버그 수정 2] charIdx > nLineStartIdx 검사로 음수 언더플로우/크래시 방지
+                        if (charIdx >= nLineStartIdx && IsSpaceCh(chCode)) {
                             do {
                                 nCurrentLineWidth -= self->m_pFont->GetCharWidth(chCode);
-                                --charIdx; // 공백문자는 1바이트라서 2바이트 이동이 아님
+                                if (charIdx <= nLineStartIdx)
+                                    break;
+                                --charIdx;
                                 chCode = getCharCode(_Text, charIdx);
                             } while (IsSpaceCh(chCode));
                         }
@@ -180,7 +193,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
                     charIdx += (0xFF < chCode) ? 2 : 1;   // 2바이트면 +2, 아니면 +1
                 }
             }
-            
+
             chCode = getCharCode(_Text, charIdx);
         } while (chCode != '\0');
 
@@ -190,6 +203,9 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
 
     /* 마지막 줄 확정 (끝 인덱스 = strlen) */
     PushLineValue(&self->m_pLineEndIndices, nLineCount, (int)strlen(_Text));
+
+    if (nMaxLineHeight == 0)
+        nMaxLineHeight = self->m_pFont->GetCharHeight('A'); // 안전 기본값
 
     self->m_nMaxLineWidth = nMaxWidth;
     self->m_nLineHeight = nMaxLineHeight;
@@ -203,67 +219,11 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
         self->m_nMaxLineWidth = self->GetMaxWidth();
 
     /* 여백 2px */
-    if (0 < self->m_nMaxLineWidth) 
+    if (0 < self->m_nMaxLineWidth)
         self->m_nMaxLineWidth += 2;
-    
+
     if (0 < self->m_nTotalHeight)
         self->m_nTotalHeight += 2;
 
     return TRUE;
 }
-#undef _Text
-
-
-/*
-
-교체할 부분 (if (nLastWordIdx == nLineStartIdx) { ... } 블록)
-
-    if (nLastWordIdx == nLineStartIdx) {
-    // 글자 단위 강제 줄바꿈: 현재 글자를 제외
-    nCurrentLineWidth -= self->m_pFont->GetCharWidth(chCode);
-
-    // 다음 줄 시작 위치. 괄호 금칙 때문에 앞으로 당길 수 있음
-    int breakIdx = charIdx;
-
-    for (;;) {
-        bool moved = false;
-
-        // 여는 괄호 바로 뒤에서는 끊지 않음
-        if (breakIdx - 1 > nLineStartIdx && IsOpenBracket((uint8_t)_Text[breakIdx - 1])) {
-            breakIdx -= 1;                 // '(' 는 1바이트
-            moved = true;
-        }
-        // 닫는 괄호 바로 앞에서는 끊지 않음 (직전 글자를 같이 넘김)
-        else if (IsCloseBracket((uint8_t)_Text[breakIdx]) && breakIdx - 1 > nLineStartIdx) {
-            int p = breakIdx - 1;
-            if (0 < p && IsHangul((uint8_t)_Text[p - 1], (uint8_t)_Text[p]))
-                --p;                       // 직전 글자가 2바이트면 2바이트 이동
-            if (p > nLineStartIdx) {
-                breakIdx = p;
-                moved = true;
-            }
-        }
-        if (!moved) break;
-    }
-
-    // 줄에서 빠지는 글자들의 폭을 뺀다 ([breakIdx, charIdx))
-    for (int k = breakIdx; k < charIdx; ) {
-        int code = getCharCode(_Text, k);
-        nCurrentLineWidth -= self->m_pFont->GetCharWidth(code);
-        k += (0xFF < code) ? 2 : 1;
-    }
-
-    if (nMaxWidth < nCurrentLineWidth)
-        nMaxWidth = nCurrentLineWidth;
-
-    PushLineValue(&self->m_pLineEndIndices, nLineCount, breakIdx - 1);
-    PushLineValue(&self->m_pLineWidths, nLineCount, nCurrentLineWidth);
-
-    nCurrentLineWidth = 0;
-    nLineCount++;
-    charIdx = breakIdx;          // 줄 끝에서 빠진 글자부터 다시 처리
-    nLastWordIdx = breakIdx;
-    nLineStartIdx = breakIdx;
-}
-
-*/
