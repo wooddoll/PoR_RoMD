@@ -102,10 +102,32 @@ int __fastcall cFont_GetCharWidth_Hook(cFont* self, void* /*edx*/, int code)
     return self->GetCharWidth(norm);
 }
 
+// [진단] 한글 바이트를 1바이트씩 vtable GetCharRect 로 넘기는 호출부(=1바이트씩 그리는 함수) 기록. 배포 전 제거
+static void DiagLogByteCaller(void* ret)
+{
+    static void* s_seen[32] = {};
+    for (int i = 0; i < 32; ++i) {
+        if (s_seen[i] == ret) return;
+        if (!s_seen[i]) {
+            s_seen[i] = ret;
+            HMODULE m = nullptr;
+            char path[MAX_PATH] = "?";
+            if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                   (LPCSTR)ret, &m) && m)
+                GetModuleFileNameA(m, path, MAX_PATH);
+            const char* base = strrchr(path, '\\');
+            PLOG_DEBUG << "[diag] GetCharRect(hangul byte) caller " << ret << " = " << (base ? base + 1 : path)
+                       << "+0x" << std::hex << (unsigned)((uintptr_t)ret - (uintptr_t)m);
+            return;
+        }
+    }
+}
+
 RECT* __fastcall cFont_GetCharRect_Hook(cFont* self, void* /*edx*/, int code)
 {
     int norm;
     if (IsHangulByte(code, norm)) {
+        DiagLogByteCaller(_ReturnAddress());
         if (const RECT* ref = RefGlyphRect(self))
             return HalfRect(self, ref);
     }

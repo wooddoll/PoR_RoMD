@@ -191,7 +191,8 @@ por2main.exe 정적 import
   → 번역 파일을 원본 대신 `languages\ko\`에 두는 방식이 가능해 보임 (게임 파일 열기 쪽 확인 필요).
 - `GetCodepage_59581600` = ini `[Text] CodePage` 또는 선택 언어의 코드페이지.
   - `isChina_FUN_594a6690` = 코드페이지 == **950**(0x3B6)
-  - 949 이면: isChina 아님, Gothic TTF 교체 안 함(0/1250/1252 아님) → 한글 아틀라스 유지에 유리.
+  - 949 이면: Gothic TTF 교체 안 함(0/1250/1252 아님) → 한글 아틀라스 유지에 유리.
+  - 원본 isChina 는 950만 참. version.dll 이 950 비교/PUSH 를 949로 바꾸므로(아래 "950→949 패치") 한국어도 isChina 참.
 
 ### SNEG_LanguagesPoll (ddraw 설정창이 호출)
 
@@ -213,29 +214,245 @@ por2main.exe 정적 import
 - `FUN_5971d860`: 기본 글꼴 선택 (`builtin` / `gamefont` / PoRGothic(코드페이지 0/1250/1252일 때만) / 경로).
 - `FUN_5972b2d0(atlas, 폰트폴더, 코드페이지, ranges)`: CJK 글꼴 추가.
   - 글리프 집합 = `FUN_5972ba20`: 항상 `"繁體中文日本語"`(UTF-16, `0x5982da50`) 7자 +
-    **코드페이지 == 949(0x3B5)일 때만** `languages/zh-hant/sneg_ui_cjk_characters.txt`의 문자.
+    **코드페이지 == 950(0x3B6)일 때만** (원본) `languages/zh-hant/sneg_ui_cjk_characters.txt`의 문자.
   - 글꼴 = `%WINDIR%\Fonts\msjh.ttc`, 없으면 `msyh.ttf`. 949면 아틀라스 폭 4096.
   - `FUN_597b7a30(atlas, ttf, 48.0f, cfg, ranges)` = ImGui `AddFontFromFileTTF`.
-- **중국어가 `?`로 나오는 이유**: sneg는 번체 중국어를 950으로 다루는데 ddraw는 949일 때만 CJK 목록을 읽는다.
-  그래서 중국어 UI에는 언어 이름용 7자 말고는 글리프가 없다 (SNEG 쪽 버그로 보임).
+- ~~중국어가 `?`로 나오는 이유: ddraw는 949일 때만 CJK 목록을 읽는다~~ — **잘못된 분석**.
+  당시 분석한 sneg.dll / ddraw.dll 은 950→949로 직접 고친 파일이었다(11/8). Steam 원본은 950 기준이라 중국어는 정상일 것.
+  한국어용으로는 version.dll 이 메모리에서 950→949 로 바꾼다 (11절 "950→949 패치").
 - 언어 이름(繁體中文, 日本語)이 어느 언어에서나 보이는 건 이 7자가 항상 들어가기 때문.
 
-### 한국어 추가 계획 (기존 파일은 건드리지 않음)
+### 한국어 언어팩 — 적용함 (11절)
 
-1. `languages\ko\language.ini` 새로 추가: `[Language]` `CodePage=949`.
-2. `languages\ko\sneg_ui_strings.dat` 새로 추가: 루트 dat를 파싱해 한국어로 번역해서 같은 SUIS 포맷으로 생성.
-3. ddraw의 949 분기를 한국어용으로 돌린다 (version.dll에서 패치):
-   - 문자 목록 경로 → `languages/ko/sneg_ui_cjk_characters.txt` (한국어 UI에 쓰이는 글자, 또는 KS X 1001 2350자)
-   - 글꼴 `msjh.ttc` / `msyh.ttf` → `malgun.ttf` (맑은 고딕은 한자 7자도 있음)
-4. 언어 이름 `한국어`: 영어 등 다른 언어가 켜진 상태의 루트 dat에는 `ui.settings.language.ko` 키가 없으므로
+처음 세운 계획과 진행 상태:
+
+1. ✅ `languages\ko\language.ini` 추가: `[Language]` `CodePage=949`.
+2. ✅ `languages\ko\sneg_ui_strings.dat` 추가. 지금은 번역 없이 루트 영어 dat에 언어 이름 키만 더함 (UI 문자열 번역은 남음).
+3. ✅ ddraw의 949 분기를 한국어용으로 돌림 (version.dll 패치, 11절):
+   문자 목록 경로 → `languages/ko/sneg_ui_cjk_characters.txt`, 글꼴 `msjh.ttc` → `languages\ko\MaruBuri-Regular.ttf` (없으면 맑은 고딕).
+4. ⬜ 다른 언어가 선택된 상태의 언어 이름 `한국어`: 루트 dat에는 `ui.settings.language.ko` 키가 없으므로
    `FUN_59513bd0`(UiTextPoll)을 훅해서 대신 반환하고, 항상 넣는 7자 seed에 `한국어` 3자를 추가해야 한다
    (seed 문자열 참조 `5972ba96`/`5972baa4`를 우리 UTF-16 문자열로 바꾸기). 이때 seed 글꼴도 한글이 있어야 함.
-5. 확인 필요: `languages\zh-hant\language.ini`의 CodePage 값, 언어 폴더에 실제로 들어 있는 파일, ImGui 설정(MergeMode) 위치.
+5. ✅ 확인: `languages\zh-hant\language.ini` 원래 CodePage는 950이 아니라 테스트하면서 949로 바꿔 둔 상태였음(11절),
+   언어 폴더에는 `sfDat.dat`, `data\…`(데이터 덮어쓰기), `sneg_ui_strings.dat`, `language.ini`가 들어 있음.
 
-## 10. 테스트 체크리스트
+## 10. 시작 크래시 (인트로 영상 `movie010` 직후) — 해결
+
+### 증상
+
+- 게임을 켜면 인트로 Bink 영상(dnd_intro → wotc_intro → sfslogo00 → movie010)이 재생되고,
+  마지막 `movie010`이 끝나면서 메인 메뉴를 초기화하다 죽는다. BugSplat 창이 뜨거나, 그냥 꺼지거나, 가끔은 정상.
+- `error.log`에 `movie010.sbv` 로드 다음 `ripple.sbv` / `logo.sbv`(메인 메뉴 활성화 때 여는 영상)가 없으면 이 크래시.
+- Bink / 자막과는 무관했다.
+
+### 크래시 위치
+
+- `sneg.dll+0xB5901` (sneg `FUN_562b5760` 기준 오프셋 0xB5760) = 게임 **0x4451f0 대체 함수** (알파 블렌딩, RGB565).
+  등록: `FUN_56265a70` → `FUN_561f4420(0x451f0, FUN_56265760, …)`, 조건 `FUN_562d15e0`.
+- 호출 경로: 메인 메뉴 Activate(`FUN_562bd940`) → cInterfaceManager Draw(`FUN_56282c80`) → 위젯 vtable +0x10.
+- 대상 객체: cTextLayout 계열 위젯 (vtable 0x006231c4, +0x54 = `0x436440` = `[this+0xF0]` 서피스 반환).
+  메인 메뉴 하단 라벨 (`y=0x249(585), w=400, h=400`, 텍스트 = 빈 문자열 `lpDefault`. 오른쪽 옆은 `"v1.29 11/7/2026"` 버전 라벨).
+- 블렌딩 루프는 원본(0x4451f0)이나 sneg 대체 함수나 똑같이 **위젯 크기 `+0x30`(폭) × `+0x34`(높이)** 만큼
+  소스 서피스를 **pitch 무시하고 촘촘히** 읽는다. 소스 서피스는 높이 15, pitch 1600(약 24KB)이었는데
+  위젯 크기는 400×400 → 30번째 줄 288px(= 0x6000 바이트)에서 버퍼 끝을 넘어 AV.
+  힙 배치에 따라 다음 페이지가 매핑돼 있으면 안 죽어서 "가끔 정상"이었다.
+- 알파 값 `+0x134` < 0 이면 블렌딩 안 함. sneg는 `FUN_562b1910`의 핸들러 목록(고해상도 경로)이 먼저 처리하면 건너뜀.
+
+### 원인: 우리 `cTextLayout_RenderShadow_Hook`이 빈 문자열에서 FALSE 반환
+
+게임 SetText (`0x4445f0`, thiscall):
+
+```
+WordWrap(0x444890)        → +0x144 폭, +0x148 높이 계산
+0x444cb0(ddraw)           → +0x144 × +0x148 로 서피스 생성, vtable +0x2c(=0x436340)로 [this+0xF0]에 저장
+RenderShadow(0x444d40)    → 글자 그리기
+  FALSE 면 여기서 리턴
+vtable +0x20 / +0x4c …    → 위젯 폭/높이(+0x30/+0x34)를 서피스 크기로 갱신
+```
+
+- 우리 훅(sneg `RenderShadow_59515aa0` = `MB(0xB5AA0)` 자리)은 `text_len < 1`이면 FALSE를 반환했다.
+  → 위젯 크기가 생성 시 값(400×400)으로 남고 서피스만 작게 만들어짐 → 위 블렌딩이 넘쳐 읽음.
+- 원본/sneg RenderShadow는 빈 문자열에도 TRUE를 반환한다. 그래서 `patchLazyDLL`을 끄면 문제가 없었다.
+- **수정**: [RenderShadow.cpp](PoR_RoMD_steam/RenderShadow.cpp) — 빈 문자열은 잠금만 풀고 TRUE. (`strlen` 전에 null 확인)
+- **교훈**: 게임 함수를 대체할 때 **반환값의 의미(후속 처리 실행 여부)**까지 원본과 맞출 것.
+  BOOL 반환 훅에서 "그릴 게 없음"은 실패가 아니라 성공이다. (WordWrap / CalcExtents / DrawText 계열도 같은 관점으로 점검할 것)
+
+### 같이 확인/정리한 것
+
+- **MSVC 런타임 불일치**: 게임 폴더의 `msvcp140.dll`은 14.29인데 `version.dll`은 v143(14.4x)로 빌드되어
+  게임 폴더의 구버전을 먼저 로드했다 (`_Mtx_*`, `_Cnd_*`, `_Thrd_*` 임포트).
+  11/9~10 이벤트 로그의 `MSVCP140.dll` 0xc0000005 / `ucrtbase.dll` 0xc0000409 크래시와 맞음.
+  → Win32 구성을 **정적 CRT (`/MT`, `/MTd`)**로 변경 ([PoR_RoMD_steam.vcxproj](PoR_RoMD_steam/PoR_RoMD_steam.vcxproj)).
+  지금 의존 DLL: `KERNEL32`, `USER32`, `GDI32`, `minhook.x32.dll`, `api-ms-win-core-path-l1-1-0.dll`.
+  `minhook.x32.dll`(vcpkg 동적)은 계속 게임 폴더에 있어야 한다. `_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR` 정의는 그대로 둠.
+- **자막 워커 스레드**(`subtitle_renderer.h`)는 원인이 아니었다. 자막이 바뀔 때 화면이 멈추는 문제 때문에 넣은 것이므로 유지.
+- **sneg 주소**: 지금 Ghidra의 sneg.dll 이미지 베이스는 `0x561b0000` (1절의 0x59460000과 다름). 오프셋(`MB(…)`)은 같다.
+  게임 실행 중 베이스는 매번 다름 → `error.log`의 `[SNEG.DLL] baseAddress`로 환산.
+  sneg 쪽 `DAT_56396e70` = 게임 이미지 베이스(0x400000), 즉 `DAT_56396e70 + 0x327290` = 게임 `[0x727290]`.
+- **sneg 고해상도 텍스트와의 관계**: `FUN_56275540`이 매 그리기마다 서피스가 32bpp인지와 배율(`FUN_56275830` = `MB(0xC5830)`)을 비교한다.
+  우리가 배율을 0으로 고정했으므로 sneg가 만든 32bpp 서피스는 `FUN_56275310(obj, 0)`에서
+  게임 `0x444cb0`(16bpp 재생성) + `0x444d40`(RenderShadow, 즉 우리 훅)으로 다시 만들어진다.
+  → 우리 RenderShadow 훅은 SetText 말고 이 경로에서도 불린다.
+
+### 디버깅 방법 메모
+
+- VS로 `por2main.exe`를 디버그 실행하고 vs-mcp로 `debug_get_callstack` / `debug_evaluate @reg` / `memory_read`.
+  sneg 기호가 없으므로 `주소 - 실행 중 베이스 + 0x561b0000`으로 Ghidra 주소 환산.
+- 방어 훅이 삼키는 AV에도 VS는 첫 발생 시점에서 멈춘다 → 계속(F5), 또는 예외 설정에서 0xC0000005 해제, 또는 `Ctrl+F5`.
+- 자막/화면 끊김 같은 성능 확인은 Release + 디버거 없이.
+
+## 11. Prototype UI / 지도 툴팁의 한글 — 해결 (한국어 언어팩)
+
+### 증상 (Language= 비어 있음 = 내장 영어, 1252)
+
+- 첫 화면(메인 메뉴)과 아이템 툴팁 등 **반투명 창 위의 글자가 모두 `?`**. 영문은 정상.
+- `sneg.ini` `[Ui] Prototype = 0`으로 끄면 2001년판처럼 한글이 잘 나옴 → Prototype UI 쪽 문제.
+  (단 UI를 끄면 Steam판을 쓸 이유가 없으므로 켠 채로 고쳐야 함)
+- 지도 마커 툴팁만은 Prototype을 꺼도 깨짐: `½Ì±Û`처럼 **한글 2바이트를 1바이트씩 cp1252로** 해석한 글자.
+
+### 확인 순서 (진단 코드는 12절 표 참고)
+
+1. WordWrap 진단: 들어오는 텍스트는 정상 EUC-KR, 글리프 2951개, 한글 조회 실패 0.
+2. 폰트 아틀라스 서피스 덤프: 우리 한글 아틀라스(`font0.bmp` 1024×741 등)가 그대로 올라가 있음.
+   → 게임 cFont 경로(우리 훅)는 정상. `?`는 다른 렌더러에서 나옴.
+3. sneg는 게임 위젯 그리기(`0x4451f0`)에 핸들러 목록(`FUN_562b1860`로 등록, 최대 8개)을 끼워 둔다.
+   핸들러 5개(`0x562b16e0`, `0x562b05f0`, `0x562b0bd0`, `0x5628e380`, `0x56304f80`)가 메인 메뉴 등의 위젯을
+   **숨기고**(TRUE 반환), 같은 텍스트를 **ddraw의 ImGui 오버레이**가 대신 그린다.
+   켜고 끄는 건 ddraw가 보내는 Prototype UI 기능 플래그(`FUN_56229bd0`, `DAT_5638fa24~34`).
+
+### 원인 1: ddraw ImGui CJK 글꼴에 한글이 없음 → `?`
+
+- `FUN_5972b2d0` (9절): 코드페이지 949일 때 CJK 글자 목록을 `<폰트폴더>\msjh.ttc`(없으면 `msyh.ttf`)로 아틀라스에 넣는다.
+  두 글꼴 모두 한글이 없어서 ImGui가 `?`로 그림. (목록 파일에는 한글 2350자가 이미 있었음)
+- **수정** (`ApplyDDrawPatches`, [sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp), `patchLazyDLL(L"ddraw.dll", …)`):
+  - 폰트 폴더는 `%WINDIR%\Fonts`(`FUN_597252d0`)이고 경로 = 폴더 + `"/"` + 파일 이름 (`FUN_5971bff0`).
+  - ddraw `+0x4B427`: `FF B5 24 FF FF FF` (`PUSH [EBP-0xDC]`, 폴더 `std::string*`) → `PUSH <우리 가짜 std::string>; NOP`.
+    폴더 = `<게임>\languages\ko` (비 ASCII 경로면 8.3 짧은 이름. ImGui는 UTF-8, 존재 확인은 ANSI라서).
+    MSVC x86 `std::string` 배치(+0 포인터, +0x10 길이, +0x14 용량 ≥16)를 흉내 낸 정적 구조체.
+  - ddraw `+0x4B439`: `6A 08 68 <"msjh.ttc">` → `"MaruBuri-Regular.ttf"` (1순위, 언어팩 폴더)
+  - ddraw `+0x4B500`: `6A 08 68 <"msyh.ttf">` → `"malgun.ttf"` (2순위, 폴더는 `%WINDIR%\Fonts` 그대로)
+  - 글꼴: 마루 부리(MaruBuri, SIL OFL 1.1) — 설치기가 `languages\ko\`에 복사. 원본은 [font/MaruBuri-Regular.ttf](font/MaruBuri-Regular.ttf).
+  - ddraw `+0x4BD79`: `6A 2C 68 <"languages/zh-hant/sneg_ui_cjk_characters.txt">` → `languages/ko/sneg_ui_cjk_characters.txt`
+  - 바이트와 원래 문자열이 맞을 때만 패치. `error.log`: `[ddraw] CJK list -> …`, `[ddraw] CJK font dir -> …`,
+    `[ddraw] CJK font -> MaruBuri-Regular.ttf`, `[ddraw] CJK fallback font -> malgun.ttf`.
+- ddraw 이미지 베이스(Ghidra) = `0x596e0000`. 오프셋 = 주소 − `0x596e0000`.
+- ddraw `[Text]` 설정은 `config.ini`에서 읽는다(`FUN_596f8530`). ddraw 코드페이지 `FUN_596f89b0` = `[Text] CodePage`(>0) 또는 언어 코드페이지.
+
+### 950→949 패치 (원본 sneg.dll / ddraw.dll 의 CJK 분기를 한국어에도)
+
+- SNEG 의 CJK 분기는 원래 **코드페이지 950(번체 중국어)** 전용. 테스트 중에는 sneg.dll / ddraw.dll 파일을 직접 고쳐 둔 상태였고,
+  Steam 파일 검사로 원본이 돌아오자 첫 화면부터 다시 `?` 가 나왔다.
+- `PatchCodePage950To949` ([sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp)): 즉시값 `B6 03 00 00` 의 첫 바이트를 `B5` 로.
+  원래 값이 950일 때만 패치(이미 949면 통과), 아니면 `cp950 patch site mismatch`. 로그 `[sneg] … 9/9`, `[ddraw] … 3/3`.
+
+| 모듈 | RVA (imm32 위치) | 내용 |
+|---|---|---|
+| sneg | 0x46696, 0x46926, 0xAE516, 0xAE60C | `cmp eax, 950` (isChina `FUN_562b6690` 등) |
+| sneg | 0x46935, 0x4696D, 0xAE58D, 0xAE5BD, 0xAE662 | `push 950` (china 경로 `MultiByteToWideChar` 코드페이지) |
+| ddraw | 0x4B5D4 | `FUN_5972b2d0` CJK 아틀라스 폭 4096 조건 |
+| ddraw | 0x4BBC7 | `FUN_5972ba20` CJK 글자 목록 로드 조건 |
+| ddraw | 0x8091A | `FUN_59760450` 요청 구조체 코드페이지 |
+
+- 주의: sneg 의 isChina 로 정해지는 기능 등록(예: DrawMenu 그룹 `FUN_5952a050`)은 ddraw DllMain → `SNEG_Load` 시점,
+  즉 version.dll 보다 먼저 끝난다. 파일 패치 때와 달리 그 등록은 950 기준 그대로지만, `HookGameIfNotHookedBySneg` 가 두 경우 모두 처리한다.
+
+### 참고: 튜토리얼 대화창의 글꼴
+
+- 튜토리얼 "DM:" 대사 일부는 Steam 원본에서도 **원작 비트맵 폰트(옛 UI)** 로 나온다 (version.dll 없이 확인).
+- 11/11 23:17~23:20 스크린샷에서 매끈한 글꼴로 보인 건 `sneg_ui\fonts` 가 `fonts_backup` 으로 숨겨져 retail 글꼴을 못 찾던 상태였기 때문.
+- ddraw 글꼴 슬롯: 슬롯 0~2 = `por_retail_font0~2` 외곽선, 3~4 = arial 경로(`por_retail_font3/4_arial.ink`), 모드 3. 시작 직후 정해지고 바뀌지 않음.
+
+### 원인 2: 지도 툴팁은 sneg가 넘기는 "언어 코드페이지"로 변환 → Latin-1 글자
+
+- 지도 마커 툴팁 = ddraw `FUN_5976c040` ← sneg `SNEG_MapFlagLabelPoll`(`FUN_562ad940`).
+  구조체(0x13C 바이트) +0x18 = 코드페이지, +0x3C~ = 텍스트. ddraw는 `FUN_5973aee0(텍스트, 코드페이지)`로 UTF-8 변환.
+- sneg가 채우는 곳: `FUN_562ada80` → `FUN_562ad9c0`. 코드페이지 = `FUN_56258f80()` =
+  **선택된 언어(`languages\<폴더>`) 항목의 코드페이지** (`DAT_563c7eb8 + 0x18 + idx*0x1C`).
+  `config.ini [Text] CodePage`가 아니다. 내장 영어면 1252 → 한글이 cp1252로 변환됨.
+- 참고: ddraw 쪽 다른 텍스트(`FUN_59789190`)는 ddraw 코드페이지로 `IsDBCSLeadByteEx`를 검사해서,
+  DBCS 선행 바이트가 있으면 retail 글꼴(1바이트 전용, `FUN_5978a200`/`FUN_59726b10`)을 포기하고 ImGui로 그린다 → 정상.
+- `gamefont` 모드에서는 sneg `BridgeChineae_English`(`FUN_56276f00`)가 게임 폰트의 코드 0~255 글리프 256개만
+  1비트 비트맵 표로 만들어 ddraw에 넘긴다 → 한글 불가. (FontMetrics 훅 때문에 한글 바이트는 '가'의 왼쪽 절반 조각으로 보임)
+  따라서 `config.ini`의 `*Font=`는 원래 값(`retailfont`) 그대로 둔다.
+- **수정**: 한국어 언어팩을 선택해서 언어 코드페이지 자체를 949로 만든다 (아래).
+
+### 한국어 언어팩 `languages\ko\`
+
+| 파일 | 내용 |
+|---|---|
+| `language.ini` | `[Language] CodePage=949`, `Release=Korean patch by wooddoll` |
+| `sfDat.dat` | 한국어 sfDat |
+| `data\Dialogue\`, `data\Interface\`, `data\STR\` | 한국어 데이터 (지금은 `zh-hant`에서 복사. 루트의 한국어 파일과 같은 내용) |
+| `data\fonts\font0~4.bmp/.dff` | 한글 병합 폰트 (독일어 팩처럼 언어 폴더에 폰트를 둘 수 있음) |
+| `sneg_ui_cjk_characters.txt` | ImGui CJK 글자 목록 (UTF-8, 한글 2350자 + 기호) |
+| `sneg_ui_strings.dat` | 루트 영어 dat 기반, 언어 코드 `ko`, `ui.settings.language.ko = 한국어` 추가 |
+
+- 선택: `%LOCALAPPDATA%\SNEG\POR2\game_settings.ini` `[Text] Language=ko` (설정창에서 바꾸면 다음 실행부터).
+- `config.ini [Text] CodePage=949`도 유지 (ddraw 코드페이지, sneg TTF 교체 조건 회피).
+- SUIS 읽기/쓰기 도구: [install/sneg_ui_strings.py](install/sneg_ui_strings.py) (`python sneg_ui_strings.py <dat> [키 일부]`).
+  헤더의 언어 코드 문자열은 **u16** 길이 접두.
+- `languages\zh-hant\`는 원래 중국어 팩인데 테스트하면서 `language.ini`를 949로, `data`를 한국어로 바꿔 둔 상태.
+  `sneg_ui_strings.dat`는 중국어 그대로. 배포 전에 원본으로 복구해야 함 (12절).
+
+### 남은 것
+
+- 다른 언어가 선택된 상태의 언어 목록: 루트 dat에 `ui.settings.language.ko`가 없어서 `[[키]]`, 그리고 949가 아니면
+  CJK 목록을 안 읽으므로 글자가 `?`일 수 있음. → 9절 계획 4번 (UiTextPoll 훅 + seed 7자에 `한국어` 추가).
+- 언어팩 번역: `sneg_ui_strings.dat`의 UI 문자열(설정창 등)은 아직 영어.
+- 루트 파일(`sfDat.dat`, `data\Dialogue`, `data\Fonts` 등)이 한국어로 덮어써져 있음 → 영어 원본으로 복구하고 언어팩만 쓰도록.
+- 설치기([install.py](install/install.py)): 게임 폴더에 `sneg_ui`가 있으면 SNEG판(`installSneg`), 없으면 2001년판(`install2001`).
+  - `install/Data/version_2001.dll` / `version_sneg.dll` 중 맞는 것을 `version.dll`로 복사 (SNEG판 dll은 `PoR_RoMD_steam` Release 빌드).
+  - SNEG판: `languages\ko\`에 `language.ini`, `sfDat.dat`, `data\Dialogue`, `data\STR`, `data\fonts`(원본 `Data\Fonts`로 빌드),
+    `MaruBuri-Regular.ttf`(+ 있으면 `MaruBuri-OFL.txt`), `sneg_ui_cjk_characters.txt`, `sneg_ui_strings.dat`(루트 dat + `한국어` 키).
+    자막 `.sbv`는 영상과 같은 `Data\Bink`에 추가. `%LOCALAPPDATA%\SNEG\POR2`의 `config.ini [Text] CodePage=949`,
+    `game_settings.ini [Text] Language=ko`를 `WritePrivateProfileStringW`로 기록.
+  - SNEG판은 exe 검사(`exe_test.json`)를 건너뛰고 `sneg.dll` 존재만 확인.
+  - 남은 것: `install/Data/version_sneg.dll` 넣기, OFL 라이선스 파일, `Data/Interface`(zh-hant에 있던 `Main.bmp`) 처리 여부,
+    Steam판 영어 sfDat(1.4, 200034 바이트)와 한국어 sfDat(2001 기준)의 문자열 수 차이(`[Strings] Map=`) 확인.
+
+## 12. 배포판에서 빼거나 바꿀 것
+
+| 항목 | 위치 | 처리 |
+|---|---|---|
+| `CrashLogVEH` + `AddVectoredExceptionHandler` (`crash.log` 기록) | [dllmain.cpp](PoR_RoMD_steam/dllmain.cpp) | **제거**. 개발용 진단. 첫 발생 예외(정상 처리되는 AV 포함)까지 기록하고, VEH가 항상 먼저 돈다 |
+| `plog::init(plog::debug, "error.log")` | dllmain.cpp `InitHookThread` | 레벨을 `plog::warning` 이상으로 낮추거나 끄기. 지금은 Bink `.sbv` 없음까지 ERROR로 매번 기록 |
+| `[Subtitle] Not found` ERROR 로그 | [bink_hook.cpp](PoR_RoMD_steam/bink_hook.cpp) `DetourBinkOpen` | 자막 없는 영상이 정상이므로 DEBUG로 내리기 |
+| `SnegAlphaBlend_Hook` (sneg 0xB5760 AV 방어 훅) | [sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp) | 근본 원인은 고쳤으므로 **선택**. 다른 빈 텍스트 경로 대비로 남겨도 해는 없음(로그 최대 5회). 빼려면 `ApplySNEGPatches`의 해당 블록과 함수 3개 삭제 |
+| `Lock_Spy` / `#if 0` 디버그 블록 | [RenderShadow.cpp](PoR_RoMD_steam/RenderShadow.cpp) | 제거 (빌드엔 영향 없음) |
+| 주석 처리된 sneg 바이트 패치들 | sneg_hook.cpp | 정리 (기록용이면 이 문서로 옮기기) |
+| `DiagLogText` / `DiagDumpFontSurface` (텍스트 hex 로그, 폰트 서피스 BMP 덤프) | [WordWrap.cpp](PoR_RoMD_steam/WordWrap.cpp) | **제거**. 매 WordWrap마다 문자열 검사 + 처음 한 번 `diag_font_*.bmp` 저장 |
+| `DiagLogByteCaller` (한글 바이트로 vtable GetCharRect 호출한 주소 기록) | [FontMetrics.cpp](PoR_RoMD_steam/FontMetrics.cpp) | **제거** |
+| `DiagDDrawFontSlots` (ddraw 글꼴 슬롯 상태 감시 스레드) | [sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp) | **제거** (`ApplyDDrawPatches` 의 `CreateThread` 포함) |
+| `diag_font_*.bmp`, `crash.log` | 게임 폴더 | 삭제 |
+| `languages\zh-hant\` 변경 (`language.ini` CodePage=949, `data` 한국어) | 게임 폴더 | 원본 중국어 팩으로 복구 |
+| 루트 한국어 파일 (`sfDat.dat`, `data\Dialogue`, `data\Fonts` 등) | 게임 폴더 | 영어 원본으로 복구 (한국어는 `languages\ko`에만) |
+| 설정 백업 (`config.ini.before_gamefont`, `config.ini.gamefont`, `game_settings.ini.before_ko`) | `%LOCALAPPDATA%\SNEG\POR2` | 삭제 |
+| `sneg.ini.before_proto` | 게임 폴더 | 삭제 |
+| 빌드 산출물 (`version.pdb`, `version.exp`, `version.lib`) | 게임 폴더 (OutDir) | 배포 패키지에서 제외. `version.dll` + `minhook.x32.dll`만 |
+| 디버그 구성 빌드 | | 배포는 **Release|Win32**만 (Debug는 `/MTd` + 디버그 힙) |
+| `ddraw.dll.bak`, `sneg.dll.bak`, `sneg.dll.backup`, `version.dll.bakup` 등 | 게임 폴더 | 설치기(`install/`)가 건드리지 않도록 확인 |
+
+배포 전 확인:
+
+- [ ] `dumpbin /dependents version.dll`에 `MSVCP140.dll` / `VCRUNTIME140.dll`이 없는지 (정적 CRT 유지)
+- [ ] `patchLazyDLL(L"sneg.dll", ApplySNEGPatches)`와 `patchLazyDLL(L"ddraw.dll", ApplyDDrawPatches)`가 켜져 있는지 (테스트하면서 주석 처리한 적 있음)
+- [ ] `error.log`에 `[ddraw] CJK font -> MaruBuri-Regular.ttf` 등 4줄이 나오고 `mismatch`가 없는지
+- [ ] 새 PC(VS 없음)에서 인트로 영상 → 메인 메뉴 진입 몇 번 반복
+
+## 13. 테스트 체크리스트
 
 - [ ] 메뉴 / 가로 메뉴 / 메뉴 `...` 생략과 마스크 위치
 - [ ] 텍스트 박스, 라벨 박스 크기 (CalculateTextExtents / CalcExtentTextLabel)
 - [ ] 라벨이 고해상도 창 배율에서도 한글로 나오는지 (0xC5830 패치)
 - [ ] 툴팁 박스 폭 (위젯 / 메뉴 호버 / 파티)
 - [ ] `error.log`의 `already hooked by sneg` / `hooked directly` 로그
+- [x] 인트로 영상 → 메인 메뉴 진입 (빈 문자열 라벨, 10절) — `ripple.sbv` / `logo.sbv` 로그까지 나오면 통과
+- [ ] `error.log`에 `access violation swallowed`가 나오지 않는지 (나오면 다른 빈 텍스트 경로가 남아 있음)
+- [ ] 인트로 `movie010` 자막이 끊김 없이 나오는지
+- [x] Prototype UI(`[Ui] Prototype = 1`)에서 첫 화면 / 반투명 창 툴팁이 한글로 나오는지 (11절)
+- [x] 지도 마커 툴팁이 한글로 나오는지 (`Language=ko`)
+- [x] 설정창 언어 목록에 `한국어`가 나오는지 (`Language=ko` 상태)
+- [ ] 다른 언어를 선택한 상태에서 언어 목록의 `한국어` 표시
+- [ ] 마루 부리로 새 UI 한글이 나오는지 (`languages\ko\MaruBuri-Regular.ttf`), 지우면 맑은 고딕으로 떨어지는지
+- [ ] 게임 경로에 한글이 들어간 경우 (8.3 짧은 이름 처리)
+- [ ] 설치기: 깨끗한 SNEG판 / 2001년판 각각 설치
