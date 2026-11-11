@@ -66,7 +66,12 @@ google_ai_key.txt
 /install/.venv
 /install/build_fonts.py.bak
 /translation/data_str.json.bak
+/translation/sfDat.json
+/translation/str_data.json
+/translation/str_glossary_kor.json
+/translation/test_sfDat.json
 /translation/merged_en_kr.json.bak
+/translation/merged_en_kr.json
 /translation
 /install/build
 /install/dist
