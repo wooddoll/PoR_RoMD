@@ -68,9 +68,8 @@ def decode_sfdat(path):
         raw16 = data[start_byte:end_byte]
 
         text = raw16.decode("utf-16le").rstrip("\x00")
-
-        strings[i] = text
-        strings[f'{i}_kr'] = ''
+        strings[i] = {}
+        strings[i]['en'] = text
 
     return strings
 

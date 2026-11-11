@@ -87,11 +87,110 @@ static void PatchCodePage950To949(uintptr_t base, const uint32_t* rvas, size_t c
     PLOG_DEBUG << "[" << module << "] cp950 -> 949 patched " << ok << "/" << count;
 }
 
+// ---------------------------------------------------------------------------
+// [실험] SNEG 자체 CJK(china) 렌더 경로로 한글 출력
+// 게임 폴더에 kr_native_test.txt 가 있으면: 950->949 패치 + sneg 의 china/고해상도 경로를 그대로 쓰고
+// 우리 텍스트 훅(배율 0 고정, DrawMenu/DrawTextLines/HMenu/TextLabel/WordWrap/RenderShadow/KeyInput,
+// 게임 입구 직접 훅, FontMetrics)은 모두 끈다. 파일을 지우면 원래 동작.
+// ---------------------------------------------------------------------------
+bool IsNativeCjkTest()
+{
+    static int s_state = -1;
+    if (s_state < 0) {
+        char path[MAX_PATH];
+        DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
+        char* slash = (n > 0 && n < MAX_PATH) ? strrchr(path, '\\') : nullptr;
+        if (slash) lstrcpyA(slash + 1, "kr_native_test.txt");
+        s_state = (slash && GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES) ? 1 : 0;
+        PLOG_DEBUG << "[exp] native CJK test mode = " << s_state;
+    }
+    return s_state == 1;
+}
+
 // sneg.dll: isChina(FUN_562b6690, cmp eax,950) 등 비교 3곳 + china 변환용 MultiByteToWideChar 코드페이지 PUSH 6곳
 static const uint32_t kSnegCp950[] = { 0x46696, 0x46926, 0x46935, 0x4696D, 0xAE516, 0xAE58D, 0xAE5BD, 0xAE60C, 0xAE662 };
 // ddraw.dll: FUN_5972b2d0 아틀라스 폭 조건(+0x4B5D4), FUN_5972ba20 CJK 목록 로드 조건(+0x4BBC7),
 //            FUN_59760450 의 요청 구조체 코드페이지(+0x8091A)
 static const uint32_t kDDrawCp950[] = { 0x4B5D4, 0x4BBC7, 0x8091A };
+
+// [진단/실험] 고해상도 텍스트 배율 판단에 쓰이는 플래그와 배율 함수 결과를 주기적으로 기록
+//   FUN_562758b0 (+0xC58B0) = DrawMenu 등 배율, FUN_56275830 (+0xC5830) = TextLabel 배율
+//   조건: (ScaledEngineText || isChina) && c8 && ca && cb && [+0x1E44EF] && 배율 >= 1.01
+static DWORD WINAPI DiagSnegScale(LPVOID p)
+{
+    const uintptr_t base = reinterpret_cast<uintptr_t>(p);
+    typedef float(__cdecl* tScale)();
+    typedef bool(__cdecl* tBool)();
+    for (int i = 0; i < 6; ++i) {
+        Sleep(i == 0 ? 3000 : 10000);
+        const uint8_t* f = reinterpret_cast<const uint8_t*>(base + 0x1E43C8);
+        float s1 = reinterpret_cast<tScale>(base + 0xC58B0)();
+        bool china = reinterpret_cast<tBool>(base + 0x46690)();
+        char buf[200];
+        sprintf_s(buf, "c8=%d SET(c9)=%d ca=%d cb=%d ef=%d legacy=%d isChina=%d scaleMenu=%.3f",
+                  f[0], f[1], f[2], f[3], *reinterpret_cast<const uint8_t*>(base + 0x1E44EF),
+                  *reinterpret_cast<const uint8_t*>(base + 0x23926C), china, s1);
+        PLOG_DEBUG << "[diag] sneg scale " << buf;
+    }
+    return 0;
+}
+
+// sneg.dll 로드 직후(SNEG_Load 전) DLL 로드 알림에서 호출됨 (dllmain.cpp). 로거가 아직 없을 수 있음
+void EarlySnegPatch(uintptr_t baseAddress)
+{
+    PatchCodePage950To949(baseAddress, kSnegCp950, _countof(kSnegCp950), "sneg-early");
+}
+
+// [실험] sneg 의 CreateFontW (IAT) 를 가로채 china 글꼴(맑은 고딕) 높이를 줄인다.
+// 맑은 고딕은 같은 높이에서 JhengHei 보다 커서 글자 칸을 넘어 잘린다.
+typedef HFONT(WINAPI* tCreateFontW)(int, int, int, int, int, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, DWORD, LPCWSTR);
+static tCreateFontW g_origCreateFontW = nullptr;
+static int g_cjkFontScalePercent = 71;
+
+static HFONT WINAPI Sneg_CreateFontW_Hook(int h, int w, int esc, int ori, int weight, DWORD italic, DWORD underline,
+                                          DWORD strike, DWORD charset, DWORD outPrec, DWORD clipPrec, DWORD quality,
+                                          DWORD pitch, LPCWSTR face)
+{
+    if (charset == HANGUL_CHARSET && face &&
+        (lstrcmpiW(face, L"MaruBuri Regular") == 0 || lstrcmpiW(face, L"Malgun Gothic") == 0)) {
+        const int nh = h * g_cjkFontScalePercent / 100;
+        static int s_logged = 0;
+        if (s_logged++ < 10)
+            PLOG_DEBUG << "[exp] china CreateFontW height " << h << " -> " << nh;
+        h = nh;
+    }
+    return g_origCreateFontW(h, w, esc, ori, weight, italic, underline, strike, charset, outPrec, clipPrec, quality, pitch, face);
+}
+
+static void HookSnegCreateFontW(uintptr_t baseAddress)
+{
+    // IAT 슬롯 sneg+0x1A7068 (= 0x56357068, CreateFontW)
+    const uintptr_t slot = baseAddress + 0x1A7068;
+    void* real = reinterpret_cast<void*>(GetProcAddress(GetModuleHandleW(L"gdi32.dll"), "CreateFontW"));
+    if (*reinterpret_cast<void**>(slot) == real && real) {
+        g_origCreateFontW = reinterpret_cast<tCreateFontW>(real);
+        patchDWORD(slot, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&Sneg_CreateFontW_Hook)));
+        // 배율: 게임 폴더 kr_native_test.txt 첫 줄에 숫자(%)가 있으면 그 값
+        char path[MAX_PATH];
+        DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
+        char* slash = (n > 0 && n < MAX_PATH) ? strrchr(path, '\\') : nullptr;
+        if (slash) {
+            lstrcpyA(slash + 1, "kr_native_test.txt");
+            HANDLE f = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+            if (f != INVALID_HANDLE_VALUE) {
+                char buf[16] = {};
+                DWORD rd = 0;
+                ReadFile(f, buf, sizeof(buf) - 1, &rd, NULL);
+                CloseHandle(f);
+                int v = atoi(buf);
+                if (v >= 50 && v <= 150) g_cjkFontScalePercent = v;
+            }
+        }
+        PLOG_DEBUG << "[exp] sneg CreateFontW hooked, scale " << g_cjkFontScalePercent << "%";
+    } else {
+        PLOG_ERROR << "[exp] sneg CreateFontW IAT slot mismatch";
+    }
+}
 
 void ApplySNEGPatches(uintptr_t baseAddress)
 {
@@ -99,6 +198,57 @@ void ApplySNEGPatches(uintptr_t baseAddress)
 #define MB(addr)    (baseAddress + (addr))
 
     PatchCodePage950To949(baseAddress, kSnegCp950, _countof(kSnegCp950), "sneg");
+
+    if (IsNativeCjkTest()) {
+        // DrawMenu 그룹(FUN_5627a050)은 SNEG_Load 때 isChina(950 기준)로 판단해 이미 건너뛰었을 수 있다.
+        // 이제 isChina 가 949 에서도 참이므로 직접 다시 호출해 등록한다 (이미 등록돼 있으면 생략).
+        if (*reinterpret_cast<const uint8_t*>(0x0043B4F0) != 0xE9) {
+            typedef void(__cdecl* tReg)();
+            reinterpret_cast<tReg>(MB(0x000CA050))();
+            PLOG_DEBUG << "[exp] sneg DrawMenu group registered: " << (*reinterpret_cast<const uint8_t*>(0x0043B4F0) == 0xE9);
+        } else {
+            PLOG_DEBUG << "[exp] sneg DrawMenu group already registered";
+        }
+        // china 실시간 렌더 글꼴 (FUN_561f6740 → FUN_561f6d90 → CreateFontW):
+        //   561f67b4: 68 <L"Microsoft JhengHei">  561f67b9: 68 88 00 00 00 (CHINESEBIG5_CHARSET)
+        //   561f67ca: C7 45 EC 93 7D 00 00  (글리프 확인 문자 U+7D93 經, 없으면 L"Microsoft YaHei" 로)
+        //   561f6805: 68 <L"Microsoft YaHei">
+        // 둘 다 한글이 없어서 '?' → 1순위 마루 부리(언어팩 폴더, 비공개 등록) / 2순위 맑은 고딕, HANGUL_CHARSET, 확인 문자 U+AC00
+        {
+            static const wchar_t kFace[] = L"MaruBuri Regular";      // GDI 패밀리 이름 (name ID 1)
+            static const wchar_t kFallbackFace[] = L"Malgun Gothic";
+            {
+                wchar_t ttf[MAX_PATH];
+                DWORD n = GetModuleFileNameW(NULL, ttf, MAX_PATH);
+                wchar_t* slash = (n > 0 && n < MAX_PATH) ? wcsrchr(ttf, L'\\') : nullptr;
+                int added = 0;
+                if (slash && (slash - ttf) + 40 < MAX_PATH) {
+                    lstrcpyW(slash + 1, L"languages\\ko\\MaruBuri-Regular.ttf");
+                    added = AddFontResourceExW(ttf, FR_PRIVATE, 0);
+                }
+                PLOG_DEBUG << "[exp] AddFontResourceEx(MaruBuri) = " << added;
+            }
+            const uint8_t* p1 = reinterpret_cast<const uint8_t*>(MB(0x467B4));
+            const uint8_t* p2 = reinterpret_cast<const uint8_t*>(MB(0x467CA));
+            const uint8_t* p3 = reinterpret_cast<const uint8_t*>(MB(0x46805));
+            if (p1[0] == 0x68 && p1[5] == 0x68 && *reinterpret_cast<const uint32_t*>(p1 + 6) == 0x88 &&
+                p2[0] == 0xC7 && p2[1] == 0x45 && p2[2] == 0xEC && *reinterpret_cast<const uint32_t*>(p2 + 3) == 0x7D93 &&
+                p3[0] == 0x68)
+            {
+                const uint32_t face = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(kFace));
+                patchDWORD(MB(0x467B5), face);
+                patchDWORD(MB(0x467BA), 0x81);          // HANGUL_CHARSET
+                patchDWORD(MB(0x467CD), 0xAC00);        // '가'
+                patchDWORD(MB(0x46806), static_cast<uint32_t>(reinterpret_cast<uintptr_t>(kFallbackFace)));
+                PLOG_DEBUG << "[exp] china font -> MaruBuri (fallback Malgun Gothic) / HANGUL_CHARSET";
+                HookSnegCreateFontW(baseAddress);
+            } else {
+                PLOG_ERROR << "[exp] china font patch site mismatch";
+            }
+        }
+        CloseHandle(CreateThread(NULL, 0, DiagSnegScale, reinterpret_cast<LPVOID>(baseAddress), 0, NULL));
+        return;     // 배율 0 고정, 텍스트 훅, 알파 블렌딩 가드 모두 생략
+    }
 
     // sneg.dll 내 FUN_562758b0 (오프셋 0x000C58B0): float 0.0f를 반환하도록 패치
     // x86 FPU: FLDZ (D9 EE) / RET (C3)

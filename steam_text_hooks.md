@@ -423,6 +423,7 @@ vtable +0x20 / +0x4c …    → 위젯 폭/높이(+0x30/+0x34)를 서피스 크�
 | `DiagLogText` / `DiagDumpFontSurface` (텍스트 hex 로그, 폰트 서피스 BMP 덤프) | [WordWrap.cpp](PoR_RoMD_steam/WordWrap.cpp) | **제거**. 매 WordWrap마다 문자열 검사 + 처음 한 번 `diag_font_*.bmp` 저장 |
 | `DiagLogByteCaller` (한글 바이트로 vtable GetCharRect 호출한 주소 기록) | [FontMetrics.cpp](PoR_RoMD_steam/FontMetrics.cpp) | **제거** |
 | `DiagDDrawFontSlots` (ddraw 글꼴 슬롯 상태 감시 스레드) | [sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp) | **제거** (`ApplyDDrawPatches` 의 `CreateThread` 포함) |
+| `DiagSnegScale` (고해상도 배율 플래그 기록), 실험 모드(`IsNativeCjkTest`, 14절) | [sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp), [por2_hook.cpp](PoR_RoMD_steam/por2_hook.cpp) | 진단은 **제거**. 실험 모드는 마커 파일이 없으면 꺼져 있으니 남겨도 되지만, 배포판에서는 빼는 쪽 권장 |
 | `diag_font_*.bmp`, `crash.log` | 게임 폴더 | 삭제 |
 | `languages\zh-hant\` 변경 (`language.ini` CodePage=949, `data` 한국어) | 게임 폴더 | 원본 중국어 팩으로 복구 |
 | 루트 한국어 파일 (`sfDat.dat`, `data\Dialogue`, `data\Fonts` 등) | 게임 폴더 | 영어 원본으로 복구 (한국어는 `languages\ko`에만) |
@@ -456,3 +457,65 @@ vtable +0x20 / +0x4c …    → 위젯 폭/높이(+0x30/+0x34)를 서피스 크�
 - [ ] 마루 부리로 새 UI 한글이 나오는지 (`languages\ko\MaruBuri-Regular.ttf`), 지우면 맑은 고딕으로 떨어지는지
 - [ ] 게임 경로에 한글이 들어간 경우 (8.3 짧은 이름 처리)
 - [ ] 설치기: 깨끗한 SNEG판 / 2001년판 각각 설치
+
+## 14. [실험] sneg 자체 CJK(china) 경로로 한글 출력 — 보류 (2026-11-12)
+
+### 동기
+
+- 950→949 패치로 sneg 가 한국어를 번체 중국어처럼 다루게 되었으니, sneg 의 china 렌더 경로(문자열 → 유니코드 → GDI TTF)를 쓰면
+  우리 비트맵 한글 폰트 병합과 텍스트 훅(WordWrap/RenderShadow/DrawMenu/…)이 대부분 필요 없고, 고해상도로 매끈하게 나올 것이라는 가정.
+
+### 실험 모드 (코드는 남겨 둠, 기본은 꺼짐)
+
+- 켜는 법: 게임 폴더에 `kr_native_test.txt` 를 둔다. **첫 줄 = china 글꼴 높이 배율(%)**, 50~150, 기본 71. 파일을 지우면 원래(훅) 방식.
+- `IsNativeCjkTest()` ([sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp)) 가 참이면:
+  - 950→949 패치는 그대로, ddraw CJK/마루부리 패치도 그대로.
+  - 끄는 것: 배율 0 고정(`0xC58B0`, `0xC5830`), sneg 쪽 텍스트 훅 7개, 게임 입구 직접 훅, 알파 블렌딩 가드.
+  - 켜 두는 것: FontMetrics vtable 훅 (게임 쪽 줄 나누기가 1바이트씩 폭을 재므로) — [por2_hook.cpp](PoR_RoMD_steam/por2_hook.cpp).
+  - DrawMenu 그룹(`FUN_5627a050`) 재등록: `SNEG_Load` 때 isChina(950 기준)로 건너뛰므로 949 패치 뒤에 직접 호출.
+  - china 글꼴 교체: `FUN_561f6740` 의 `CreateFontW(L"Microsoft JhengHei", CHINESEBIG5)` / 확인 문자 U+7D93 / 대체 `L"Microsoft YaHei"`
+    → `L"MaruBuri Regular"`(languages\ko 의 TTF 를 `AddFontResourceExW(FR_PRIVATE)`), HANGUL_CHARSET, U+AC00, 대체 맑은 고딕.
+    (sneg RVA `0x467B4`, `0x467B9`, `0x467CA`, `0x46805`)
+  - sneg IAT `CreateFontW`(sneg+`0x1A7068`) 훅: 마루부리/맑은 고딕 HANGUL 글꼴만 높이 × 배율.
+  - 진단: `DiagSnegScale` — 고해상도 배율 플래그와 `FUN_562758b0` 결과를 10초마다 기록.
+- 설정: `%LOCALAPPDATA%\SNEG\POR2\config.ini` `[Text] ScaledEngineText=1` 필요 (백업 `config.ini.before_scaled`).
+
+### 알게 된 것
+
+- china 렌더: `china_pass`(`FUN_561f68d0`)가 949 리드 바이트면 `MultiByteToWideChar` 로 한 글자 변환 →
+  `FUN_561f66a0`(높이별 GDI 글꼴 캐시) → `FUN_561f63d0` 에서 `TextOutW` 로 DIB 에 그려 글리프 캐시.
+  폭은 `GetTextExtentPoint32W`. sneg WordWrap(`WordWrap_594a7f70`)도 isChina 면 이 폭으로 줄을 나눈다.
+- 저해상도 경로(`FUN_561f6c50`)는 800×600 서피스에 그리고 확대 → 크고 거침. 알파를 `> 0x7F` 로 이진화.
+- 고해상도 배율 함수가 둘이다:
+  - `FUN_562758b0`(메뉴 계열): `ScaledEngineText || isChina` (+ `c8`,`ca`,`cb`, `[sneg+0x1E44EF]`, 레거시 아님, 창 배율 ≥ 1.01).
+  - `FUN_56275830`(cTextLayout/라벨): isChina 를 안 봄 → `ScaledEngineText=1` 이어야 대화/라벨이 고해상도.
+  - 플래그 주소: `0x563943c8`(c8) / `c9`(=ScaledEngineText) / `ca` / `cb`, 레거시 `0x563e926c`. 이 PC 는 c8=ca=cb=ef=1, 창 배율 1.8.
+- `version.dll` DllMain 은 ddraw DllMain 보다 **늦게** 돈다(exe 임포트 순서 DDRAW → VERSION). `[early] sneg.dll at DllMain: already loaded`.
+  → DLL 로드 알림으로 `SNEG_Load` 전에 패치하는 방법은 안 된다 (코드는 남아 있고, 먼저 돌면 자동으로 동작).
+  `SNEG_Load` 전에 끼려면 ddraw 의 `[Plugin] GameDll` 을 우리 DLL 로 바꿔 sneg 를 대신 로드하는 등 다른 방법이 필요.
+
+### 결과
+
+| 항목 | 결과 |
+|---|---|
+| 첫 화면 / 툴팁 / 지도 툴팁 (ddraw ImGui) | 정상 (원래부터 ImGui 경로) |
+| 대화 / 메뉴 / 라벨 / 한글 입력 | 한글은 나옴. `ScaledEngineText=1` + 배율 71% 로 매끈하고 크기도 비슷 |
+| 줄바꿈 | **깨짐**: 게임/sneg 가 비트맵 폭 기준으로 1차 줄바꿈, china 렌더가 TTF 폭으로 2차 줄바꿈 → 짧은 줄이 끼고 잘림. FontMetrics 를 켜도 해결 안 됨 |
+| 영문 | 대화 속 영문(예: `DM`)은 비트맵 글리프 확대(거침) — TTF 와 섞여 일관성 없음 |
+| 툴팁 한글 | ImGui 아틀라스를 48px 로 만들고 축소해 찍어서 약간 흐림 (별개 문제) |
+
+### 결론 / 다음에 할 것
+
+- 게임 레이아웃(줄 나누기, 박스 크기, 메뉴 위치)은 비트맵 글리프 폭 기준이고 sneg 는 글자 이미지만 바꿔 끼우는 구조라,
+  TTF 폭과 비트맵 폭을 완전히 맞추기 어렵다. **이 방식은 보류**, 본선은 기존 훅 방식(비트맵 한글 폰트 + 텍스트 훅).
+- 다시 시도한다면: 줄을 나누는 모든 곳(게임 cTextManager 의 줄 분할, CalculateTextExtents, sneg WordWrap)이 렌더와 **같은 폭 함수**를 쓰도록
+  맞추거나(예: FontMetrics 가 `china_pass` 폭을 돌려주게), china 렌더의 2차 줄바꿈을 끄는 쪽을 찾아야 한다.
+- 별개로 남은 개선: 툴팁 한글 흐림(ImGui CJK 아틀라스 48px, `FUN_5972b2d0` 의 `0x42400000` → 표시 크기에 가깝게, 또는 오버샘플링),
+  대화창이 원작 비트맵이라 거친 것(Steam 원본도 같음).
+
+### 이 PC 상태 메모 (2026-11-12 새벽)
+
+- 게임 폴더에 `kr_native_test.txt`(첫 줄 71) 가 **남아 있음** → 지우면 기존 훅 방식으로 돌아감.
+- `config.ini` 는 `ScaledEngineText=1` 로 바뀐 상태 (원래 값은 `config.ini.before_scaled`).
+- Steam 파일 검사로 sneg.dll / ddraw.dll / 루트 데이터는 원본. 한국어는 `languages\ko` 와 version.dll 메모리 패치로만 동작.
+- 배포 전 제거 목록(12절)에 `DiagSnegScale`, 실험 모드 코드 정리 여부를 추가로 검토.

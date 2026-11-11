@@ -14,6 +14,7 @@ BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*
 BOOL __fastcall cTextManager_DrawMenuMask_Hook(cTextManager* self, void* /*edx*/);
 BOOL __fastcall cTextManager_DrawHMenu_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/);
 void InstallFontMetricHooks();
+bool IsNativeCjkTest();     // sneg_hook.cpp
 
 /* 게임 함수 입구에 sneg(MinHook) 의 JMP 가 없을 때만 직접 훅한다.
    원본 입구는 모두 E9 가 아니다 (SUB ESP,xx 등) */
@@ -36,6 +37,15 @@ void ApplyMemoryPatches(uintptr_t baseAddress)
     //patchBytes(0x00435e30, ESPtoEAX_I, 5); // GetCharWidth_00435e30
 
     PatchRelativeCall(0x0049EDCE, reinterpret_cast<uintptr_t>(Input_Hook));
+
+    if (IsNativeCjkTest()) {
+        // [실험] 그리기는 sneg china 경로에 맡기고, 게임 텍스트 훅은 끈다.
+        // 단 게임 쪽 줄 나누기/박스 크기 계산(cTextManager 등)은 여전히 1바이트씩 vtable 메트릭을 부르므로
+        // FontMetrics(한글 바이트 = '가' 폭의 절반)는 켜 둔다. 끄면 비트맵 라틴-1 폭으로 1차 줄바꿈 → sneg 가 TTF 폭으로 2차 줄바꿈.
+        InstallFontMetricHooks();
+        PLOG_DEBUG << "[exp] game text hooks skipped, FontMetrics on";
+        return;
+    }
 
     //PatchRelativeCall(0x0043c614, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));
     //PatchRelativeCall(0x0043e9fd, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook));

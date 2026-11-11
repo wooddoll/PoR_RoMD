@@ -62,6 +62,47 @@ static LONG CALLBACK CrashLogVEH(PEXCEPTION_POINTERS ep)
 }
 
 void ApplyDDrawPatches(uintptr_t baseAddress);   // sneg_hook.cpp
+void EarlySnegPatch(uintptr_t baseAddress);      // sneg_hook.cpp
+
+// ---------------------------------------------------------------------------
+// sneg.dll 이 로드되는 순간(= ddraw DllMain 의 LoadLibraryA, SNEG_Load 호출 전)에 패치하기 위한 DLL 로드 알림.
+// version.dll 의 DllMain 이 ddraw.dll 의 DllMain 보다 먼저 돌 때만 의미가 있다 (아니면 sneg 가 이미 로드돼 있음).
+// ---------------------------------------------------------------------------
+typedef struct _KR_LDR_DLL_LOADED_NOTIFICATION_DATA {
+    ULONG Flags;
+    PCUNICODE_STRING FullDllName;
+    PCUNICODE_STRING BaseDllName;
+    PVOID DllBase;
+    ULONG SizeOfImage;
+} KR_LDR_DLL_LOADED_NOTIFICATION_DATA;
+typedef VOID(CALLBACK* KR_LDR_NOTIFY)(ULONG, KR_LDR_DLL_LOADED_NOTIFICATION_DATA*, PVOID);
+typedef NTSTATUS(NTAPI* KR_LdrRegisterDllNotification)(ULONG, KR_LDR_NOTIFY, PVOID, PVOID*);
+typedef NTSTATUS(NTAPI* KR_LdrUnregisterDllNotification)(PVOID);
+
+static int   g_snegStateAtAttach = -1;   // 0 = 아직 안 로드됨(조기 패치 가능), 1 = 이미 로드됨
+static LONG  g_snegEarlyPatched = 0;
+static PVOID g_snegNotifyCookie = nullptr;
+
+static VOID CALLBACK SnegLoadNotify(ULONG reason, KR_LDR_DLL_LOADED_NOTIFICATION_DATA* data, PVOID)
+{
+    if (reason != 1 /*LDR_DLL_NOTIFICATION_REASON_LOADED*/ || !data || !data->BaseDllName || !data->BaseDllName->Buffer)
+        return;
+    const USHORT n = data->BaseDllName->Length / sizeof(wchar_t);
+    if (n != 8 || _wcsnicmp(data->BaseDllName->Buffer, L"sneg.dll", 8) != 0)
+        return;
+    if (InterlockedExchange(&g_snegEarlyPatched, 1) == 0)
+        EarlySnegPatch(reinterpret_cast<uintptr_t>(data->DllBase));
+}
+
+static void RegisterEarlySnegPatch()
+{
+    if (GetModuleHandleW(L"sneg.dll")) { g_snegStateAtAttach = 1; return; }
+    g_snegStateAtAttach = 0;
+    HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+    auto reg = ntdll ? reinterpret_cast<KR_LdrRegisterDllNotification>(GetProcAddress(ntdll, "LdrRegisterDllNotification")) : nullptr;
+    if (reg)
+        reg(0, SnegLoadNotify, nullptr, &g_snegNotifyCookie);
+}
 
 DWORD WINAPI InitHookThread(LPVOID lpParam)
 {
@@ -74,6 +115,13 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
     static plog::DebugOutputAppender<plog::TxtFormatter> debugOutputAppender;
     plog::init(plog::info, &debugOutputAppender);
 #endif
+    PLOG_DEBUG << "[early] sneg.dll at DllMain: " << (g_snegStateAtAttach == 1 ? "already loaded" : "not loaded")
+               << ", early patched: " << g_snegEarlyPatched;
+    if (g_snegNotifyCookie) {
+        HMODULE ntdll = GetModuleHandleW(L"ntdll.dll");
+        auto unreg = reinterpret_cast<KR_LdrUnregisterDllNotification>(GetProcAddress(ntdll, "LdrUnregisterDllNotification"));
+        if (unreg && g_snegEarlyPatched) { unreg(g_snegNotifyCookie); g_snegNotifyCookie = nullptr; }
+    }
     LoadOriginalDll();
     InstallBinkHooks();
     patchLazyDLL(L"sneg.dll", ApplySNEGPatches);
@@ -90,6 +138,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     {
     case DLL_PROCESS_ATTACH:
         DisableThreadLibraryCalls(hModule);
+        RegisterEarlySnegPatch();
         {
             HANDLE hThread = CreateThread(NULL, 0, InitHookThread, NULL, 0, NULL);
             if (hThread)
