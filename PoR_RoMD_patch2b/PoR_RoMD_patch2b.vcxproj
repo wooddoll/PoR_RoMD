@@ -157,6 +157,7 @@
     <ClCompile Include="bink_hook.cpp" />
     <ClCompile Include="CalculateTextExtents.cpp" />
     <ClCompile Include="cTextLabel_Calc.cpp" />
+    <ClCompile Include="data_redirect.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="DrawMenu.cpp" />
     <ClCompile Include="DrawTextLines.cpp" />
@@ -176,6 +177,7 @@
     <None Include="version.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="data_redirect.h" />
     <ClInclude Include="bink_hook.h" />
     <ClInclude Include="help_util.h" />
     <ClInclude Include="hooks.h" />

@@ -1,5 +1,6 @@
 #include "bink_hook.h"
 #include "sbv_parser.h"
+#include "data_redirect.h"
 #include "subtitle_renderer.h"
 #include "help_util.h"
 
@@ -230,6 +231,24 @@ static HBINK __stdcall DetourBinkOpen(const char* name, uint32_t flags)
 
     //std::wstring sbvPath = BuildSubtitlePath(name);
     std::wstring sbvPath = GetSubPath(name);
+    {   // Data_kr\Bink\<movie>.sbv first (data_redirect)
+        std::string sbvA = name;
+        const size_t dot = sbvA.find_last_of('.');
+        const size_t sep = sbvA.find_last_of("\\/");
+        if (dot != std::string::npos && (sep == std::string::npos || dot > sep))
+            sbvA.resize(dot);
+        sbvA += ".sbv";
+        std::string alt;
+        if (DataRedirect_Resolve(sbvA.c_str(), alt)) {
+            const int len = MultiByteToWideChar(CP_ACP, 0, alt.c_str(), -1, nullptr, 0);
+            if (len > 0) {
+                std::wstring w(static_cast<size_t>(len), L'\0');
+                MultiByteToWideChar(CP_ACP, 0, alt.c_str(), -1, &w[0], len);
+                w.resize(static_cast<size_t>(len - 1));
+                sbvPath = w;
+            }
+        }
+    }
 
     if (sbvPath.empty()) {
         return bink;

@@ -67,147 +67,149 @@ def installDll(gamePath, embedded_data_path):
     print("ok")
     return True
 
-def inputYN():
+KR_DIR_NAME = 'Data_kr'     # version.dll(data_redirect)이 읽는 폴더. language.ini [Settings] DataPath 기본값과 같아야 함
+
+LEGACY_DIRS = ['Fonts', 'Dialogue', 'STR']
+
+
+def askYN(prompt):
     while True:
-        user_input = input("그래도 진행하시겠습니까? (y/n): ").strip().lower()
-        
+        user_input = input(f"{prompt} (y/n): ").strip().lower()
         if user_input == 'y':
-            print("▶️ 작업을 계속 진행합니다.")
             return True
-        elif user_input == 'n':
-            print("❌ 사용자가 작업을 취소했습니다. 프로그램을 종료합니다.")
-            sys.exit()  # 프로그램 즉시 안전하게 종료
-        else:
-            print("잘못된 입력입니다. 'y' 또는 'n'만 입력해 주세요.")
+        if user_input == 'n':
+            return False
+        print("잘못된 입력입니다. 'y' 또는 'n'만 입력해 주세요.")
+
+
+def getKrPath(gamePath):
+    return os.path.join(gamePath, KR_DIR_NAME)
+
+
+def restoreLegacyInstall(gamePath, embedded_data_path):
+    """v1.0 인스톨러는 Data\\X 를 Data\\X_backup 으로 옮기고 한글 파일을 Data\\X 에 덮었다.
+    이번 버전은 원본을 건드리지 않으므로, 그 흔적이 있으면 원본으로 되돌린다."""
+    DataPath = os.path.join(gamePath, 'Data')
+    sfDatPath = os.path.join(gamePath, 'sfDat.dat')
+
+    found = [d for d in LEGACY_DIRS if os.path.isdir(os.path.join(DataPath, d + '_backup'))]
+    hasSfDatBackup = os.path.isfile(sfDatPath + '.backup')
+    if not found and not hasSfDatBackup:
+        return True
+
+    print("\n이전 버전(v1.0) 한글패치 설치 흔적이 있습니다:")
+    for d in found:
+        print(f"  Data/{d}_backup")
+    if hasSfDatBackup:
+        print("  sfDat.dat.backup")
+    print("이번 버전은 원본 파일을 그대로 두고 Data_kr 폴더에 설치합니다.")
+    if not askYN("백업해 둔 원본 파일을 원래 위치로 되돌릴까요?"):
+        print("원본 복구를 건너뜁니다. (폰트는 *_backup 폴더의 원본으로 만듭니다)")
+        return False
+
+    for d in found:
+        cur = os.path.join(DataPath, d)
+        bak = os.path.join(DataPath, d + '_backup')
+        if os.path.isdir(cur):
+            shutil.rmtree(cur)
+        os.rename(bak, cur)
+        print(f"  Data/{d} 복구 ok")
+
+    if hasSfDatBackup:
+        if os.path.isfile(sfDatPath):
+            os.remove(sfDatPath)
+        os.rename(sfDatPath + '.backup', sfDatPath)
+        print("  sfDat.dat 복구 ok")
+
+    # v1.0 은 자막(.sbv)을 Data/Bink 에 바로 넣었다
+    binkPath = os.path.join(DataPath, 'Bink')
+    srcBink = os.path.join(embedded_data_path, 'Bink')
+    removed = 0
+    if os.path.isdir(binkPath) and os.path.isdir(srcBink):
+        for file_name in os.listdir(srcBink):
+            target = os.path.join(binkPath, file_name)
+            if file_name.lower().endswith('.sbv') and os.path.isfile(target):
+                os.remove(target)
+                removed += 1
+    if removed:
+        print(f"  Data/Bink 의 이전 자막 파일 {removed}개 삭제 ok")
+    return True
+
+
+def prepareKrFolder(gamePath):
+    krPath = getKrPath(gamePath)
+    if os.path.isdir(krPath) and os.listdir(krPath):
+        print(f"\n'{krPath}' 폴더가 이미 있습니다.")
+        if askYN("기존 내용을 지우고 새로 설치할까요? (n 이면 덮어씁니다)"):
+            shutil.rmtree(krPath)
+    os.makedirs(krPath, exist_ok=True)
+    return krPath
+
 
 def installFont(gamePath, embedded_data_path):
     DataPath = os.path.join(gamePath, 'Data')
-    FontsPath = os.path.join(DataPath, 'Fonts')
-    
-    print("Data/Font 폴더를 Data/Font_backup 으로 보관합니다.")
-    Fonts_backup = os.path.join(DataPath, 'Fonts_backup')
-    if not os.path.exists(Fonts_backup):
-        os.rename(FontsPath, Fonts_backup)        
-        os.makedirs(FontsPath, exist_ok=True)
-    else:
-        print(f"⚠️ 경고: '{os.path.join(DataPath, 'Fonts_backup')}' 폴더가 이미 존재합니다.")
-        print(f"이전 백업이 유효하다고 가정하고 백업하지 않고 진행합니다.", end='')
-        inputYN()
-        
-    print("Data/Font 폴더에 한글 폰트를 생성합니다... ")
-    build_font('font0', Fonts_backup, 
-               os.path.join(embedded_data_path, 'font/Umdot14.ttf_18.png'),
-               os.path.join(embedded_data_path, 'font/Umdot14.ttf_18.txt'),
-               FontsPath)
-    build_font('font1', Fonts_backup, 
-                os.path.join(embedded_data_path, 'font/Umdot12.ttf_16.png'),
-                os.path.join(embedded_data_path, 'font/Umdot12.ttf_16.txt'),
-                FontsPath)
-    build_font('font2', Fonts_backup, 
-                os.path.join(embedded_data_path, 'font/Umdot20-Bold.ttf_28.png'),
-                os.path.join(embedded_data_path, 'font/Umdot20-Bold.ttf_28.txt'),
-                FontsPath)
-    build_font('font3', Fonts_backup, 
-                os.path.join(embedded_data_path, 'font/Galmuri9.ttf_13.png'),
-                os.path.join(embedded_data_path, 'font/Galmuri9.ttf_13.txt'),
-                FontsPath)
-    build_font('font4', Fonts_backup, 
-                os.path.join(embedded_data_path, 'font/Galmuri11.ttf_15.png'),
-                os.path.join(embedded_data_path, 'font/Galmuri11.ttf_15.txt'),
-                FontsPath)
-    return True
+    # 원본 폰트: v1.0 백업이 남아 있으면 그쪽이 원본이다
+    srcFonts = os.path.join(DataPath, 'Fonts_backup')
+    if not os.path.isdir(srcFonts):
+        srcFonts = os.path.join(DataPath, 'Fonts')
+    dstFonts = os.path.join(getKrPath(gamePath), 'Fonts')
+    os.makedirs(dstFonts, exist_ok=True)
+
+    print(f"{KR_DIR_NAME}/Fonts 폴더에 한글 폰트를 생성합니다... ")
+    fonts = [
+        ('font0', 'font/Umdot14.ttf_18'),
+        ('font1', 'font/Umdot12.ttf_16'),
+        ('font2', 'font/Umdot20-Bold.ttf_28'),
+        ('font3', 'font/Galmuri9.ttf_13'),
+        ('font4', 'font/Galmuri11.ttf_15'),
+    ]
+    ok = True
+    for name, base in fonts:
+        ok &= bool(build_font(name, srcFonts,
+                              os.path.join(embedded_data_path, base + '.png'),
+                              os.path.join(embedded_data_path, base + '.txt'),
+                              dstFonts))
+    return ok
+
+
+def copyFiles(src_dir, dst_dir, ext):
+    os.makedirs(dst_dir, exist_ok=True)
+    copied_count = 0
+    for file_name in os.listdir(src_dir):
+        if file_name.lower().endswith(ext):
+            shutil.copy2(os.path.join(src_dir, file_name), os.path.join(dst_dir, file_name))
+            copied_count += 1
+    return copied_count
+
 
 def installDialogue(gamePath, embedded_data_path):
-    DataPath = os.path.join(gamePath, 'Data')
-    DialoguePath = os.path.join(DataPath, 'Dialogue')
-    print("Data/Dialogue 폴더를 Data/Dialogue_backup 으로 보관합니다.")
-    if not os.path.exists(os.path.join(DataPath, 'Dialogue_backup')):
-        os.rename(DialoguePath, os.path.join(DataPath, 'Dialogue_backup'))        
-        os.makedirs(DialoguePath, exist_ok=True)
-    else:
-        print(f"⚠️ 경고: '{os.path.join(DataPath, 'Dialogue_backup')}' 폴더가 이미 존재합니다.")
-        print(f"이전 백업이 유효하다고 가정하고 백업하지 않고 진행합니다.", end='')
-        inputYN()
-        
-    print("Data/Dialogue 폴더로 한글 대화 파일을 복사합니다... ", end='')
-    shutil.copy2(os.path.join(DataPath, 'Dialogue_backup/all.db'), DialoguePath)
-    shutil.copy2(os.path.join(DataPath, 'Dialogue_backup/all.idx'), DialoguePath)
-    
-    source_dir = os.path.join(embedded_data_path, 'Dialogue')
-    copied_count = 0
-    for file_name in os.listdir(source_dir):
-        if file_name.lower().endswith('.por'):
-            source_path = os.path.join(source_dir, file_name)
-            target_path = os.path.join(DialoguePath, file_name)
-        
-            shutil.copy2(source_path, target_path)
-            copied_count += 1
-    
+    print(f"{KR_DIR_NAME}/Dialogue 폴더로 한글 대화 파일을 복사합니다... ", end='')
+    n = copyFiles(os.path.join(embedded_data_path, 'Dialogue'),
+                  os.path.join(getKrPath(gamePath), 'Dialogue'), '.por')
     print("ok")
-    return copied_count == 1398
+    return n == 1398
+
 
 def installSTR(gamePath, embedded_data_path):
-    DataPath = os.path.join(gamePath, 'Data')
-    STRPath = os.path.join(DataPath, 'STR')
-    print("Data/STR 폴더를 Data/STR_backup 으로 보관합니다.")
-    if not os.path.exists(os.path.join(DataPath, 'STR_backup')):
-        os.rename(STRPath, os.path.join(DataPath, 'STR_backup'))        
-        os.makedirs(STRPath, exist_ok=True)
-    else:
-        print(f"⚠️ 경고: '{os.path.join(DataPath, 'STR_backup')}' 폴더가 이미 존재합니다.")
-        print(f"이전 백업이 유효하다고 가정하고 백업하지 않고 진행합니다.", end='')
-        inputYN()
-        
-    print("Data/STR 폴더로 한글 이름 파일을 복사합니다... ", end='')
-    
-    source_dir = os.path.join(embedded_data_path, 'STR')
-    copied_count = 0
-    for file_name in os.listdir(source_dir):
-        if file_name.lower().endswith('.str'):
-            source_path = os.path.join(source_dir, file_name)
-            target_path = os.path.join(STRPath, file_name)
-        
-            shutil.copy2(source_path, target_path)
-            copied_count += 1
-
+    print(f"{KR_DIR_NAME}/STR 폴더로 한글 이름 파일을 복사합니다... ", end='')
+    n = copyFiles(os.path.join(embedded_data_path, 'STR'),
+                  os.path.join(getKrPath(gamePath), 'STR'), '.str')
     print("ok")
-    return copied_count == 44
+    return n == 44
+
 
 def installBink(gamePath, embedded_data_path):
-    DataPath = os.path.join(gamePath, 'Data')
-    STRPath = os.path.join(DataPath, 'Bink')
-
-    print("Data/Bink 폴더로 한글 자막 파일을 복사합니다... ", end='')
-    
-    source_dir = os.path.join(embedded_data_path, 'Bink')
-    copied_count = 0
-    for file_name in os.listdir(source_dir):
-        if file_name.lower().endswith('.sbv'):
-            source_path = os.path.join(source_dir, file_name)
-            target_path = os.path.join(STRPath, file_name)
-        
-            shutil.copy2(source_path, target_path)
-            copied_count += 1
-
+    print(f"{KR_DIR_NAME}/Bink 폴더로 한글 자막 파일을 복사합니다... ", end='')
+    n = copyFiles(os.path.join(embedded_data_path, 'Bink'),
+                  os.path.join(getKrPath(gamePath), 'Bink'), '.sbv')
     print("ok")
-    return copied_count == 10
+    return n == 10
+
 
 def installSFDat(gamePath, embedded_data_path):
-    sfDatPath = os.path.join(gamePath, 'sfDat.dat')
-
-    print("sfDat.dat 파일을 sfDat.dat.backup 으로 보관합니다.")
-    if not os.path.exists(sfDatPath + '.backup'):
-        os.rename(sfDatPath, sfDatPath + '.backup')
-    else:
-        print(f"⚠️ 경고: '{sfDatPath}.backup' 파일이 이미 존재합니다.")
-        print(f"이전 백업이 유효하다고 가정하고 백업하지 않고 진행합니다.", end='')
-        inputYN()
-            
-    print("sfDat.dat 파일을 복사합니다... ", end='')
-
-    source_dir = os.path.join(embedded_data_path, 'sfDat.dat')
-    shutil.copy2(source_dir, sfDatPath)
-
+    print(f"{KR_DIR_NAME}/sfDat.dat 파일을 복사합니다... ", end='')
+    shutil.copy2(os.path.join(embedded_data_path, 'sfDat.dat'),
+                 os.path.join(getKrPath(gamePath), 'sfDat.dat'))
     print("ok")
     return True
 
@@ -269,6 +271,12 @@ if __name__ == "__main__":
 • 갈무리 (Galmuri, https://quiple.dev/font/galmuri) - SIL Open Font License 1.1
 
 
+📁  설치 방식
+• 원본 Data 폴더와 sfDat.dat 는 수정하지 않고, 한글 파일은 모두 Data_kr 폴더에 설치합니다.
+  게임은 version.dll 이 Data_kr 에 있는 파일을 원본 대신 읽도록 해 줍니다.
+• 이전 버전(v1.0)으로 설치한 흔적(*_backup)이 있으면 원본으로 되돌릴지 묻습니다.
+• 패치 제거: 게임 폴더의 Data_kr 폴더, version.dll, minhook.x32.dll 을 지우면 됩니다.
+
 🛠️  기술 안내 및 알림
 • 백신 오진 관련 안내
 본 패치는 게임 실행 중 텍스트와 자막을 렌더링하기 위해 메모리 후킹(Hooking)방식을 사용합니다. 
@@ -289,12 +297,20 @@ if __name__ == "__main__":
 
     gamePath = get_folder_path()
 
-    installDll(gamePath, embedded_data_path)
-    installBink(gamePath, embedded_data_path)
-    installFont(gamePath, embedded_data_path)
-    installSFDat(gamePath, embedded_data_path)
-    installDialogue(gamePath, embedded_data_path)
-    installSTR(gamePath, embedded_data_path)
+    restoreLegacyInstall(gamePath, embedded_data_path)
+    prepareKrFolder(gamePath)
+
+    results = [
+        ('DLL', installDll(gamePath, embedded_data_path)),
+        ('Bink', installBink(gamePath, embedded_data_path)),
+        ('Fonts', installFont(gamePath, embedded_data_path)),
+        ('sfDat.dat', installSFDat(gamePath, embedded_data_path)),
+        ('Dialogue', installDialogue(gamePath, embedded_data_path)),
+        ('STR', installSTR(gamePath, embedded_data_path)),
+    ]
+    failed = [name for name, ok in results if not ok]
+    if failed:
+        print("\n⚠️ 확인이 필요한 항목: " + ", ".join(failed))
 
     print("\n✨ 모든 패치가 잘 끝났습니다.")
     print("📝 문제가 있으면 https://github.com/wooddoll/PoR_RoMD 에 issue로 올려주세요.")
