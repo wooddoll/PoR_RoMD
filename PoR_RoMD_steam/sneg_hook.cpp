@@ -12,6 +12,7 @@ BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/);
 BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/);
 BOOL __fastcall cTextManager_DrawTextLines_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/);
 BOOL __fastcall CKeyInput_Draw_Hook(CKeyInput* self, void* /*edx*/);
+BOOL __fastcall cTextManager_DrawHMenu_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/);
 
 void ApplySNEGPatches(uintptr_t baseAddress) 
 {
@@ -22,7 +23,12 @@ void ApplySNEGPatches(uintptr_t baseAddress)
     // x86 FPU: FLDZ (D9 EE) / RET (C3)
     uint8_t patch_return_zero_float[] = { 0xD9, 0xEE, 0xC3 }; // fldz; ret
     patchBytes(MB(0x000C58B0), patch_return_zero_float, sizeof(patch_return_zero_float));
+    // FUN_59525830 (0x000C5830): TextLabel 용 배율. DrawTextTextLabel_59527720 / FUN_59527480 이 사용.
+    // 0 보다 크면 DrawText_ani_59528020 (china 실시간 렌더 경로) 로 빠지므로 같이 0 으로 고정 (fldz; ret)
+    patchBytes(MB(0x000C5830), patch_return_zero_float, sizeof(patch_return_zero_float));
     // sneg.dll의 FUN_5627a050 진입을 막아 메뉴/텍스트 3D 오버레이 후킹 등록 차단
+    // (주의) ddraw.dll DllMain 이 sneg 로드 직후 SNEG_Load 를 호출해 등록이 끝난 뒤에 이 코드가 돌므로
+    //        실제로는 효과가 없다. 그래서 아래에서 sneg 대체 함수들을 직접 훅함 (DrawMenu/DrawTextLines/FUN_59529c50)
     patchBYTE(MB(0x000CA050), 0xC3); // ret
 
     HookFunction(MB(0x000CC600), reinterpret_cast<uintptr_t>(CKeyInput_Draw_Hook));
@@ -30,6 +36,8 @@ void ApplySNEGPatches(uintptr_t baseAddress)
     HookFunction(MB(0x000C9EA0), reinterpret_cast<uintptr_t>(cTextManager_MenuDraw_Hook)); // DrawMenu_59529ea0 가로채기
     
     HookFunction(MB(0x000C9D90), reinterpret_cast<uintptr_t>(cTextManager_DrawTextLines_Hook));  // DrawTextLines_56279d90
+
+    HookFunction(MB(0x000C9C50), reinterpret_cast<uintptr_t>(cTextManager_DrawHMenu_Hook));      // FUN_59529c50 (game 0x43f1b0, thiscall RET 4)
 
     HookFunction(MB(0x000C7CD0), reinterpret_cast<uintptr_t>(cTextLabel_DrawText_Hook));   // DrawText_59527cd0
 

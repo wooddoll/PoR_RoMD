@@ -153,6 +153,8 @@
     <ClCompile Include="CalculateTextExtents.cpp" />
     <ClCompile Include="cTextLabel_Calc.cpp" />
     <ClCompile Include="cTextLabel_Draw.cpp" />
+    <ClCompile Include="FontMetrics.cpp" />
+    <ClCompile Include="MenuExtra.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="DrawMenu.cpp" />
     <ClCompile Include="DrawTextLines.cpp" />
