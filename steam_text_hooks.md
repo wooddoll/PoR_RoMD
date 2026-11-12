@@ -852,6 +852,27 @@ TtfWeight=400
 - 적용값은 `error.log` 의 `[exp] ttf scale NN% weight NNN` 과 `[exp] ttf font cell … -> em …` 에서 확인.
 - 코드에서 바꾸려면 `china_glyph.cpp` 의 `GetTtfFont`(칸 맞춤 규칙), `MakeTtfFont`(글꼴 속성), `BuildTtfGlyph`(가운데 정렬 `x`, `y`). 세로 위치만 옮기려면 `y = (ch - tmHeight) / 2` 에 오프셋을 더하면 된다.
 
+### 3단계 구현 (2026-11-13, 게임 확인): SNEG UI(ImGui) 한글 글꼴 조절
+
+툴팁, DM 대사 상자, 새 설정창은 ddraw Dear ImGui. 한글은 `FUN_5972b2d0` 에서
+`AddFontFromFileTTF(languages\ko\<UiFontFile>, 48.0f, cfg{OversampleH=1, OversampleV=1}, ranges)` 로 **한 크기만** 넣는다
+(라틴 글꼴은 `FUN_597223b0` 에서 여러 크기로 만든다). 툴팁처럼 작게 그리면 48px 을 줄여서 가는 획이 흐려지고,
+대사처럼 크게 그리면 늘려서 뭉개진다.
+
+`sneg_hook.cpp` `PatchUiCjkFontRaster` / `ApplyDDrawPatches` (두 모드 공통), `languages\ko\language.ini` `[Font]`:
+
+| 키 | 기본 | 패치 | 효과 |
+|---|---|---|---|
+| `UiFontFile` | MaruBuri-Regular.ttf | `+0x4B439` 문자열 | `languages\ko` 안의 TTF 파일 이름(ASCII). 없으면 시스템 맑은 고딕 |
+| `UiFontSize` | 48 | `+0x4B603` `C7 04 24 <float>` | 아틀라스 글자 크기 px (12~96) |
+| `UiFontMultiply` | 100 | `+0x4B61B` `mov [ebp-0xB8],1`(OversampleV, 생성자 기본 1) → `mov [ebp-0x8C],<float>` | `ImFontConfig::RasterizerMultiply`(cfg = ebp-0xD0, +0x44) %, 50~400. 크면 획이 진함 |
+
+- ImFontConfig 배치(이 ddraw): SizePixels +0x10, OversampleH +0x14(기본 3), OversampleV +0x18(1), PixelSnapH +0x1C,
+  GlyphRanges +0x30, MergeMode +0x3C, RasterizerMultiply +0x44(1.0), EllipsisChar +0x48, Name +0x4A, 크기 0x78.
+- 시험 결과(FHD 창모드): `UiFontSize=32, UiFontMultiply=150` 이 툴팁은 가장 또렷하지만 대사 글자가 뭉개진다.
+  크기를 줄일수록 툴팁↑ 대사↓ 라서 중간값으로 맞춘다. 로그 `[ddraw] UI CJK font size Npx, rasterizer multiply M%`.
+- 근본 해결(미구현): 라틴 글꼴처럼 UI 가 쓰는 크기마다 한글 글꼴을 넣기(크기별 base 글꼴에 MergeMode 로).
+
 ### 추가 검토 (2026-11-12 오후): originalText 값, ASCII 통일, CJK 줄바꿈 끄기
 
 **`originalText`에 실제로 들어가는 값** (`china_pass` 디컴파일)

@@ -477,8 +477,68 @@ void ApplySNEGPatches(uintptr_t baseAddress)
 // CJK 글자 목록 경로: languages/zh-hant/... -> languages/ko/...
 //   5972bd79: 6A 2C / 68 <...>    PUSH 0x2C / PUSH "languages/zh-hant/sneg_ui_cjk_characters.txt"
 // ---------------------------------------------------------------------------
-static const char g_szCjkFont[]     = "MaruBuri-Regular.ttf";
+static char       g_szCjkFont[64]   = "MaruBuri-Regular.ttf";   // language.ini [Font] UiFontFile 로 바꿀 수 있음
 static const char g_szCjkFallback[] = "malgun.ttf";
+
+// <게임>\languages\ko\language.ini 경로
+static bool GetKoLanguageIni(char* path, size_t cch)
+{
+    DWORD n = GetModuleFileNameA(NULL, path, static_cast<DWORD>(cch));
+    char* slash = (n > 0 && n < cch) ? strrchr(path, '\\') : nullptr;
+    if (!slash || static_cast<size_t>(slash - path) + 32 >= cch)
+        return false;
+    lstrcpyA(slash + 1, "languages\\ko\\language.ini");
+    return true;
+}
+
+static int KoIniInt(const char* section, const char* key, int def, int lo, int hi)
+{
+    char ini[MAX_PATH];
+    if (!GetKoLanguageIni(ini, MAX_PATH))
+        return def;
+    const int v = static_cast<int>(GetPrivateProfileIntA(section, key, def, ini));
+    return (v >= lo && v <= hi) ? v : def;
+}
+
+static uint32_t FloatBits(float f)
+{
+    uint32_t u;
+    memcpy(&u, &f, sizeof(u));
+    return u;
+}
+
+// SNEG UI(ImGui) CJK 글꼴 (16절 3단계). FUN_5972b2d0 에서 AddFontFromFileTTF(path, 48.0f, cfg{OversampleH=1,V=1}, ranges).
+// 툴팁 등은 48px 아틀라스를 훨씬 작게 줄여 그려서 마루 부리의 가는 획이 흐려진다.
+// language.ini [Font]:
+//   UiFontFile     = languages\ko 안의 TTF 파일 이름 (기본 MaruBuri-Regular.ttf, 없으면 시스템 맑은 고딕)
+//   UiFontSize     = 아틀라스 글자 크기 px (기본 48, 12~96)
+//   UiFontMultiply = ImFontConfig::RasterizerMultiply % (기본 100, 50~400). 크면 획이 진해진다
+//   +0x4B603: C7 04 24 00 00 40 42             mov [esp], 48.0f            → 크기
+//   +0x4B61B: C7 85 48 FF FF FF 01 00 00 00    mov [ebp-0xB8], 1 (OversampleV, 생성자 기본도 1)
+//             → C7 85 74 FF FF FF <float>      mov [ebp-0x8C], m (RasterizerMultiply, cfg = ebp-0xD0, +0x44)
+static void PatchUiCjkFontRaster(uintptr_t base)
+{
+    const int sizePx = KoIniInt("Font", "UiFontSize", 48, 12, 96);
+    const int mulPct = KoIniInt("Font", "UiFontMultiply", 100, 50, 400);
+
+    const uint8_t* ps = reinterpret_cast<const uint8_t*>(base + 0x4B603);
+    static const uint8_t kSize[] = { 0xC7, 0x04, 0x24, 0x00, 0x00, 0x40, 0x42 };
+    const uint8_t* pm = reinterpret_cast<const uint8_t*>(base + 0x4B61B);
+    static const uint8_t kOvV[] = { 0xC7, 0x85, 0x48, 0xFF, 0xFF, 0xFF, 0x01, 0x00, 0x00, 0x00 };
+    if (memcmp(ps, kSize, sizeof(kSize)) != 0 || memcmp(pm, kOvV, sizeof(kOvV)) != 0) {
+        PLOG_ERROR << "[ddraw] UI CJK font raster patch site mismatch";
+        return;
+    }
+    if (sizePx != 48)
+        patchDWORD(base + 0x4B606, FloatBits(static_cast<float>(sizePx)));
+    if (mulPct != 100) {
+        uint8_t code[10] = { 0xC7, 0x85, 0x74, 0xFF, 0xFF, 0xFF, 0, 0, 0, 0 };
+        const uint32_t m = FloatBits(mulPct / 100.0f);
+        memcpy(code + 6, &m, 4);
+        patchBytes(base + 0x4B61B, code, sizeof(code));
+    }
+    PLOG_DEBUG << "[ddraw] UI CJK font size " << sizePx << "px, rasterizer multiply " << mulPct << "%";
+}
 static const char g_szCjkList[]     = "languages/ko/sneg_ui_cjk_characters.txt";
 
 // MSVC x86 std::string 과 같은 배치 (FUN_5971bff0 이 읽기만 한다). 길이 16 이상이면 +0 이 포인터
@@ -590,6 +650,21 @@ void ApplyDDrawPatches(uintptr_t baseAddress)
 
     PatchPushLenStr(baseAddress + 0x4BD79, static_cast<uint32_t>(baseAddress + 0x14DA60),
                     "languages/zh-hant/sneg_ui_cjk_characters.txt", 0x2C, g_szCjkList, "CJK list");
+
+    // 1순위 글꼴 파일 이름: language.ini [Font] UiFontFile (ASCII, 63자까지). 없으면 MaruBuri-Regular.ttf
+    {
+        char ini[MAX_PATH], name[64] = {};
+        if (GetKoLanguageIni(ini, MAX_PATH) &&
+            GetPrivateProfileStringA("Font", "UiFontFile", "", name, sizeof(name), ini) > 0)
+        {
+            bool ok = true;
+            for (const char* c = name; *c; ++c)
+                if (static_cast<unsigned char>(*c) >= 0x80 || *c == '\\' || *c == '/') { ok = false; break; }
+            if (ok) lstrcpynA(g_szCjkFont, name, sizeof(g_szCjkFont));
+            else PLOG_ERROR << "[ddraw] UiFontFile must be an ASCII file name in languages\\ko";
+        }
+    }
+    PatchUiCjkFontRaster(baseAddress);
 
     // 1순위 글꼴: 폴더를 언어팩 폴더로 바꾸고 파일 이름을 MaruBuri 로
     const uintptr_t dirSite = baseAddress + 0x4B427;
