@@ -107,6 +107,59 @@ bool IsNativeCjkTest()
     return s_state == 1;
 }
 
+// [실험] kr_native_test.txt 에 "hires" 가 있으면 고해상도(*_ani) 경로를 막지 않는다 (16절 2단계용).
+// 없으면 1단계: 배율 함수 두 개를 0 으로 고정해서 저해상도(배율 1.0) 비트맵 경로만 쓴다.
+static bool IsNativeCjkHiRes()
+{
+    static int s_state = -1;
+    if (s_state < 0) {
+        s_state = 0;
+        char path[MAX_PATH];
+        DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
+        char* slash = (n > 0 && n < MAX_PATH) ? strrchr(path, '\\') : nullptr;
+        if (slash) {
+            lstrcpyA(slash + 1, "kr_native_test.txt");
+            HANDLE f = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+            if (f != INVALID_HANDLE_VALUE) {
+                char buf[256] = {};
+                DWORD rd = 0;
+                ReadFile(f, buf, sizeof(buf) - 1, &rd, NULL);
+                CloseHandle(f);
+                _strlwr_s(buf);
+                s_state = strstr(buf, "hires") ? 1 : 0;
+            }
+        }
+        PLOG_DEBUG << "[exp] hi-res text = " << s_state;
+    }
+    return s_state == 1;
+}
+
+void InstallChinaGlyphHooks(uintptr_t snegBase);   // china_glyph.cpp
+
+// Wrap_ItemsCJK(+0x471E0)의 줄바꿈 후보 판정에서 U+2E80 이상 글자 조건을 끈다 → 공백/개행에서만 줄을 나눔.
+// 후보가 없으면 원래 코드가 줄 폭에서 강제로 끊으므로 넘치지 않는다.
+//   +0x4730C: 73 08 (JNC, 앞 글자 >= U+2E80 → 후보)        → 90 90
+//   +0x47314: 72 73 (JC,  현재 글자 <  U+2E80 → 후보 아님)   → EB 73 (항상 후보 아님)
+// ddraw.dll 에도 같은 코드의 복사본이 있다 (FUN_5972e150, +0x4E276). SNEG 내레이션(DM 대사) 상자가
+// FUN_5972d520 에서 한글이 있으면 이 함수로 먼저 줄을 나눠 '\n' 을 넣고, 그리기에서 실제 폭으로 다시 나눈다
+// → 단어 중간 1차 줄바꿈 + 공백 2차 줄바꿈으로 짧은 줄이 끼었다.
+//   site = 첫 cmp 의 오프셋 (sneg 0x47306, ddraw 0x4E276)
+static void PatchCjkWordWrap(uintptr_t base, uint32_t site, const char* tag)
+{
+    const uint8_t* p1 = reinterpret_cast<const uint8_t*>(base + site);
+    const uint8_t* p2 = reinterpret_cast<const uint8_t*>(base + site + 8);
+    static const uint8_t k1[] = { 0x81, 0xFE, 0x80, 0x2E, 0x00, 0x00, 0x73, 0x08 };   // cmp esi,0x2e80; jnc
+    static const uint8_t k2[] = { 0x81, 0xFF, 0x80, 0x2E, 0x00, 0x00, 0x72, 0x73 };   // cmp edi,0x2e80; jc
+    if (memcmp(p1, k1, sizeof(k1)) == 0 && memcmp(p2, k2, sizeof(k2)) == 0) {
+        static const uint8_t nop2[] = { 0x90, 0x90 };
+        patchBytes(base + site + 6, nop2, sizeof(nop2));
+        patchBYTE(base + site + 14, 0xEB);
+        PLOG_DEBUG << "[" << tag << "] CJK word wrap -> space only";
+    } else {
+        PLOG_ERROR << "[" << tag << "] CJK word wrap patch site mismatch";
+    }
+}
+
 // sneg.dll: isChina(FUN_562b6690, cmp eax,950) 등 비교 3곳 + china 변환용 MultiByteToWideChar 코드페이지 PUSH 6곳
 static const uint32_t kSnegCp950[] = { 0x46696, 0x46926, 0x46935, 0x4696D, 0xAE516, 0xAE58D, 0xAE5BD, 0xAE60C, 0xAE662 };
 // ddraw.dll: FUN_5972b2d0 아틀라스 폭 조건(+0x4B5D4), FUN_5972ba20 CJK 목록 로드 조건(+0x4BBC7),
@@ -246,8 +299,17 @@ void ApplySNEGPatches(uintptr_t baseAddress)
                 PLOG_ERROR << "[exp] china font patch site mismatch";
             }
         }
+        // 16절 1단계: china_pass / GetChinaFontBitmap 훅 (한글 = 비트맵 폭 + 비트맵 마스크), CJK 줄바꿈은 공백에서만
+        InstallChinaGlyphHooks(baseAddress);
+        PatchCjkWordWrap(baseAddress, 0x47306, "exp");
+        if (!IsNativeCjkHiRes()) {
+            // 저해상도만: 배율 함수 두 개를 0 으로 (본선과 같은 위치에서 비교하기 위해)
+            static const uint8_t kZero[] = { 0xD9, 0xEE, 0xC3 }; // fldz; ret
+            patchBytes(MB(0x000C58B0), kZero, sizeof(kZero));
+            patchBytes(MB(0x000C5830), kZero, sizeof(kZero));
+        }
         CloseHandle(CreateThread(NULL, 0, DiagSnegScale, reinterpret_cast<LPVOID>(baseAddress), 0, NULL));
-        return;     // 배율 0 고정, 텍스트 훅, 알파 블렌딩 가드 모두 생략
+        return;     // 우리 텍스트 훅, 알파 블렌딩 가드는 생략
     }
 
     // sneg.dll 내 FUN_562758b0 (오프셋 0x000C58B0): float 0.0f를 반환하도록 패치
@@ -505,6 +567,26 @@ void ApplyDDrawPatches(uintptr_t baseAddress)
     CloseHandle(CreateThread(NULL, 0, DiagDDrawFontSlots, reinterpret_cast<LPVOID>(baseAddress), 0, NULL));
 
     PatchCodePage950To949(baseAddress, kDDrawCp950, _countof(kDDrawCp950), "ddraw");
+
+    // SNEG 내레이션(DM 대사) 상자의 1차 줄바꿈: 한글은 공백에서만 (위 PatchCjkWordWrap 설명)
+    PatchCjkWordWrap(baseAddress, 0x4E276, "ddraw");
+
+    // 그래도 1차(폭 420*배율, '\n' 삽입)와 그리기의 2차(실제 폭) 줄바꿈 폭이 달라 짧은 줄이 낀다.
+    // FUN_5972d520(+0x4D520) 은 U+2E80 이상 글자가 하나도 없으면(영어) 1차를 건너뛰고 원문을 돌려준다.
+    // 그 "CJK 있음" 플래그를 세우지 않게 해서 한글도 영어처럼 그리기에서 한 번만 줄을 나누게 한다.
+    //   +0x4D701: 81 FE 80 2E 00 00 | 0F 93 C1 (setnc cl) | 08 4D D7 (or [ebp-29],cl)
+    //   → setnc cl 을 xor cl,cl; nop (32 C9 90) 로
+    {
+        const uint8_t* p = reinterpret_cast<const uint8_t*>(baseAddress + 0x4D701);
+        static const uint8_t kSite[] = { 0x81, 0xFE, 0x80, 0x2E, 0x00, 0x00, 0x0F, 0x93, 0xC1, 0x08, 0x4D, 0xD7 };
+        if (memcmp(p, kSite, sizeof(kSite)) == 0) {
+            static const uint8_t kXorCl[] = { 0x32, 0xC9, 0x90 };
+            patchBytes(baseAddress + 0x4D707, kXorCl, sizeof(kXorCl));
+            PLOG_DEBUG << "[ddraw] narration pre-wrap skipped for CJK";
+        } else {
+            PLOG_ERROR << "[ddraw] narration pre-wrap patch site mismatch";
+        }
+    }
 
     PatchPushLenStr(baseAddress + 0x4BD79, static_cast<uint32_t>(baseAddress + 0x14DA60),
                     "languages/zh-hant/sneg_ui_cjk_characters.txt", 0x2C, g_szCjkList, "CJK list");

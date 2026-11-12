@@ -1,5 +1,6 @@
 import argparse
 import struct
+from kr_text import encode_kr, normalize_fullwidth
 import os
 import json
 
@@ -168,7 +169,7 @@ def cp949_to_wide(text, byte_pos="low"):
     byte_pos="low" : [b, 0x00] (ASCII의 UTF-16LE와 동일한 배치, 기본값)
     byte_pos="high": [0x00, b]
     """
-    raw = text.encode("cp949")  # cp949로 표현 불가능한 문자가 있으면 UnicodeEncodeError
+    raw = normalize_fullwidth(text).encode("cp949")  # cp949로 표현 불가능한 문자가 있으면 UnicodeEncodeError
     out = bytearray()
     for b in raw:
         if byte_pos == "low":

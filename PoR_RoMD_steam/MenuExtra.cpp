@@ -160,7 +160,8 @@ BOOL __fastcall cTextManager_DrawHMenu_Hook(cTextManager* self, void* /*edx*/, i
                     break;
                 const int chCode = getCharCode(text, n);
                 const int chLen = (0xFF < chCode) ? 2 : 1;
-                if (n + chLen > maxBytes)
+                // 첫 글자는 칸 바이트 수를 넘어도 출력 (칸당 1바이트인 주문 레벨 탭 "소" 등이 비지 않게)
+                if (n + chLen > maxBytes && n > 0)
                     break;
                 textW += font->GetCharWidth(chCode);
                 n += chLen;

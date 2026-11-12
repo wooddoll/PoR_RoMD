@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClCompile Include="bink_hook.cpp" />
     <ClCompile Include="CalculateTextExtents.cpp" />
+    <ClCompile Include="china_glyph.cpp" />
     <ClCompile Include="cTextLabel_Calc.cpp" />
     <ClCompile Include="cTextLabel_Draw.cpp" />
     <ClCompile Include="FontMetrics.cpp" />

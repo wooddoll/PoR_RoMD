@@ -3,6 +3,7 @@ import os
 import struct
 import json
 import base64
+from kr_text import encode_kr, normalize_fullwidth
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import List
@@ -41,7 +42,7 @@ def write_por_file(section, por_path):
     lines = []
     for key_name, key_entry in section.items():
         parts = [key_name.encode('latin-1', errors='replace'), 
-                 key_entry['dialogue'].encode('euc-kr', errors='replace'),
+                 encode_kr(key_entry['dialogue'], errors='replace'),
                  key_entry['speaker'].encode('ascii', errors='replace'),
                  key_entry['desc'].encode('ascii', errors='replace')]
         line = b'\t'.join(parts)

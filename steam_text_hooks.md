@@ -485,6 +485,7 @@ vtable +0x20 / +0x4c …    → 위젯 폭/높이(+0x30/+0x34)를 서피스 크�
 | `DiagLogByteCaller` (한글 바이트로 vtable GetCharRect 호출한 주소 기록) | [FontMetrics.cpp](PoR_RoMD_steam/FontMetrics.cpp) | **제거** |
 | `DiagDDrawFontSlots` (ddraw 글꼴 슬롯 상태 감시 스레드) | [sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp) | **제거** (`ApplyDDrawPatches` 의 `CreateThread` 포함) |
 | `DiagSnegScale` (고해상도 배율 플래그 기록), 실험 모드(`IsNativeCjkTest`, 14절) | [sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp), [por2_hook.cpp](PoR_RoMD_steam/por2_hook.cpp) | 진단은 **제거**. 실험 모드는 마커 파일이 없으면 꺼져 있으니 남겨도 되지만, 배포판에서는 빼는 쪽 권장 |
+| `china_glyph.cpp`, `PatchCjkWordWrap`, `IsNativeCjkHiRes` (16절 1단계) | [china_glyph.cpp](PoR_RoMD_steam/china_glyph.cpp), sneg_hook.cpp | 실험 모드 전용. 16절 방식이 본선이 되면 유지, 아니면 실험 모드와 함께 정리 |
 | `diag_font_*.bmp`, `crash.log` | 게임 폴더 | 삭제 |
 | `languages\zh-hant\` 변경 (`language.ini` CodePage=949, `data` 한국어) | 게임 폴더 | 원본 중국어 팩으로 복구 |
 | 루트 한국어 파일 (`sfDat.dat`, `data\Dialogue`, `data\Fonts` 등) | 게임 폴더 | 영어 원본으로 복구 (한국어는 `languages\ko`에만) |
@@ -792,6 +793,30 @@ inline int NormalizeGlyphKey(int code)
 3. ImGui 툴팁은 따로.
 - 그때까지 본선(현재 훅 방식)은 그대로 둔다.
 
+### 1단계 구현 (2026-11-12, 빌드 성공, 게임 미시험)
+
+실험 모드(`kr_native_test.txt`)에서만 동작한다. 본선(마커 파일 없음)은 바뀌지 않았다.
+
+| 위치 | 내용 |
+|---|---|
+| [china_glyph.cpp](PoR_RoMD_steam/china_glyph.cpp) `ChinaPass_Hook` (sneg `+0x468D0`, MinHook) | `cdecl(cGlyphResult* out, cFont* font, const byte* text, int len)`. 한글 행(c1 A1~C8)이고 아틀라스에 `(c1<<8)\|c2` 글리프가 있으면 charCode = 유니코드(949), `byteLength 2`, 폭/높이 = **아틀라스 RECT**, `originalText = {0,1,0,0}`. 폰트를 `g_fontByHeight[높이]`에 기억. 전각 영숫자 `A3A1~A3FD`(A3DC 제외)는 ASCII 한 글자로 원래 함수에 넘기고 `byteLength 2`. 아틀라스에 없는 글자는 원래 함수(TTF) |
+| `GetChinaFontBitmap_Hook` (sneg `+0x463D0`) | `cdecl(cGlyphResult*, float scale)` → `{int w, int h, vector<uint8_t> 알파}*` (원래 캐시 노드 +0x20과 같은 배치). 배율 1.0이고 charCode가 949 한글 행이면 폰트 아틀라스 서피스(16bpp)를 잠가 `0xFFFF` 픽셀을 알파 `0xFF`로 만든 마스크를 돌려준다(글자별 캐시). 그 밖은 원래 함수 |
+| [sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp) `PatchCjkWordWrap` | `+0x4730C` `73 08`→`90 90`, `+0x47314` `72`→`EB` (앞뒤 `cmp esi/edi, 0x2E80` 8바이트씩 확인 후 패치) |
+| sneg_hook.cpp 실험 분기 | 위 훅 + 줄바꿈 패치. 마커 파일에 `hires`가 **없으면** 배율 함수 두 개(`0xC58B0`, `0xC5830`)를 0으로 고정 → 저해상도만(1단계 비교용). `hires`가 있으면 고해상도 경로를 열어 둔다(2단계용, 배율 > 1은 아직 원래 TTF 렌더) |
+| [por2_hook.cpp](PoR_RoMD_steam/por2_hook.cpp) 실험 분기 | 게임 입구 직접 훅 3개(MenuMask, CalculateTextExtents, CalcExtentTextLabel)를 본선처럼 켬 + FontMetrics. sneg 함수 통째 훅 7개는 계속 끔 |
+| [kr_text.py](kr_text.py) | `normalize_fullwidth` / `encode_kr`: U+FF01~FF5E → 반각. `read_por_files.py`, `rebuild_all_db.py`(선택지/대사), `str_json_converter.py`, `test_sfDat_dat.py`의 EUC-KR 인코딩 앞에 적용 |
+
+- 폭은 FontMetrics의 `2*ceil(w/2)`가 아니라 **RECT 폭 그대로**로 했다. 실험 모드에서도 박스 크기는 본선의 CalculateTextExtents/CalcExtentTextLabel 훅이 정하므로(RECT 폭) 그쪽과 맞췄다. FontMetrics는 툴팁 폭에만 쓰여서 글자당 최대 1px 넓어질 뿐이다.
+- 높이는 china 원본처럼 폰트 높이(`FUN_562647f0`)가 아니라 한글 RECT 높이. 병합 폰트에서는 둘이 같다(높이 = 원본).
+- `g_fontByHeight`는 높이로 폰트를 구분한다. 같은 높이의 다른 폰트가 있으면 마지막에 본 폰트의 글리프가 쓰인다.
+
+시험 방법:
+1. 게임 폴더 `kr_native_test.txt`는 있는 그대로(첫 줄 71, `hires` 없음). `error.log`에서 확인:
+   `[exp] china_pass hook status=0`, `[exp] GetChinaFontBitmap hook status=0`, `[exp] CJK word wrap -> space only`, `[exp] hi-res text = 0`.
+2. 대화/메뉴/라벨/입력창/툴팁이 본선(마커 파일을 지운 상태)과 같은 위치·글꼴로 나오는지, 줄바꿈이 단어 단위인지, 잘림이 없는지 비교.
+3. 확인할 위험: 소비처가 TTF 글자를 저해상도에서 `MakeChinaFont`(알파 > 0x7F 찍기) 말고 다른 방식으로 그리는 곳, 그림자 텍스트의 그림자 색,
+   KeyInput 커서 위치(2바이트 글자 폭), `error.log`의 `prologue mismatch` / `patch site mismatch` / `font atlas surface unexpected`.
+
 ### 추가 검토 (2026-11-12 오후): originalText 값, ASCII 통일, CJK 줄바꿈 끄기
 
 **`originalText`에 실제로 들어가는 값** (`china_pass` 디컴파일)
@@ -862,3 +887,26 @@ inline int NormalizeGlyphKey(int code)
   - B0~C8 한글: 2바이트 경로.
 - 원본 `china_pass`는 `GetCodepage == 0x3B6`(950)일 때만 2바이트 분기 → 949 패치(0절)가 있어야 이 분기를 탄다.
 - 한국어 번역문에 전각/기호가 실제로 얼마나 있는지는 아직 세어 보지 않았다 (루트 `sfDat.txt`는 거의 영문, 전각 0개).
+
+## 17. SNEG 내레이션(DM 대사) 상자 줄바꿈 (2026-11-12, 고침, 게임 확인)
+
+증상: 오른쪽 위 "DM:" 대사 상자에서 한글이 단어 중간("여러|분의")에서 끊기고 짧은 줄이 낀다. 일반/실험 모드가 픽셀까지 같았다.
+
+원인 (중단점으로 추적):
+- 이 상자는 우리 훅(WordWrap/RenderShadow, 폭 250의 다른 위젯)과 무관하다. sneg 가 대사를 모아(`FUN_562d3520`, `"%s:
+%s"`)
+  공유 구조체(`DAT_563e9800`, 텍스트 +0x1C, 4KB)에 넣고, export `SNEG_ConvPoll`(`FUN_562d32b0`)이 복사해 준다.
+- ddraw 가 매 프레임(`FUN_59717a20`) `SNEG_ConvPoll` 로 `0x599f3ef0` 에 받아 `FUN_59793500` 에서 그린다:
+  `FUN_5973b380`(CP949→UTF-8) → `FUN_5973b750` → `FUN_5972d520`(1차 줄바꿈, 폭 420*배율, `
+` 삽입) → 그리기에서 실제 폭으로 2차 줄바꿈.
+- `FUN_5972d520` 은 U+2E80 이상 글자가 있을 때만 1차를 한다(영어는 원문 그대로). 1차는 `FUN_5972e150` = sneg `Wrap_ItemsCJK` 의 복사본이라
+  한글을 어디서나 끊고, 1차/2차 폭이 달라 짧은 줄이 생겼다.
+
+수정 (`sneg_hook.cpp` `ApplyDDrawPatches`, 두 모드 공통):
+| ddraw 오프셋 | 바이트 | 내용 |
+|---|---|---|
+| +0x4D707 | `0F 93 C1` → `32 C9 90` | "CJK 있음" 플래그를 세우지 않음 → 한글도 1차 생략, 그리기에서 한 번만 공백 기준 줄바꿈 (`[ddraw] narration pre-wrap skipped for CJK`) |
+| +0x4E27C / +0x4E284 | `73 08`→`90 90`, `72`→`EB` | `FUN_5972e150` CJK 후보 끄기(공백에서만). 위 패치로 이 경로는 안 쓰지만 다른 호출부 대비 (`[ddraw] CJK word wrap -> space only`) |
+
+- `PatchCjkWordWrap(base, site, tag)` 로 일반화: sneg `0x47306`(실험 모드), ddraw `0x4E276`.
+- 런타임 주소 환산: ddraw 실행 주소 = Ghidra 주소 + (실행 베이스 - 0x596e0000). 이번 세션은 +0x094B0000 이었다.

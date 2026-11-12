@@ -42,8 +42,13 @@ void ApplyMemoryPatches(uintptr_t baseAddress)
         // [실험] 그리기는 sneg china 경로에 맡기고, 게임 텍스트 훅은 끈다.
         // 단 게임 쪽 줄 나누기/박스 크기 계산(cTextManager 등)은 여전히 1바이트씩 vtable 메트릭을 부르므로
         // FontMetrics(한글 바이트 = '가' 폭의 절반)는 켜 둔다. 끄면 비트맵 라틴-1 폭으로 1차 줄바꿈 → sneg 가 TTF 폭으로 2차 줄바꿈.
+        // sneg 가 대체하지 않는 게임 함수(메뉴 마스크, 박스 크기 계산)는 본선과 같은 우리 훅을 유지한다.
+        // 한글 폭 = 비트맵 RECT 폭으로 china_pass 훅(china_glyph.cpp)과 같다.
+        HookGameIfNotHookedBySneg(0x0043B8E0, reinterpret_cast<uintptr_t>(cTextManager_DrawMenuMask_Hook),         "MenuMask");
+        HookGameIfNotHookedBySneg(0x0043BF40, reinterpret_cast<uintptr_t>(cTextManager_CalculateTextExtents_Hook), "CalculateTextExtents");
+        HookGameIfNotHookedBySneg(0x004428B0, reinterpret_cast<uintptr_t>(cTextLabel_CalcExtents_Hook),            "CalcExtentTextLabel");
         InstallFontMetricHooks();
-        PLOG_DEBUG << "[exp] game text hooks skipped, FontMetrics on";
+        PLOG_DEBUG << "[exp] sneg draw functions kept (china_pass path), game extents hooks + FontMetrics on";
         return;
     }
 

@@ -3,6 +3,7 @@ import os
 import struct
 import json
 import base64
+from kr_text import encode_kr, normalize_fullwidth
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import List
@@ -36,7 +37,7 @@ def serialize_section(section) -> bytes:
     # Selection: strings joined with '\r\n' + trailing '\r\n'
     selection_bytes = b''
     if section['selections']:
-        selection_bytes = b'\r\n'.join(s.encode('euc-kr', errors='replace') for s in section['selections'])
+        selection_bytes = b'\r\n'.join(encode_kr(s, errors='replace') for s in section['selections'])
         selection_bytes += b'\r\n'
 
     # Key: check if key is 7 bytes, if so add ':' (0x3A) to make it 8 bytes
@@ -228,7 +229,7 @@ def write_por_files(sections, output_dir):
         lines = []
         for key_name, key_entry in sec_data['keys'].items():
             parts = [key_name.encode('latin-1', errors='replace'), 
-                     key_entry['dialogue'].encode('euc-kr', errors='replace'),
+                     encode_kr(key_entry['dialogue'], errors='replace'),
                      key_entry['speaker'].encode('ascii', errors='replace'),
                      key_entry['desc'].encode('ascii', errors='replace')]
             line = b'\t'.join(parts)
