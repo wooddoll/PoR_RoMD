@@ -580,3 +580,71 @@ vtable +0x20 / +0x4c …    → 위젯 폭/높이(+0x30/+0x34)를 서피스 크�
 - `config.ini` 는 `ScaledEngineText=1` 로 바뀐 상태 (원래 값은 `config.ini.before_scaled`).
 - Steam 파일 검사로 sneg.dll / ddraw.dll / 루트 데이터는 원본. 한국어는 `languages\ko` 와 version.dll 메모리 패치로만 동작.
 - 배포 전 제거 목록(12절)에 `DiagSnegScale`, 실험 모드 코드 정리 여부를 추가로 검토.
+
+## 15. retail 글꼴(.ink)과 sneg 글자 항목 생성부 (2026-11-12)
+
+주소는 sneg `0x59460000` 기준. 이름은 `ghidra_scan/ApplyPoRAnnotations.java`로 적용됨.
+
+### retail 글꼴 로딩
+
+```
+*_ani 경로 → Sneg_GetHiResGlyphCache(59524690)   폰트 슬롯 0~7, 캐시 = DAT_596780d0 + i*0x48 (NativeFont 면 안 씀)
+  ├─ Sneg_LoadRetailFonts(5951b000)
+  │    ├─ RetailFont_LoadMain → RetailFont_LoadTtfInk(59519240) : por_retail_font%u.ttf + .ink
+  │    ├─ _load_ink_595215f0 : por_retail_font%u_*.ink 마다 이름이 같은 .ttf (변형 글꼴 목록, 캐시 +0x08)
+  │    └─ arial 모드: arial.ttf + por_retail_font%u_arial.ink (RetailFont_LoadArialInk)
+  └─ HeadingFace 모드: FUN_5951adc0 (PoR Gothic / Source Sans 3, 지문 검사 없음)
+```
+
+### `.ink` = 원본 비트맵 글자의 지문 (글리프 데이터 아님)
+
+| 파일 | 구조 |
+|---|---|
+| `por_retail_font%u.ink`, `_*.ink` | `'PRIK'`, `u32 1`, `u32 폰트 높이(일치해야 함)`, `u32 hash[256]` — 크기 정확히 0x40C |
+| `_arial.ink` | `'PRIA'`, `u32 1`, `u32 폰트 높이`, `u32 N`, `N × {u32 코드, u32 유니코드, u32 hash}` (코드 순) |
+
+- `hash[code]` = 게임 비트맵 글리프 `{폭, 높이, 1비트 마스크}`의 FNV-1a (`GlyphMask_FromFont` → `GlyphMask_Hash`).
+- `RetailFont_RenderGlyph`(59519df0): 지금 게임 폰트의 그 글자 해시가 `.ink`와 같고 TTF에 그 유니코드가 있을 때만 retail TTF로 그린다.
+  아니면 비트맵 확대(`FUN_59517040`). → **원본 글꼴이 그대로일 때만 바꿔 끼우는 안전장치.**
+  우리 병합 아틀라스는 1바이트 256자를 원본 그대로 두므로 영문 retail 대체는 계속 동작한다.
+- 256 제한이 걸린 곳: `.ink` 크기, `RetailFont_RenderGlyph`의 `code > 0xFF` 거부와 256바이트 검사 캐시(+0x2C),
+  `Byte_ToUnicode`(1바이트 `MultiByteToWideChar`), 캐시 키 `code & 0xFF`, `SnegCharItem.code`(1바이트).
+- **결론: `.ink`를 EUC-KR로 늘리는 패치는 의미 없다.** retail TTF에 한글 글리프가 없고, `.ink`는 지문일 뿐이다.
+- ddraw `SNEG_RetailFontGlyphPoll`(code 0~255)은 retail과 무관한 `gamefont` 모드 1비트 브리지(`GameFontBridge_*`).
+
+### 글자 항목 파이프라인 (sneg 텍스트 경로 공통)
+
+1. **해석·측정**: `china_pass`(594a68d0) — sneg의 **모든** 텍스트 경로(WordWrap, RenderShadow, DrawText, DrawText_ani,
+   메뉴, HMenu, TextLines, KeyInput, `_V_china_*`, 19곳)가 한 글자씩 부른다.
+   - 코드페이지 950(→ 패치로 949) 리드 바이트: `MultiByteToWideChar` 2바이트 → **폭 = `GetTextExtentPoint32W`(china GDI 글꼴, 비트맵 높이)**,
+     `byteLength 2`, `originalText[1] = 1`(TTF 글자 표시).
+   - 그 밖: `latin_pass` → 비트맵 글리프 폭.
+2. **메트릭 목록** (`SnegCharMetric` 0x1C): `{오프셋, 바이트 수, 폭, 높이, charCode, hiResAdvance, kerning}`.
+   고해상도(배율>0)면 1바이트 글자는 `hiResAdvance = RetailFont_Advance`(retail TTF), TTF 글자는 0 → china_pass 폭 사용.
+3. **줄바꿈**: isChina면 `Wrap_ItemsCJK`(594a71e0), 아니면 `Wrap_ItemsWord`(594a7690).
+   - `Wrap_ItemsCJK`: charCode > 0x2E7F 이면 **어디서나 줄을 나눔** → 한글(U+AC00~)도 단어 중간에서 끊긴다. 금칙 표 `5960b118`/`5960b12c`.
+   - `Wrap_ItemsWord`: 공백 기준. 단, 호출부가 **바이트 길이**를 개수로 넘기고 메트릭 인덱스로 돌아서 2바이트 글자가 있으면 범위를 넘는다.
+4. **항목 배치**: `CharItem_Push`(5952d630) → `SnegCharItem`(0x3C): `src`(아틀라스 RECT, TTF면 `{0,0,폭,높이}`), `code`, `isTTF`,
+   `glyph`(cGlyphResult), `dst`, `subpixelX`.
+5. **그리기**: `HiRes_DrawCharItems`(5952bc90) — 배치가 끝난 항목을 `(dst.x + subpixelX) × 배율`에 놓기만 한다.
+   `isTTF` → `GetChinaFontBitmap`(594a63d0), 아니면 `HiRes_GetGlyphBitmap`(retail TTF 또는 비트맵 확대).
+   - `GetChinaFontBitmap`: DIB 크기 = (china_pass 폭 × 배율, 높이 × 배율), `TextOutW(x=0)` → **왼쪽 정렬, 칸 폭에서 잘림**.
+     글꼴은 `ChinaFont_GetByHeight(높이 × 배율)`.
+
+### 14절 실험이 깨진 이유 (정리)
+
+- china_pass 폭(마루 부리 TTF 폭) ≠ 게임 쪽 폭(cTextManager 줄 분할/박스 크기, 1바이트씩 GetCharRect 또는 FontMetrics) → 두 번 줄바꿈.
+- isChina(949) 때문에 `Wrap_ItemsCJK`가 한글을 글자 단위로 끊음 → 단어 중간 줄바꿈.
+- 영어는 retail advance가 비트맵 폭과 맞게 만들어져 있어 문제가 드러나지 않는다(추정).
+
+### 고해상도 한글을 다시 시도한다면 (설계 메모, 미구현)
+
+1. **`china_pass` 훅 하나로 폭을 통일**: 한글 2바이트면 charCode=유니코드, `originalText[1]=1`은 그대로 두고
+   **폭 = 우리 비트맵 한글 폭**(아틀라스 키 `(c1<<8)|c2`, 고정폭)을 돌려준다. FontMetrics(바이트당 `ceil(w/2)`)와 합이 같도록 `2*ceil(w/2)`.
+   → sneg 레이아웃, 게임 레이아웃, 렌더 칸이 모두 같은 폭.
+2. **글꼴 크기 맞추기**: `GetChinaFontBitmap`이 칸 폭에서 자르므로, `CreateFontW` 훅(14절)에서 높이 배율을 고정 71% 대신
+   `'가'` advance가 비트맵 한글 폭 × 배율이 되도록 높이별로 계산 (또는 TextOutW x 오프셋으로 가운데 정렬).
+3. **줄바꿈**: `Wrap_ItemsCJK` 두 호출부(594a80fc, 5952cf65)를 한글은 공백에서만 끊는 우리 함수로 교체
+   (`Wrap_ItemsWord`는 바이트 길이 문제 때문에 그대로 못 씀).
+4. 게임 쪽 cTextManager 줄 분할/CalculateTextExtents와 툴팁 폭은 지금처럼 우리 훅/FontMetrics가 같은 폭을 쓰게 유지.
+5. 우리 텍스트 훅이 sneg Draw 함수를 통째로 바꾸고 배율을 0으로 고정하는 현재 구조와는 양립하지 않음 → 모드 분리(14절 실험 모드 위에서) 필요.

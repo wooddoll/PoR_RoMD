@@ -112,7 +112,24 @@ public class ApplyPoRAnnotations extends GhidraScript {
             f(0x28, "int", "atlasHeight"));
         struct("cGlyphResult", 0x14, "sneg china_pass result",
             f(0x00, "uint", "charCode"), f(0x04, "uint", "byteLength"), f(0x08, "int", "width"),
-            f(0x0C, "int", "height"), f(0x10, "char[4]", "originalText"));
+            f(0x0C, "int", "height"), f(0x10, "char[4]", "originalText", "[1] = 1 if TTF (china) glyph"));
+        struct("SnegCharMetric", 0x1C, "sneg per-char layout entry (builders -> Wrap_ItemsCJK / Wrap_ItemsWord)",
+            f(0x00, "int", "byteOffset"), f(0x04, "int", "byteLength"), f(0x08, "int", "width", "china_pass width (bitmap px)"),
+            f(0x0C, "int", "height"), f(0x10, "uint", "charCode", "unicode for TTF glyphs, else byte"),
+            f(0x14, "float", "hiResAdvance", "_1_china (retail TTF advance), <=0 -> width"),
+            f(0x18, "float", "kerning", "_2_china"));
+        struct("SnegCharItem", 0x3C, "sneg positioned glyph (HiRes_DrawCharItems input)",
+            f(0x00, "RECT", "src", "font atlas rect, or {0,0,w,h} for TTF glyph"),
+            f(0x10, "byte", "code", "1-byte char code"), f(0x11, "byte", "isTTF", "1 -> GetChinaFontBitmap"),
+            f(0x14, "cGlyphResult", "glyph"), f(0x28, "RECT", "dst", "bitmap px, x scaled at draw"),
+            f(0x38, "float", "subpixelX"));
+        struct("RetailInkHeader", 0x0C, "por_retail_font%u[_*].ink: 'PRIK', version 1, fontHeight, then u32 hash[256] "
+            + "(FNV-1a of original bitmap glyph mask per byte code). File size must be 0x40C",
+            f(0x0, "dword", "magic", "0x4B495250 'PRIK'"), f(0x4, "uint", "version"), f(0x8, "uint", "fontHeight"));
+        struct("RetailArialInkHeader", 0x10, "por_retail_font%u_arial.ink: 'PRIA', version 1, fontHeight, count, "
+            + "then count x {u32 code, u32 unicode, u32 hash} sorted by code",
+            f(0x0, "dword", "magic", "0x41495250 'PRIA'"), f(0x4, "uint", "version"), f(0x8, "uint", "fontHeight"),
+            f(0xC, "uint", "count"));
 
         // ---- game UI objects (partial)
         struct("cRenderTarget", 0x130, "vtable +0x54 = GetTargetSurface",
@@ -282,6 +299,39 @@ public class ApplyPoRAnnotations extends GhidraScript {
         }
     }
 
+    /** Clear a wrongly-set "No Return" flag and repair call-site fallthrough / caller bodies.
+        Disable Auto Analysis "Non-Returning Functions - Discovered" first, or it marks them again. */
+    void noReturnOff(long addr, String name) {
+        Address ad = a(addr);
+        Function f = getFunctionAt(ad);
+        if (f == null) { println("  ! noReturnOff: no function at " + ad); nErr++; return; }
+        if (isDefaultName(f.getName()) && name != null) {
+            try { f.setName(name, SourceType.USER_DEFINED); } catch (Exception e) { }
+        }
+        if (!f.hasNoReturn()) return;
+        f.setNoReturn(false);
+        Set<Function> callers = new HashSet<>();
+        for (Reference r : currentProgram.getReferenceManager().getReferencesTo(ad)) {
+            if (!r.getReferenceType().isCall()) continue;
+            Instruction ins = getInstructionAt(r.getFromAddress());
+            if (ins == null) continue;
+            ins.setFlowOverride(FlowOverride.NONE);
+            ins.clearFallThroughOverride();
+            Address ft = ins.getDefaultFallThrough();
+            if (ft != null && getInstructionAt(ft) == null && getDataAt(ft) == null) {
+                new ghidra.app.cmd.disassemble.DisassembleCommand(ft, null, true).applyTo(currentProgram, monitor);
+            }
+            Function c = getFunctionContaining(r.getFromAddress());
+            if (c != null) callers.add(c);
+        }
+        for (Function c : callers) {
+            try { ghidra.app.cmd.function.CreateFunctionCmd.fixupFunctionBody(currentProgram, c, monitor); }
+            catch (Exception e) { println("  ! fixup " + c.getName() + ": " + e); }
+        }
+        println("  noReturn cleared: " + f.getName() + " (" + callers.size() + " callers)");
+        nFunc++;
+    }
+
     void eol(long addr, String text) {
         try { setEOLComment(a(addr), text); nCmt++; }
         catch (Exception e) { println("  ! eol " + Long.toHexString(addr) + ": " + e); nErr++; }
@@ -353,6 +403,12 @@ public class ApplyPoRAnnotations extends GhidraScript {
     void applySneg() {
         refBase = 0x59460000L;
         String K = "[PoR] ";
+        // CRT functions wrongly marked noreturn -> decompiler cut off after every delete/new
+        noReturnOff(0x595D28FA, "operator_delete_sized");
+        noReturnOff(0x59467911, null);   // thunk of operator_delete_sized
+        noReturnOff(0x595D28CA, "operator_new");
+        noReturnOff(0x594A6C50, null);   // MakeChinaFont
+        fn(0x595DF551, "_invalid_parameter_noinfo_noreturn", null, null, null, null);
         // load / hook registration
         fn(0x594A42F0, "SNEG_Load", "__cdecl", "void", "uint* param", K + "called from ddraw.dll DllMain right after LoadLibraryA(sneg.dll)");
         fn(0x594A5840, "Sneg_Init", null, null, null, K + "SNEG_Load body: settings, language, then Sneg_RegisterAllHooks");
@@ -424,6 +480,37 @@ public class ApplyPoRAnnotations extends GhidraScript {
         fn(0x59514FB0, "Sneg_ApplyFontSettings", null, null, null, K + "swap original <-> TTF atlas when settings change");
         fn(0x59524690, "Sneg_GetHiResGlyphCache", null, null, null, K + "hi-res glyph cache for *_ani paths (retail fonts / heading face)");
         fn(0x5951B000, "Sneg_LoadRetailFonts", null, null, null, K + "sneg_ui/fonts/retail/por_retail_font%u.ttf/.ink, or %WINDIR%\\Fonts\\arial.ttf");
+
+        // retail fonts (.ink = per-byte fingerprint of the original bitmap glyph, NOT glyph data)
+        fn(0x5951B890, "RetailFont_LoadMain", null, null, null, K + "por_retail_font%u.ttf + .ink");
+        fn(0x59519240, "RetailFont_LoadTtfInk", null, null, null, K + "'PRIK' ink, size 0x40C, u32 hash[256]; then TTF -> variant list (+0x08)");
+        fn(0x5951A950, "RetailFont_LoadArialTtf", null, null, null, K + "%WINDIR%\\Fonts\\arial.ttf");
+        fn(0x5951ABD0, "RetailFont_LoadArialInk", null, null, null, K + "'PRIA' ink {code, unicode, hash} list (+0x1C), resets 256-byte check cache (+0x2C)");
+        fn(0x5951A6A0, "GlyphMask_Hash", "__cdecl", "uint", "int* mask", K + "FNV-1a over {w, h, 1-bit mask bytes}");
+        fn(0x59524460, "GlyphMask_FromFont", null, null, null, K + "cut glyph rect from cFont surface into {w, h, mask}");
+        fn(0x59519DF0, "RetailFont_RenderGlyph", null, null, null,
+            K + "code>0xFF fails. Use retail TTF only if GlyphMask_Hash(game glyph) == ink hash[code] (unmodified font); else bitmap fallback");
+        fn(0x59519490, "RetailFont_Advance", null, null, null, K + "retail TTF advance for unicode");
+        fn(0x5951A710, "RetailFont_Kerning", null, null, null, K + "retail TTF kerning pair");
+        fn(0x59523AD0, "Byte_ToUnicode", "__cdecl", "bool", "byte code, uint* out", K + "MultiByteToWideChar(codepage, 1 byte) - DBCS lead bytes fail");
+        fn(0x59524070, "HiRes_GetGlyphBitmap", null, null, null, K + "1-byte glyph: retail TTF (RetailFont_RenderGlyph) or scaled bitmap (FUN_59517040)");
+        fn(0x5952BC90, "HiRes_DrawCharItems", null, null, null,
+            K + "draw SnegCharItem list at (dst.x+subpixelX)*scale; isTTF -> GetChinaFontBitmap else HiRes_GetGlyphBitmap. Layout already done.");
+        fn(0x594A63D0, "GetChinaFontBitmap", null, null, null,
+            K + "DIB (width*scale x height*scale), TextOutW at x=0 (left aligned, clipped to china_pass width)");
+        fn(0x594A66A0, "ChinaFont_GetByHeight", null, null, null, K + "GDI font cache by pixel height (CreateFontW JhengHei/YaHei)");
+        fn(0x595272A0, "GameFontBridge_GetGlyph", null, null, null, K + "SNEG_RetailFontGlyphPoll: gamefont mode 1-bit glyph table, font 0..7 x code 0..255");
+        fn(0x59526D10, "GameFontBridge_Build", null, null, null, K + "build 256 glyphs x 0x220 per font via BridgeChineae_English");
+
+        // char item builders / wrap
+        fn(0x5952CC30, "KeyInput_BuildItemsChina", null, null, null,
+            K + "china_pass per char -> SnegCharMetric; hi-res: advance = RetailFont_Advance; wrap via Wrap_ItemsCJK (isChina) / Wrap_ItemsWord");
+        fn(0x5952D410, "KeyInput_BuildItems", null, null, null, K + "non-china KeyInput builder");
+        fn(0x5952D630, "CharItem_Push", null, null, null, K + "metric -> SnegCharItem (src = GetCharRect, or {0,0,w,h} if TTF)");
+        fn(0x594A71E0, "Wrap_ItemsCJK", "__cdecl", "void*", "void* outLines, void* metrics, uint byteLen, int maxWidth",
+            K + "break anywhere if charCode > 0x2E7F (Hangul too!), kinsoku tables 5960b118/5960b12c");
+        fn(0x594A7690, "Wrap_ItemsWord", "__cdecl", "void*", "void* outLines, void* metrics, uint count, int maxWidth",
+            K + "break at spaces. Loops metric index < count (caller passes byte length: unsafe with DBCS)");
 
         // settings
         fn(0x5957F090, "Sneg_LoadTextSettings", null, null, null,

@@ -25,15 +25,22 @@
 2. 스크립트를 Ghidra 사용자 스크립트 폴더(기본 `%USERPROFILE%\ghidra_scripts`)에 복사한다.
    - 폴더를 Ghidra 실행 중에 새로 만들었으면 Ghidra를 재시작하거나 Script Manager → Bundle Manager에서 새로고침
      (안 하면 `GhidraPlaceholderBundle cannot be cast` 오류).
-3. Script Manager의 `PoR_RoMD` 카테고리에서 `ApplyPoRAnnotations.java`를 **세 프로그램에서 각각** 실행한다.
+3. **sneg.dll은 먼저** Analysis → Auto Analyze 옵션에서 `Non-Returning Functions - Discovered`를 끈다.
+   - sneg.dll은 `operator delete`(0x595d28fa), `operator new`(0x595d28ca), `MakeChinaFont`가 noreturn으로 잘못 표시된다.
+     그러면 디컴파일이 delete/new 호출마다 `Subroutine does not return`으로 잘린다. 스크립트가 이 표시를 풀고 호출 지점을 다시 디스어셈블한다.
+   - 분석기를 켜 두면 다시 디스어셈블할 때 자동 분석이 돌면서 noreturn을 또 붙인다. 이미 붙었으면 끄고 스크립트를 한 번 더 실행.
+   - 보조 스크립트: `FixNoReturn.java list`로 noreturn 함수를 나열할 수 있다 (사용자 스크립트 폴더에만 있음, 필요하면 같은 방식으로 만든다).
+4. Script Manager의 `PoR_RoMD` 카테고리에서 `ApplyPoRAnnotations.java`를 **세 프로그램에서 각각** 실행한다.
    프로그램 이름(`por2main*`, `sneg*`, `ddraw*`)으로 적용할 표를 고른다. 콘솔에 `done: renamed N, signatures N, comments N, labels N, errors 0`이 나오면 정상.
-4. 각 프로그램을 저장한다 (Ctrl+S).
+5. 각 프로그램을 저장한다 (Ctrl+S).
 
 ## 스크립트가 하는 일
 
 - **구조체** (`/PoR` 카테고리, 매번 교체): `RECT`, `MsvcString`, `cGlyph`, `cCharCodeMap`, `cFont_vtable`, `cFont`,
   `cGlyphResult`, `cRenderTarget`, `CWidgetBase`, `CKeyInput`, `cTextLayout`, `cTextLabel`, `cTextManager`,
-  `SnegLanguageEntry`, `SnegLanguagesPollItem`, `SnegLanguagesPoll`, `SnegTextSettings`, `SuisHeader`.
+  `SnegLanguageEntry`, `SnegLanguagesPollItem`, `SnegLanguagesPoll`, `SnegTextSettings`, `SuisHeader`,
+  `SnegCharMetric`, `SnegCharItem`, `RetailInkHeader`, `RetailArialInkHeader`.
+- **noreturn 수정** (sneg.dll): 위 3번 참고.
   - 오프셋은 `PoR_RoMD_steam/por2.h`와 같다. 확인 안 된 영역은 비워 둠(undefined).
 - **함수 이름**: 이름이 `FUN_`/`DAT_`/`LAB_`인 경우에만 바꾼다. 직접 붙인 이름(예: `DrawMenu_59529ea0`)은 그대로 둔다.
 - **프로토타입**: `__thiscall`은 사용자 지정 저장소(this = ECX, 스택 인자는 +4부터)로 적용해서 `this` 타입이 구조체 포인터로 보인다.
@@ -54,6 +61,7 @@
 | sneg.dll | 0x594d0e00 | `int SNEG_LanguagesPoll(SnegLanguagesPoll* out)`, 본문에 `out->items[0].flags` |
 | sneg.dll | 0x59529c50 | `Sneg_DrawHMenu` |
 | sneg.dll | 0x595258b0 | `GetMenuTextScale`, EOL `PoR_RoMD patch: D9 EE C3` |
+| sneg.dll | 0x59519240 | `RetailFont_LoadTtfInk`, 디컴파일이 `operator_delete_sized` 뒤에서 잘리지 않음 |
 | ddraw.dll | 0x5972ba20 | `BuildCjkGlyphSet`, 주석에 `codepage 949 (0x3B5)` |
 
 ## 표를 고칠 때
