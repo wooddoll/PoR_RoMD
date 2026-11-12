@@ -833,6 +833,42 @@ static void __cdecl RetailRegister_Hook(void* p1, unsigned slot, float scale, vo
     g_origRetailRegister(p1, slot, scale, font, cp);
 }
 
+// FUN_59720180 (ddraw +0x40180): 글꼴(ImFont*) 마다 커닝 쌍 표를 만든다 — 글리프 N 개면 N*N 번 커닝 값을 묻는다.
+// 한글 2,600자가 들어간 크기별 글꼴 16개에서 이 단계가 6초 걸렸다 (FUN_59721df0 → FUN_59720180).
+// 한글은 커닝이 없고 마루 부리 커닝도 라틴끼리라서, 글리프 목록(ImFont: [8] 개수, [10] 40바이트 ImFontGlyph 배열,
+// 코드포인트 오름차순)을 U+2E80 앞까지로 잠시 줄여서 부른다. 정렬이 아니면(뒤에 U+2E80 미만이 있으면) 원래대로.
+typedef void(__cdecl* tBuildKerning)(uint32_t* font, int filterFn, int kernFn);
+static tBuildKerning g_origBuildKerning = nullptr;
+
+static void __cdecl BuildKerning_Hook(uint32_t* font, int filterFn, int kernFn)
+{
+    // 이 ddraw 의 글리프 배열은 코드포인트 순서가 아니므로, U+2E80 미만 글리프만 임시 배열에 모아
+    // 글리프 포인터/개수를 잠시 바꿔 부른다 (커닝 함수는 글리프의 코드포인트만 읽는다).
+    if (font && font[10] && static_cast<int>(font[8]) > 0) {
+        const uint32_t* glyphs = reinterpret_cast<const uint32_t*>(font[10]);
+        const int count = static_cast<int>(font[8]);
+        std::vector<uint32_t> latin;
+        latin.reserve(static_cast<size_t>(count) * 10);
+        for (int i = 0; i < count; ++i)
+            if ((glyphs[i * 10] & 0x7FFFFFFF) < 0x2E80)
+                latin.insert(latin.end(), glyphs + i * 10, glyphs + i * 10 + 10);
+        const int kept = static_cast<int>(latin.size() / 10);
+        static int s_logged = 0;
+        if (s_logged++ < 6)
+            PLOG_DEBUG << "[ddraw] kerning glyphs " << count << " -> " << kept << " (below U+2E80)";
+        if (kept > 0 && kept < count) {
+            const uint32_t savedData = font[10];
+            font[10] = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(latin.data()));
+            font[8] = static_cast<uint32_t>(kept);
+            g_origBuildKerning(font, filterFn, kernFn);
+            font[8] = static_cast<uint32_t>(count);
+            font[10] = savedData;
+            return;
+        }
+    }
+    g_origBuildKerning(font, filterFn, kernFn);
+}
+
 static void InstallUiFontHooks(uintptr_t base)
 {
     char ini[MAX_PATH], latin[16] = {};
@@ -873,6 +909,16 @@ static void InstallUiFontHooks(uintptr_t base)
     } else {
         PLOG_ERROR << "[ddraw] retail Latin overlay prologue mismatch";
     }
+    static const uint8_t kKernPro[] = { 0x55, 0x8B, 0xEC, 0x6A, 0xFF, 0x68, 0xCD, 0xEC };
+    void* kern = reinterpret_cast<void*>(base + 0x40180);
+    if (memcmp(kern, kKernPro, sizeof(kKernPro)) == 0) {
+        st = MH_CreateHook(kern, reinterpret_cast<void*>(&BuildKerning_Hook), reinterpret_cast<void**>(&g_origBuildKerning));
+        if (st == MH_OK) st = MH_EnableHook(kern);
+        PLOG_DEBUG << "[ddraw] kerning table (Latin only) hook status=" << st;
+    } else {
+        PLOG_ERROR << "[ddraw] kerning table prologue mismatch";
+    }
+
     static const uint8_t kDefaultPro[] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x04, 0x01, 0x00, 0x00 };
     void* addDefault = reinterpret_cast<void*>(base + 0xD7810);
     if (memcmp(addDefault, kDefaultPro, sizeof(kDefaultPro)) == 0) {
@@ -977,4 +1023,5 @@ void ApplyDDrawPatches(uintptr_t baseAddress)
 
     // 크기별 UI 글꼴을 마루 부리 + 한글로
     InstallUiFontHooks(baseAddress);
+
 }
