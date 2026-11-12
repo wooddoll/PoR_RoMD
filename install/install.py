@@ -261,6 +261,8 @@ def snegLanguageIni(gamePath):
     print(f"languages/{KO_LANG}/language.ini 를 만듭니다... ", end='')
     with open(os.path.join(getKoPath(gamePath), 'language.ini'), 'w', encoding='ascii', newline='\r\n') as f:
         f.write("[Language]\nCodePage=949\nRelease=Korean patch by wooddoll\n")
+        # 고해상도 TTF 글꼴 (version.dll china_glyph.cpp). TtfScale: 칸에 맞춘 크기의 %(50~150), TtfWeight: 100~900
+        f.write("\n[Font]\nTtfScale=100\nTtfWeight=400\n")
     print("ok")
     return True
 

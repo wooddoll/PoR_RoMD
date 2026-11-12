@@ -56,8 +56,8 @@ std::map<uint64_t, std::unique_ptr<CachedBitmap>> g_bitmapCache;    // 배율 1.
 std::map<uint64_t, std::unique_ptr<CachedBitmap>> g_ttfCache;       // 배율 > 1 (TTF)
 
 bool g_hiRes = false;       // 마커 파일에 hires (2단계)
-int  g_ttfScalePercent = 100;   // 마커 ttfscale=NN : 맞춘 글꼴 크기(em)에 곱하는 % (50~150)
-int  g_ttfWeight = FW_NORMAL;   // 마커 ttfweight=NNN : 100~900 (400 보통, 700 굵게)
+int  g_ttfScalePercent = 100;   // language.ini [Font] TtfScale : 맞춘 글꼴 크기(em)에 곱하는 % (50~150)
+int  g_ttfWeight = FW_NORMAL;   // language.ini [Font] TtfWeight : 100~900 (400 보통, 700 굵게)
 
 constexpr UINT kCodePage = 949;
 constexpr int  kRefHangul = 0xB0A1;     // '가'
@@ -444,11 +444,27 @@ static int ReadMarkerInt(const char* key, int def, int lo, int hi)
     return (v >= lo && v <= hi) ? v : def;
 }
 
+// languages\ko\language.ini [Font] 의 정수 값. 없거나 범위 밖이면 def
+static int ReadLanguageIniInt(const char* key, int def, int lo, int hi)
+{
+    char path[MAX_PATH];
+    DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
+    char* slash = (n > 0 && n < MAX_PATH) ? strrchr(path, '\\') : nullptr;
+    if (!slash || (slash - path) + 32 >= MAX_PATH)
+        return def;
+    lstrcpyA(slash + 1, "languages\\ko\\language.ini");
+    const int v = static_cast<int>(GetPrivateProfileIntA("Font", key, def, path));
+    return (v >= lo && v <= hi) ? v : def;
+}
+
 void InstallChinaGlyphHooks(uintptr_t snegBase, bool hiRes)
 {
     g_hiRes = hiRes;
-    g_ttfScalePercent = ReadMarkerInt("ttfscale=", 100, 50, 150);
-    g_ttfWeight = ReadMarkerInt("ttfweight=", FW_NORMAL, 100, 900);
+    // 기본값: languages\ko\language.ini [Font] TtfScale / TtfWeight. 마커 파일의 ttfscale= / ttfweight= 가 있으면 그쪽 (시험용)
+    g_ttfScalePercent = ReadLanguageIniInt("TtfScale", 100, 50, 150);
+    g_ttfWeight = ReadLanguageIniInt("TtfWeight", FW_NORMAL, 100, 900);
+    g_ttfScalePercent = ReadMarkerInt("ttfscale=", g_ttfScalePercent, 50, 150);
+    g_ttfWeight = ReadMarkerInt("ttfweight=", g_ttfWeight, 100, 900);
     PLOG_DEBUG << "[exp] ttf scale " << g_ttfScalePercent << "% weight " << g_ttfWeight;
     HookWithTrampoline(snegBase + 0x468D0, reinterpret_cast<void*>(&ChinaPass_Hook),
                        reinterpret_cast<void**>(&g_origChinaPass), "china_pass");

@@ -830,14 +830,24 @@ inline int NormalizeGlyphKey(int code)
 확인 결과: 메뉴/라벨/인벤토리 등 sneg 텍스트 경로가 모두 마루 부리 TTF 로 나오고 크기도 적당. DM 대사 상자와 새 UI 툴팁은 ddraw ImGui 글꼴이라 변화 없음(3단계 대상).
 로그 예 (FHD 창모드, 배율 1.653): `ttf font cell 22 hangulW 17 -> em 16 tmHeight 21`, `cell 30 hangulW 22 -> em 22`, `cell 27 hangulW 20 -> em 20`, `cell 47 hangulW 35 -> em 35`.
 
-**글자 크기/굵기 조절** (게임 폴더 `kr_native_test.txt` 에 줄 추가, 재시작하면 적용, 빌드 불필요)
+**글자 크기/굵기 조절** (재시작하면 적용, 빌드 불필요)
+
+게임 폴더 `languages\ko\language.ini` 의 `[Font]` (설치 스크립트 `install.py` `snegLanguageIni` 가 기본값으로 만든다):
+
+```ini
+[Font]
+TtfScale=100
+TtfWeight=400
+```
 
 | 키 | 기본 | 범위 | 효과 |
 |---|---|---|---|
-| `ttfscale=NN` | 100 | 50~150 | 칸에 맞춘 em 에 NN% 를 곱한다. 작게 보이면 105~110, 크면 90~95. 100 초과는 칸(특히 위아래)을 넘어 잘릴 수 있다 |
-| `ttfweight=NNN` | 400 | 100~900 | GDI 굵기. 700 = 굵게. 마루 부리 파일은 Regular 하나라 700 은 GDI 가 합성 굵게 만든다 |
-| `hires` | 없음 | | 2단계 켜기 |
-| 첫 줄 숫자 (예 `71`) | 71 | 50~150 | sneg 원래 china 렌더(`CreateFontW` 훅)의 글꼴 비율. 2단계 우리 렌더에는 영향 없음 (아틀라스에 없는 글자만 원래 렌더로 감) |
+| `TtfScale` | 100 | 50~150 | 칸에 맞춘 em 에 % 를 곱한다. 작게 보이면 105~110, 크면 90~95. 100 초과는 칸(특히 위아래)을 넘어 잘릴 수 있다 |
+| `TtfWeight` | 400 | 100~900 | GDI 굵기. 700 = 굵게. 마루 부리 파일은 Regular 하나라 700 은 GDI 가 합성 굵게 만든다 |
+
+시험용으로 마커 파일 `kr_native_test.txt` 에 `ttfscale=NN` / `ttfweight=NNN` 줄을 넣으면 language.ini 보다 우선한다.
+마커의 `hires` 는 2단계 켜기, 첫 줄 숫자(예 `71`, 50~150)는 sneg 원래 china 렌더(`CreateFontW` 훅)의 글꼴 비율로
+2단계 우리 렌더에는 영향 없음(아틀라스에 없는 글자만 원래 렌더로 감).
 
 - 적용값은 `error.log` 의 `[exp] ttf scale NN% weight NNN` 과 `[exp] ttf font cell … -> em …` 에서 확인.
 - 코드에서 바꾸려면 `china_glyph.cpp` 의 `GetTtfFont`(칸 맞춤 규칙), `MakeTtfFont`(글꼴 속성), `BuildTtfGlyph`(가운데 정렬 `x`, `y`). 세로 위치만 옮기려면 `y = (ch - tmHeight) / 2` 에 오프셋을 더하면 된다.
