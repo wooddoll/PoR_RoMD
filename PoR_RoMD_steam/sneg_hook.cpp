@@ -2,6 +2,7 @@
 
 #include <MinHook.h>
 #include <algorithm>
+#include <map>
 #include <vector>
 #include "help_util.h"
 
@@ -644,25 +645,90 @@ static char            g_uiFontPath[MAX_PATH] = {};
 static bool            g_uiLatinMaru = true;
 static std::vector<uint16_t> g_uiRanges;
 // 크기별 조절: language.ini [UiFontSizes] 의 "요청 px(반올림)=쓸 px".
+//  - 아틀라스: AddFontFromFileTTF 를 쓸 px 로 (선명도)
+//  - 그리기/측정: FUN_5978a0c0 (글꼴 정보 {kind, slot, scale, font, 래스터 px, 그릴 px}) 의 그릴 px 에 쓸 px / 요청 px 를 곱한다
+//    (ImGui 는 그릴 px / font->FontSize 로 축소·확대하므로 아틀라스만 바꾸면 보이는 크기는 그대로다)
 // 목록에 없는 크기는 처음 만날 때 "N=N" 으로 자동 추가한다 → ini 에 전체 목록이 생기고 값만 고치면 된다.
 // 값이 키와 같으면 원래 크기(소수점 포함) 그대로.
+static std::map<int, int> g_uiSizeMap;      // 시작할 때 ini 에서 한 번 읽는다 (매 프레임 파일 읽기 방지)
+
+static void LoadUiSizeMap()
+{
+    char ini[MAX_PATH];
+    if (!GetKoLanguageIni(ini, MAX_PATH))
+        return;
+    std::vector<char> sec(16 * 1024);
+    const DWORD n = GetPrivateProfileSectionA("UiFontSizes", sec.data(), static_cast<DWORD>(sec.size()), ini);
+    for (const char* p = sec.data(); p < sec.data() + n && *p; p += strlen(p) + 1) {
+        const int k = atoi(p);
+        const char* eq = strchr(p, '=');
+        const int v = eq ? atoi(eq + 1) : 0;
+        if (k > 0 && v >= 6 && v <= 96)
+            g_uiSizeMap[k] = v;
+    }
+    PLOG_DEBUG << "[ddraw] UI font size map: " << g_uiSizeMap.size() << " entries";
+}
+
+// 요청 px → 쓸 px (없으면 ini 에 N=N 추가 후 그대로)
 static float AdjustUiFontSize(float size)
 {
     const int key = static_cast<int>(size + 0.5f);
     if (key <= 0)
         return size;
-    char ini[MAX_PATH], k[16];
-    if (!GetKoLanguageIni(ini, MAX_PATH))
-        return size;
-    wsprintfA(k, "%d", key);
-    const int v = static_cast<int>(GetPrivateProfileIntA("UiFontSizes", k, -1, ini));
-    if (v < 0) {
-        WritePrivateProfileStringA("UiFontSizes", k, k, ini);
+    auto it = g_uiSizeMap.find(key);
+    if (it == g_uiSizeMap.end()) {
+        g_uiSizeMap[key] = key;
+        char ini[MAX_PATH], k[16];
+        if (GetKoLanguageIni(ini, MAX_PATH)) {
+            wsprintfA(k, "%d", key);
+            WritePrivateProfileStringA("UiFontSizes", k, k, ini);
+        }
         return size;
     }
-    if (v == key || v < 6 || v > 96)
-        return size;
-    return static_cast<float>(v);
+    return (it->second == key) ? size : static_cast<float>(it->second);
+}
+
+// FUN_5978a750 (ddraw +0xAA750): ImFont* (글꼴정보* info, float* outSize)
+//   그리기(FUN_59789850)와 측정(FUN_59789c70)이 모두 이 함수로 글꼴과 그릴 px 를 얻는다.
+//   보통은 outSize = info[4](요청 px), retail 슬롯은 retail 높이 * 배율 / 0.7 로 다시 계산.
+//   돌려준 글꼴은 그 요청 px 로 등록된 것(아틀라스는 위 훅이 쓸 px 로 만듦)이므로 outSize 만 쓸 px 로 바꾼다.
+typedef void* (__cdecl* tUiFontForDraw)(uint32_t* info, float* outSize);
+static tUiFontForDraw g_origUiFontForDraw = nullptr;
+
+static void* __cdecl UiFontForDraw_Hook(uint32_t* info, float* outSize)
+{
+    void* font = g_origUiFontForDraw(info, outSize);
+    if (outSize && *outSize > 0.0f && g_uiFontPath[0])
+        *outSize = AdjustUiFontSize(*outSize);
+    return font;
+}
+
+// 인라인 아이콘(마우스 버튼 등) 이 들어 있는 글(FUN_5973b4c0 참)은 FUN_5978a750 을 거치지 않고
+// 글꼴정보의 글꼴/요청 px 를 그대로 넘긴다 → 같은 크기 표를 여기서도 적용 (영문 DM 대사 등)
+//   FUN_5973b530 (+0x5B530) 그리기: (out, drawList, font, size, x, y, color, text, wrap)
+//   FUN_5973b6d0 (+0x5B6D0) 측정  : (out, font, size, text, wrap)
+//   FUN_5973b750 (+0x5B750) 1차 줄바꿈: (out, font, size, text, wrap)
+typedef void* (__cdecl* tIconTextDraw)(void* out, void* dl, void* font, float size, float x, float y, float color, const char* text, float wrap);
+typedef void* (__cdecl* tIconTextMeasure)(void* out, void* font, float size, const char* text, float wrap);
+static tIconTextDraw    g_origIconTextDraw = nullptr;
+static tIconTextMeasure g_origIconTextMeasure = nullptr;
+static tIconTextMeasure g_origIconTextWrap = nullptr;
+
+static float MapUiSize(float size)
+{
+    return (size > 0.0f && g_uiFontPath[0]) ? AdjustUiFontSize(size) : size;
+}
+static void* __cdecl IconTextDraw_Hook(void* out, void* dl, void* font, float size, float x, float y, float color, const char* text, float wrap)
+{
+    return g_origIconTextDraw(out, dl, font, MapUiSize(size), x, y, color, text, wrap);
+}
+static void* __cdecl IconTextMeasure_Hook(void* out, void* font, float size, const char* text, float wrap)
+{
+    return g_origIconTextMeasure(out, font, MapUiSize(size), text, wrap);
+}
+static void* __cdecl IconTextWrap_Hook(void* out, void* font, float size, const char* text, float wrap)
+{
+    return g_origIconTextWrap(out, font, MapUiSize(size), text, wrap);
 }
 
 static bool EndsWithI(const char* s, const char* suffix)
@@ -722,18 +788,37 @@ static bool BuildUiRanges()
     return !buf.empty();
 }
 
+// 같은 아틀라스에서 같은 px(반올림)로 이미 만든 UI 글꼴은 다시 만들지 않고 돌려준다 (시작 시간·아틀라스 크기 절약).
+// 아틀라스를 새로 만들 때마다 처음 부르는 AddFontDefault(FUN_597b7810) 에서 비운다.
+typedef void* (__fastcall* tAddFontDefault)(void* atlas, void* edx, const void* cfg);
+static tAddFontDefault g_origAddFontDefault = nullptr;
+static std::map<std::pair<void*, int>, void*> g_uiFontCache;
+
+static void* __fastcall AddFontDefault_Hook(void* atlas, void* edx, const void* cfg)
+{
+    g_uiFontCache.clear();
+    return g_origAddFontDefault(atlas, edx, cfg);
+}
+
 static void* __fastcall AddFontTTF_Hook(void* atlas, void* edx, const char* path, float size, void* cfg, const uint16_t* ranges)
 {
     const char* usePath = path;
     const uint16_t* useRanges = ranges;
     float useSize = size;
     const bool swap = path && g_uiFontPath[0] && EndsWithI(path, "PoRGothic-Regular.ttf") && BuildUiRanges();
+    std::pair<void*, int> cacheKey(atlas, 0);
     if (swap) {
         usePath = g_uiFontPath;
         useRanges = g_uiRanges.data();
         useSize = AdjustUiFontSize(size);
+        cacheKey.second = static_cast<int>(useSize + 0.5f);
+        auto it = g_uiFontCache.find(cacheKey);
+        if (it != g_uiFontCache.end())
+            return it->second;
     }
     void* font = g_origAddFontTTF(atlas, edx, usePath, useSize, cfg, useRanges);
+    if (swap && font)
+        g_uiFontCache[cacheKey] = font;
     static int s_logged = 0;
     if (s_logged++ < 64)
         PLOG_DEBUG << "[ddraw] AddFontFromFileTTF " << (path ? path : "(null)") << " " << size << "px"
@@ -763,6 +848,8 @@ static void InstallUiFontHooks(uintptr_t base)
         }
     }
 
+    LoadUiSizeMap();
+
     static const uint8_t kAddFontPro[] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x08, 0x01, 0x00, 0x00 };
     static const uint8_t kRetailPro[]  = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x57, 0x8B, 0x7D, 0x08 };
     void* addFont = reinterpret_cast<void*>(base + 0xD7A30);
@@ -785,6 +872,42 @@ static void InstallUiFontHooks(uintptr_t base)
         PLOG_DEBUG << "[ddraw] retail Latin overlay hook status=" << st << ", UiLatin=" << (g_uiLatinMaru ? "maru" : "retail");
     } else {
         PLOG_ERROR << "[ddraw] retail Latin overlay prologue mismatch";
+    }
+    static const uint8_t kDefaultPro[] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x04, 0x01, 0x00, 0x00 };
+    void* addDefault = reinterpret_cast<void*>(base + 0xD7810);
+    if (memcmp(addDefault, kDefaultPro, sizeof(kDefaultPro)) == 0) {
+        st = MH_CreateHook(addDefault, reinterpret_cast<void*>(&AddFontDefault_Hook), reinterpret_cast<void**>(&g_origAddFontDefault));
+        if (st == MH_OK) st = MH_EnableHook(addDefault);
+        PLOG_DEBUG << "[ddraw] AddFontDefault (UI font cache reset) hook status=" << st;
+    } else {
+        PLOG_ERROR << "[ddraw] AddFontDefault prologue mismatch";
+    }
+
+    struct IconHook { uint32_t off; uint8_t pro[6]; void* detour; void** orig; const char* name; };
+    const IconHook iconHooks[] = {
+        { 0x5B530, { 0x55, 0x8B, 0xEC, 0x6A, 0xFF, 0x68 }, reinterpret_cast<void*>(&IconTextDraw_Hook),    reinterpret_cast<void**>(&g_origIconTextDraw),    "icon text draw" },
+        { 0x5B6D0, { 0x55, 0x8B, 0xEC, 0x8B, 0x45, 0x0C }, reinterpret_cast<void*>(&IconTextMeasure_Hook), reinterpret_cast<void**>(&g_origIconTextMeasure), "icon text measure" },
+        { 0x5B750, { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08 }, reinterpret_cast<void*>(&IconTextWrap_Hook),    reinterpret_cast<void**>(&g_origIconTextWrap),    "icon text wrap" },
+    };
+    for (const IconHook& h : iconHooks) {
+        void* target = reinterpret_cast<void*>(base + h.off);
+        if (memcmp(target, h.pro, sizeof(h.pro)) != 0) {
+            PLOG_ERROR << "[ddraw] " << h.name << " prologue mismatch";
+            continue;
+        }
+        st = MH_CreateHook(target, h.detour, h.orig);
+        if (st == MH_OK) st = MH_EnableHook(target);
+        PLOG_DEBUG << "[ddraw] " << h.name << " size hook status=" << st;
+    }
+
+    static const uint8_t kDrawPro[] = { 0x55, 0x8B, 0xEC, 0x56, 0x8B, 0x75, 0x08, 0x57, 0x8B, 0x7D, 0x0C };
+    void* forDraw = reinterpret_cast<void*>(base + 0xAA750);
+    if (memcmp(forDraw, kDrawPro, sizeof(kDrawPro)) == 0) {
+        st = MH_CreateHook(forDraw, reinterpret_cast<void*>(&UiFontForDraw_Hook), reinterpret_cast<void**>(&g_origUiFontForDraw));
+        if (st == MH_OK) st = MH_EnableHook(forDraw);
+        PLOG_DEBUG << "[ddraw] UI font draw size hook status=" << st;
+    } else {
+        PLOG_ERROR << "[ddraw] UI font draw size prologue mismatch";
     }
 }
 

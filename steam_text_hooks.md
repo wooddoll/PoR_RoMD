@@ -885,7 +885,17 @@ TtfWeight=400
 - `RetailRegister_Hook`: `UiLatin=maru`(기본)이면 비트맵 라틴 덮어쓰기 등록을 건너뜀. `retail` 이면 원래대로(영문은 게임 비트맵, 한글만 크기별).
 - 크기별 조절 `[UiFontSizes]`: 키 = 요청 px 반올림, 값 = 쓸 px(6~96). 값이 키와 같으면 원래 크기(소수점) 그대로.
   목록에 없는 크기는 처음 만날 때 `N=N` 으로 자동 추가(`WritePrivateProfileString`) → 해상도가 바뀌어도 새 크기가 채워진다.
+  표는 시작할 때 한 번 읽어 메모리에 둔다(`LoadUiSizeMap`).
   FHD 창모드 목록: 17 18 19 20 21 22 23 24 25 26 27 28 30 38 40 42. 가장 큰 쪽(38~42)이 캐릭터 이름 등, 가장 작은 쪽이 작은 설명 글.
+  - 아틀라스만 쓸 px 로 만들면 보이는 크기는 그대로다(UI 가 요청 px 로 그리고 ImGui 가 그릴 px / FontSize 로 줄임). 그래서 그릴 px 도 바꾼다:
+    - `FUN_5978a750`(`+0xAA750`) `ImFont* (글꼴정보*, float* outSize)`: 그리기(`FUN_59789850`)·측정(`FUN_59789c70`)이 글꼴과 그릴 px 를 얻는 곳.
+      보통 outSize = 글꼴정보[4](요청 px), retail 슬롯은 retail 높이 * 배율 / 0.7. → outSize 에 표 적용.
+      (글꼴정보 = `FUN_5978a0c0` 의 {kind, slot, scale, font, 요청 px, retail 그릴 px} — [5] 는 그리기에 안 쓰여서 여기를 바꾸면 효과 없음)
+    - 인라인 아이콘(마우스 버튼 등)이 있는 글(`FUN_5973b4c0` 참, 튜토리얼 영문 DM 대사 등)은 위 함수를 안 거치고 요청 px 를 직접 넘긴다 →
+      `FUN_5973b530`(`+0x5B530` 그리기), `FUN_5973b6d0`(`+0x5B6D0` 측정), `FUN_5973b750`(`+0x5B750` 1차 줄바꿈) 의 size 인자에도 표 적용.
+    - 주의: 바뀐 크기가 다시 이 함수들로 들어오는 곳이 있으면 두 번 적용될 수 있다(바뀐 px 의 줄을 `N=N` 으로 두면 문제없음).
+- 같은 아틀라스에서 같은 px(반올림)의 UI 글꼴은 다시 만들지 않고 돌려준다(약 25 → 16개, 시작 시간 단축).
+  캐시는 아틀라스를 만들 때마다 처음 부르는 `AddFontDefault`(`FUN_597b7810`, `+0xD7810`) 훅에서 비운다.
 - 로그: `[ddraw] AddFontFromFileTTF … NNpx -> UI font MM`, `[ddraw] UI font ranges: N chars`.
 - 이 경로가 되면 위 48px 한 크기 한글 글꼴(`UiFontSize`/`UiFontMultiply`)은 사실상 쓰이지 않는다(대비용으로 남김).
 
