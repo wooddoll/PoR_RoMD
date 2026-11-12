@@ -3,6 +3,13 @@
 `PoR_RoMD_steam` 한글 패치 작업 중 Ghidra(por2main.exe / sneg.dll / ddraw.dll)로 분석한 내용 정리.
 주소는 Ghidra 기준: **por2main.exe** = 0x00400000, **sneg.dll** = 0x59460000 (코드에서는 `MB(오프셋)`), **ddraw.dll** = 0x596e0000.
 
+> **주소 읽는 법 (중요)**: sneg.dll 은 Ghidra 이미지 베이스를 중간에 바꿔서 절마다 기준이 다르다.
+> - 1~9절: sneg = `0x59460000` (`FUN_594xxxxx` / `FUN_595xxxxx`)
+> - 10절 이후: sneg = `0x561b0000` (`FUN_561xxxxx` / `FUN_562xxxxx` / `FUN_563xxxxx`)
+> - 예: 같은 함수가 `FUN_5952a050`(1~9절) = `FUN_5627a050`(14절). **오프셋 = 주소 − 그 절의 베이스**는 같다.
+> - ddraw 는 계속 `0x596e0000`, exe 는 `0x00400000`. 실행 중 주소는 `error.log`의 `[SNEG.DLL] baseAddress`로 환산.
+> - 다른 PC에서는 베이스가 또 다를 수 있으니 오프셋(RVA)으로 찾는다. `ghidra_scan/ApplyPoRAnnotations.java`는 RVA 기준이라 영향 없음.
+
 ---
 
 ## 1. 로드 순서와 훅 시점
@@ -409,6 +416,7 @@ vtable +0x20 / +0x4c …    → 위젯 폭/높이(+0x30/+0x34)를 서피스 크�
   - SNEG판은 exe 검사(`exe_test.json`)를 건너뛰고 `sneg.dll` 존재만 확인.
   - 남은 것: `install/Data/version_sneg.dll` 넣기, OFL 라이선스 파일, `Data/Interface`(zh-hant에 있던 `Main.bmp`) 처리 여부,
     Steam판 영어 sfDat(1.4, 200034 바이트)와 한국어 sfDat(2001 기준)의 문자열 수 차이(`[Strings] Map=`) 확인.
+    → sfDat 헤더에 문장마다 오프셋이 있어서 id 어긋남 문제는 없을 것으로 봄 (2026-11-12).
 
 ## 12. 배포판에서 빼거나 바꿀 것
 
