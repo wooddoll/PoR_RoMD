@@ -22,7 +22,7 @@ import sneg_ui_strings as suis
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 JSON_PATH = os.path.join(HERE, '..', 'translation', 'sneg_ui_strings_ko.json')
-TOKEN_RE = re.compile(r'\[[A-Z][A-Z0-9_]*\]')
+TOKEN_RE = re.compile(r'\[[A-Z][A-Z0-9_]*\]|\{[A-Za-z_][A-Za-z0-9_]*\}|%[sd]')   # 아이콘 토큰, {name} 자리표시자, %s/%d
 TUT_RE = re.compile(r'^ui\.tutorial\.(kbm|pad)\.([a-z0-9]+)\.([a-z0-9]+)$')
 
 

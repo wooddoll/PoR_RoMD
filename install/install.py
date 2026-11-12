@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 import shutil
 from tkinter import Tk, filedialog
 
@@ -320,9 +321,20 @@ def snegUiStrings(gamePath):
     key = f'ui.settings.language.{KO_LANG}'
     items = [it for it in items if it[0] != key]
     items.append([key, 65001, '한국어'.encode('utf-8')])
+    # 한국어 번역 (translation/sneg_ui_strings_ko.json 을 Data 에 넣어 둔 것, install/sneg_ui_ko.py 로 관리).
+    # 게임 쪽 영어 원문이 번역할 때의 영어와 같은 항목만 바꾼다 → SNEG 업데이트로 문구가 바뀌면 새 영어를 그대로 둔다.
+    translated = 0
+    trPath = os.path.join(embedded_data_path, 'sneg_ui_strings_ko.json')
+    if os.path.isfile(trPath):
+        tr = {t['key']: t for t in json.load(open(trPath, encoding='utf-8')) if t.get('ko')}
+        for it in items:
+            t = tr.get(it[0])
+            if t and sneg_ui_strings.text(it[1], it[2]) == t['en']:
+                it[1], it[2] = 65001, t['ko'].encode('utf-8')
+                translated += 1
     items.sort(key=lambda it: it[0])
     sneg_ui_strings.save(os.path.join(getKoPath(gamePath), 'sneg_ui_strings.dat'), KO_LANG, items)
-    print("ok")
+    print(f"ok (번역 {translated}/{len(items)})")
     return True
 
 

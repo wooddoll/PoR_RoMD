@@ -287,7 +287,14 @@ por2main.exe 정적 import
 처음 세운 계획과 진행 상태:
 
 1. ✅ `languages\ko\language.ini` 추가: `[Language]` `CodePage=949`.
-2. ✅ `languages\ko\sneg_ui_strings.dat` 추가. 지금은 번역 없이 루트 영어 dat에 언어 이름 키만 더함 (UI 문자열 번역은 남음).
+2. ✅ `languages\ko\sneg_ui_strings.dat` 추가 + **번역 완료 (2026-11-13, 711/711)**.
+   - 새 UI 튜토리얼 대사(`ui.tutorial.kbm|pad.<대사파일>.<줄ID>`, `[MOUSE_LEFT]` 등 아이콘 토큰 포함, 184개),
+     설정창(`ui.settings.*` 250), 업적, 행동 미리보기, 안내 문구, retail_fill(원작 대사/문자열 보충) 등 전부.
+   - 번역 원본 `translation/sneg_ui_strings_ko.json`(gitignore), 도구 `install/sneg_ui_ko.py` (extract/apply/build/status).
+     build 는 아이콘 토큰·`{name}`·`%d` 일치를 확인하고 UI 글꼴 글자 목록에 없는 글자를 추가한다.
+   - 설치(`install.py snegUiStrings`): 루트 영어 dat 를 바탕으로, 영어 원문이 번역 당시와 같은 항목만 한국어로 바꾼다
+     (SNEG 업데이트로 문구가 바뀐 항목은 새 영어 유지). JSON 은 `install/Data/sneg_ui_strings_ko.json` 으로 함께 묶는다.
+   - 메뉴 단축 글자는 `[S]` 대신 `(S)` 로 쓴다 (`[A-Z]` 대괄호는 아이콘 토큰과 겹침).
 3. ✅ ddraw의 949 분기를 한국어용으로 돌림 (version.dll 패치, 11절):
    문자 목록 경로 → `languages/ko/sneg_ui_cjk_characters.txt`, 글꼴 `msjh.ttc` → `languages\ko\MaruBuri-Regular.ttf` (없으면 맑은 고딕).
 4. ⬜ 다른 언어가 선택된 상태의 언어 이름 `한국어`: 루트 dat에는 `ui.settings.language.ko` 키가 없으므로
@@ -1028,6 +1035,9 @@ TtfWeight=400
 - 번역 데이터 다시 빌드: 전각→반각 정규화(`kr_text.py`)를 스크립트에 넣었지만 실제 데이터 재생성은 미확인.
 - `restore_dialogues.py` 빈 항목 인덱스 어긋남 위험 (예전에 지적, 미수정).
 - UI 글꼴을 한 실행에 두 번 만든다(각 1초 남짓). 필요하면 두 번째를 피하는 방법 조사.
+
+### 3-1. 새 UI 문자열 번역 — 완료 (2026-11-13), 게임 확인 필요
+- `sneg_ui_strings.dat` 711개 번역(9절). 튜토리얼 아이콘 위치, 설정창 글자 넘침을 게임에서 확인.
 
 ### 4. 개인 시험 환경 (배포와 무관)
 - `%LOCALAPPDATA%\SNEG\POR2\config.ini` 를 1920×1080 창모드(`[Video] Mode=1`)로 바꿔 둠. 원본 `config.ini.before_windowed`.
