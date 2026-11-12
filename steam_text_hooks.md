@@ -12,6 +12,59 @@
 
 ---
 
+## 0. 한글 출력 경로 한눈에 보기 (2026-11-12 정리)
+
+화면에 한글을 그리는 곳은 세 군데다. **기본은 A(비트맵 + 우리 훅)**이고, B(중국어 방식)는 실험 모드에서만 켜진다.
+
+| 경로 | 그리는 대상 | 글꼴 | 상태 |
+|---|---|---|---|
+| **A. 게임 cFont 비트맵 + 우리 훅** | 대화, 메뉴, 라벨, 입력창, 게임 툴팁 | 병합 비트맵 아틀라스 (`font0~4.bmp`, 한글 2바이트 키) | **기본** |
+| **B. sneg china 실시간 렌더** | A와 같은 게임 텍스트 | Windows TTF를 GDI로 즉석 렌더 | 실험 모드(`kr_native_test.txt`)에서만 (14절) |
+| **C. ddraw ImGui 오버레이** | 새 UI: 첫 화면, 반투명 창 툴팁, 설정창, 지도 툴팁 | ImGui TTF 아틀라스 (마루 부리 → 맑은 고딕) | **항상** (Prototype UI가 켜져 있을 때, 11절) |
+
+- C도 TTF라서 중국어 방식처럼 보이지만 B와는 별개다. 첫 화면이 매끈한 글꼴로 나오는 건 C 때문이다.
+- 950→949 패치(11절)는 항상 켜져 있다. 이 패치는 **C** 때문에 필요하다(ImGui CJK 글꼴과 글자 목록).
+  B 쪽 isChina 분기는 아래 "A에서 B를 막는 방법"으로 막혀 있다.
+
+### 중국어 방식(B)의 동작
+
+SNEG가 번체 중국어(코드페이지 950)용으로 넣은 경로다. **게임 레이아웃은 그대로 두고, 글자 이미지만 TTF로 바꿔 끼우는** 구조다.
+
+1. **켜지는 조건**: `isChina`(`FUN_562b6690`)는 코드페이지가 950이면 참이다. 950→949 패치 뒤에는 949에서도 참이다.
+2. **고해상도 경로 선택**: 그리기 함수(DrawMenu, DrawTextLines, 라벨 등)가 배율 함수를 부르고, 배율이 0보다 크면 `*_ani`(D3D 고해상도) 경로로 간다.
+   - `FUN_562758b0` (+0xC58B0, 메뉴 계열): `ScaledEngineText || isChina`이고, 창 배율이 1.01 이상일 때.
+   - `FUN_56275830` (+0xC5830, cTextLayout과 라벨): isChina는 보지 않는다. `ScaledEngineText=1`이어야 한다.
+3. **한 글자 렌더**: `china_pass`(`FUN_561f68d0`)가 1바이트씩 보다가, 리드 바이트를 만나면 처리한다.
+   - `MultiByteToWideChar`로 한 글자를 UTF-16으로 바꾼다.
+   - `FUN_561f66a0`이 높이별 GDI 글꼴을 캐시한다. 원본 글꼴은 `Microsoft JhengHei`(CHINESEBIG5)이고, 없으면 `Microsoft YaHei`.
+   - `FUN_561f63d0`이 `TextOutW`로 DIB에 그려 글리프 캐시에 넣는다. 폭은 `GetTextExtentPoint32W`로 잰다.
+   - 영문 등 1바이트 문자는 기존 비트맵 글리프를 확대해서 쓴다.
+4. **합성**: 고해상도에서는 D3D 쪽 큰 서피스에 그린다.
+   저해상도(`FUN_561f6c50`)에서는 800×600 서피스에 그린 뒤 확대한다. 알파를 `> 0x7F`로 이진화해서 크고 거칠다.
+5. **줄바꿈**: sneg WordWrap(`+0x47F70`)은 isChina면 TTF 폭으로 줄을 나눈다.
+   반면 게임 cTextManager의 줄 분할과 박스 크기 계산은 비트맵 폭 그대로다.
+
+실험 모드에서 바꾸는 것: 글꼴(마루 부리, HANGUL_CHARSET, 확인 문자 U+AC00, 대체 맑은 고딕), `CreateFontW` 높이에 배율(기본 71%) 적용, DrawMenu 그룹 재등록. 우리 텍스트 훅과 배율 0 고정은 끈다.
+
+**보류한 이유**:
+- **두 번 줄바꿈**: 비트맵 폭으로 한 번, TTF 폭으로 또 한 번 나눈다. 그래서 짧은 줄이 끼고 잘린다. FontMetrics를 켜도 해결 안 됨.
+- **글꼴이 섞임**: 대화 속 영문은 비트맵을 확대한 글자라 TTF와 섞여 일관성이 없다.
+- **설정 의존**: 대화/라벨을 고해상도로 그리려면 `ScaledEngineText=1`이 필요하다.
+
+### A에서 B를 막는 방법
+
+- 배율 함수 두 개를 `fldz; ret`(0 반환)으로 고정한다. 그러면 `*_ani`, china 렌더, retail 폰트가 실행되지 않는다(3절, 7절).
+- sneg 대체 함수 7개를 우리 훅으로 바꾼다: DrawMenu, DrawTextLines, HMenu, TextLabel, WordWrap, RenderShadow, KeyInput.
+  그래서 isChina가 참이어도 글자는 우리 코드가 그린다(2절, 5절).
+
+### 지금 어느 모드인지 확인
+
+- `error.log`에 `[exp] native CJK test mode = 1`이면 B, `= 0`이면 A.
+- 게임 폴더에서 `kr_native_test.txt`를 지우면 A로 돌아간다.
+  B를 시험하면서 `config.ini [Text] ScaledEngineText=1`로 바꿨다면 `config.ini.before_scaled`로 되돌린다.
+
+---
+
 ## 1. 로드 순서와 훅 시점
 
 ```
