@@ -873,6 +873,22 @@ TtfWeight=400
   크기를 줄일수록 툴팁↑ 대사↓ 라서 중간값으로 맞춘다. 로그 `[ddraw] UI CJK font size Npx, rasterizer multiply M%`.
 - 근본 해결(미구현): 라틴 글꼴처럼 UI 가 쓰는 크기마다 한글 글꼴을 넣기(크기별 base 글꼴에 MergeMode 로).
 
+### 3단계 후속 (2026-11-13, 게임 확인): UI 크기별 글꼴을 마루 부리 + 한글로
+
+`config.ini [Text] *Font=retailfont` 는 ddraw 의 "type 3": UI 가 쓰는 크기마다(FHD 에서 16.5~42px, 약 25개)
+`FUN_597b7a30(atlas, "sneg_ui/fonts/PoRGothic-Regular.ttf", 크기, cfg, 범위)`(= ImGui `AddFontFromFileTTF`, ddraw `+0xD7A30`)로 넣고,
+`FUN_59727010`(`+0x47010`)으로 등록해 retail(.ink) 비트맵 라틴 글자를 확대해 덮어쓴다. (`*Font` 값: `builtin` 0, `gamefont` 1,
+`PoRGothic-Regular.ttf` 2(cp 0/1252/1250 만), 그 밖 3 — `FUN_5971d860`)
+
+`sneg_hook.cpp` `InstallUiFontHooks` (MinHook, 두 모드 공통):
+- `AddFontTTF_Hook`: 경로가 PoRGothic 이면 → `languages\ko\<UiFontFile>`, 범위 → 라틴(0x20~0x7E, 0xA0~0xFF) + `sneg_ui_cjk_characters.txt`(2429자) → 크기마다 마루 부리 영문+한글.
+- `RetailRegister_Hook`: `UiLatin=maru`(기본)이면 비트맵 라틴 덮어쓰기 등록을 건너뜀. `retail` 이면 원래대로(영문은 게임 비트맵, 한글만 크기별).
+- 크기별 조절 `[UiFontSizes]`: 키 = 요청 px 반올림, 값 = 쓸 px(6~96). 값이 키와 같으면 원래 크기(소수점) 그대로.
+  목록에 없는 크기는 처음 만날 때 `N=N` 으로 자동 추가(`WritePrivateProfileString`) → 해상도가 바뀌어도 새 크기가 채워진다.
+  FHD 창모드 목록: 17 18 19 20 21 22 23 24 25 26 27 28 30 38 40 42. 가장 큰 쪽(38~42)이 캐릭터 이름 등, 가장 작은 쪽이 작은 설명 글.
+- 로그: `[ddraw] AddFontFromFileTTF … NNpx -> UI font MM`, `[ddraw] UI font ranges: N chars`.
+- 이 경로가 되면 위 48px 한 크기 한글 글꼴(`UiFontSize`/`UiFontMultiply`)은 사실상 쓰이지 않는다(대비용으로 남김).
+
 ### 추가 검토 (2026-11-12 오후): originalText 값, ASCII 통일, CJK 줄바꿈 끄기
 
 **`originalText`에 실제로 들어가는 값** (`china_pass` 디컴파일)

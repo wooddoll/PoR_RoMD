@@ -261,8 +261,13 @@ def snegLanguageIni(gamePath):
     print(f"languages/{KO_LANG}/language.ini 를 만듭니다... ", end='')
     with open(os.path.join(getKoPath(gamePath), 'language.ini'), 'w', encoding='ascii', newline='\r\n') as f:
         f.write("[Language]\nCodePage=949\nRelease=Korean patch by wooddoll\n")
-        # 고해상도 TTF 글꼴 (version.dll china_glyph.cpp). TtfScale: 칸에 맞춘 크기의 %(50~150), TtfWeight: 100~900
-        f.write("\n[Font]\nTtfScale=100\nTtfWeight=400\n")
+        # 글꼴 설정 (version.dll). steam_text_hooks.md 16절 참고
+        #   TtfScale/TtfWeight : 게임 텍스트 고해상도 TTF (china_glyph.cpp)
+        #   UiFontFile         : SNEG UI(ImGui) 글꼴 파일 (languages\ko 안)
+        #   UiLatin            : maru = UI 영문도 마루 부리, retail = 게임 비트맵 영문
+        #   [UiFontSizes]      : UI 글자 크기별 "요청px=쓸px". 게임이 처음 실행될 때 쓰는 크기를 자동으로 채운다
+        f.write("\n[Font]\nTtfScale=100\nTtfWeight=400\n"
+                "UiFontFile=MaruBuri-Regular.ttf\nUiLatin=maru\n")
     print("ok")
     return True
 

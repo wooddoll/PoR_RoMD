@@ -1,6 +1,8 @@
 #include "por2.h"
 
 #include <MinHook.h>
+#include <algorithm>
+#include <vector>
 #include "help_util.h"
 
 int __cdecl cTextManager_DrawMenuTrunc_Hook(cTextManager* self, int lineIdx, char* buf, char* flag);
@@ -622,6 +624,170 @@ static DWORD WINAPI DiagDDrawFontSlots(LPVOID p)
     }
 }
 
+// ---------------------------------------------------------------------------
+// SNEG UI(ImGui) 크기별 글꼴을 마루 부리로 (16절 3단계 후속)
+//
+// config.ini [Text] *Font=retailfont 는 ddraw 에서 "type 3": UI 가 쓰는 크기마다
+// FUN_597b7a30(atlas, "sneg_ui/fonts/PoRGothic-Regular.ttf", 크기, cfg, 범위) (= AddFontFromFileTTF) 로 넣고,
+// FUN_59727010 으로 등록해 게임 retail(.ink) 비트맵 라틴 글자를 확대해 덮어쓴다.
+// 한글은 FUN_5972b2d0 에서 48px 한 크기만 → 작게/크게 그릴 때 흐림/뭉개짐.
+//   - AddFontFromFileTTF 훅: PoRGothic 이면 경로 → languages\ko\<UiFontFile>, 범위 → 라틴(0x20~0xFF) + CJK 글자 목록
+//     → 크기마다 마루 부리 영문 + 한글.
+//   - FUN_59727010 훅: UiLatin=maru 이면 등록하지 않음 (비트맵 라틴 덮어쓰기 끔).
+// language.ini [Font] UiLatin = maru (기본) | retail (게임 비트맵 영문 유지, 한글만 크기별)
+// ---------------------------------------------------------------------------
+typedef void* (__fastcall* tAddFontTTF)(void* atlas, void* edx, const char* path, float size, void* cfg, const uint16_t* ranges);
+typedef void(__cdecl* tRetailRegister)(void* p1, unsigned slot, float scale, void* font, int cp);
+static tAddFontTTF     g_origAddFontTTF = nullptr;
+static tRetailRegister g_origRetailRegister = nullptr;
+static char            g_uiFontPath[MAX_PATH] = {};
+static bool            g_uiLatinMaru = true;
+static std::vector<uint16_t> g_uiRanges;
+// 크기별 조절: language.ini [UiFontSizes] 의 "요청 px(반올림)=쓸 px".
+// 목록에 없는 크기는 처음 만날 때 "N=N" 으로 자동 추가한다 → ini 에 전체 목록이 생기고 값만 고치면 된다.
+// 값이 키와 같으면 원래 크기(소수점 포함) 그대로.
+static float AdjustUiFontSize(float size)
+{
+    const int key = static_cast<int>(size + 0.5f);
+    if (key <= 0)
+        return size;
+    char ini[MAX_PATH], k[16];
+    if (!GetKoLanguageIni(ini, MAX_PATH))
+        return size;
+    wsprintfA(k, "%d", key);
+    const int v = static_cast<int>(GetPrivateProfileIntA("UiFontSizes", k, -1, ini));
+    if (v < 0) {
+        WritePrivateProfileStringA("UiFontSizes", k, k, ini);
+        return size;
+    }
+    if (v == key || v < 6 || v > 96)
+        return size;
+    return static_cast<float>(v);
+}
+
+static bool EndsWithI(const char* s, const char* suffix)
+{
+    const size_t a = strlen(s), b = strlen(suffix);
+    return a >= b && _stricmp(s + a - b, suffix) == 0;
+}
+
+// 라틴 + languages\ko\sneg_ui_cjk_characters.txt(UTF-8) 의 글자 → ImGui 범위 (정렬된 [시작,끝] 쌍, 0 종료)
+static bool BuildUiRanges()
+{
+    if (!g_uiRanges.empty())
+        return true;
+    char path[MAX_PATH];
+    DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
+    char* slash = (n > 0 && n < MAX_PATH) ? strrchr(path, '\\') : nullptr;
+    if (!slash || (slash - path) + 48 >= MAX_PATH)
+        return false;
+    lstrcpyA(slash + 1, "languages\\ko\\sneg_ui_cjk_characters.txt");
+    std::vector<uint8_t> buf;
+    HANDLE f = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (f != INVALID_HANDLE_VALUE) {
+        const DWORD size = GetFileSize(f, NULL);
+        if (size != INVALID_FILE_SIZE && size < 4 * 1024 * 1024) {
+            buf.resize(size);
+            DWORD rd = 0;
+            if (!ReadFile(f, buf.data(), size, &rd, NULL)) rd = 0;
+            buf.resize(rd);
+        }
+        CloseHandle(f);
+    }
+    std::vector<uint16_t> cps;
+    for (uint32_t c = 0x20; c <= 0xFF; ++c)
+        if (c < 0x7F || c >= 0xA0) cps.push_back(static_cast<uint16_t>(c));
+    for (size_t i = 0; i < buf.size(); ) {         // UTF-8 디코드 (BMP 만)
+        const uint8_t b = buf[i];
+        uint32_t cp = 0; size_t len = 1;
+        if (b < 0x80) cp = b;
+        else if ((b & 0xE0) == 0xC0 && i + 1 < buf.size()) { cp = ((b & 0x1F) << 6) | (buf[i + 1] & 0x3F); len = 2; }
+        else if ((b & 0xF0) == 0xE0 && i + 2 < buf.size()) { cp = ((b & 0x0F) << 12) | ((buf[i + 1] & 0x3F) << 6) | (buf[i + 2] & 0x3F); len = 3; }
+        else if ((b & 0xF8) == 0xF0) len = 4;
+        i += len;
+        if (cp >= 0x20 && cp < 0xFFFF && cp != 0xFEFF) cps.push_back(static_cast<uint16_t>(cp));
+    }
+    std::sort(cps.begin(), cps.end());
+    cps.erase(std::unique(cps.begin(), cps.end()), cps.end());
+    for (size_t i = 0; i < cps.size(); ) {
+        size_t j = i;
+        while (j + 1 < cps.size() && cps[j + 1] == cps[j] + 1) ++j;
+        g_uiRanges.push_back(cps[i]);
+        g_uiRanges.push_back(cps[j]);
+        i = j + 1;
+    }
+    g_uiRanges.push_back(0);
+    PLOG_DEBUG << "[ddraw] UI font ranges: " << cps.size() << " chars, " << (g_uiRanges.size() / 2) << " ranges"
+               << (buf.empty() ? " (CJK list not found)" : "");
+    return !buf.empty();
+}
+
+static void* __fastcall AddFontTTF_Hook(void* atlas, void* edx, const char* path, float size, void* cfg, const uint16_t* ranges)
+{
+    const char* usePath = path;
+    const uint16_t* useRanges = ranges;
+    float useSize = size;
+    const bool swap = path && g_uiFontPath[0] && EndsWithI(path, "PoRGothic-Regular.ttf") && BuildUiRanges();
+    if (swap) {
+        usePath = g_uiFontPath;
+        useRanges = g_uiRanges.data();
+        useSize = AdjustUiFontSize(size);
+    }
+    void* font = g_origAddFontTTF(atlas, edx, usePath, useSize, cfg, useRanges);
+    static int s_logged = 0;
+    if (s_logged++ < 64)
+        PLOG_DEBUG << "[ddraw] AddFontFromFileTTF " << (path ? path : "(null)") << " " << size << "px"
+                   << (swap ? " -> UI font " : "") << (swap ? std::to_string(useSize) : std::string()) << " = " << font;
+    return font;
+}
+
+static void __cdecl RetailRegister_Hook(void* p1, unsigned slot, float scale, void* font, int cp)
+{
+    if (g_uiLatinMaru)
+        return;                 // 비트맵 라틴 덮어쓰기 끔 → 마루 부리 영문
+    g_origRetailRegister(p1, slot, scale, font, cp);
+}
+
+static void InstallUiFontHooks(uintptr_t base)
+{
+    char ini[MAX_PATH], latin[16] = {};
+    if (GetKoLanguageIni(ini, MAX_PATH))
+        GetPrivateProfileStringA("Font", "UiLatin", "maru", latin, sizeof(latin), ini);
+    g_uiLatinMaru = _stricmp(latin, "retail") != 0;
+
+    if (g_cjkFontDir[0]) {
+        wsprintfA(g_uiFontPath, "%s\\%s", g_cjkFontDir, g_szCjkFont);
+        if (GetFileAttributesA(g_uiFontPath) == INVALID_FILE_ATTRIBUTES) {
+            PLOG_ERROR << "[ddraw] UI font not found: " << g_uiFontPath;
+            g_uiFontPath[0] = '\0';
+        }
+    }
+
+    static const uint8_t kAddFontPro[] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x08, 0x01, 0x00, 0x00 };
+    static const uint8_t kRetailPro[]  = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x57, 0x8B, 0x7D, 0x08 };
+    void* addFont = reinterpret_cast<void*>(base + 0xD7A30);
+    void* retail  = reinterpret_cast<void*>(base + 0x47010);
+    MH_STATUS st = MH_Initialize();
+    if (st != MH_OK && st != MH_ERROR_ALREADY_INITIALIZED) {
+        PLOG_ERROR << "[ddraw] UI font hooks: MH_Initialize " << st;
+        return;
+    }
+    if (memcmp(addFont, kAddFontPro, sizeof(kAddFontPro)) == 0) {
+        st = MH_CreateHook(addFont, reinterpret_cast<void*>(&AddFontTTF_Hook), reinterpret_cast<void**>(&g_origAddFontTTF));
+        if (st == MH_OK) st = MH_EnableHook(addFont);
+        PLOG_DEBUG << "[ddraw] AddFontFromFileTTF hook status=" << st << ", UI font " << (g_uiFontPath[0] ? g_uiFontPath : "(none)");
+    } else {
+        PLOG_ERROR << "[ddraw] AddFontFromFileTTF prologue mismatch";
+    }
+    if (memcmp(retail, kRetailPro, sizeof(kRetailPro)) == 0) {
+        st = MH_CreateHook(retail, reinterpret_cast<void*>(&RetailRegister_Hook), reinterpret_cast<void**>(&g_origRetailRegister));
+        if (st == MH_OK) st = MH_EnableHook(retail);
+        PLOG_DEBUG << "[ddraw] retail Latin overlay hook status=" << st << ", UiLatin=" << (g_uiLatinMaru ? "maru" : "retail");
+    } else {
+        PLOG_ERROR << "[ddraw] retail Latin overlay prologue mismatch";
+    }
+}
+
 void ApplyDDrawPatches(uintptr_t baseAddress)
 {
     CloseHandle(CreateThread(NULL, 0, DiagDDrawFontSlots, reinterpret_cast<LPVOID>(baseAddress), 0, NULL));
@@ -685,4 +851,7 @@ void ApplyDDrawPatches(uintptr_t baseAddress)
     // 2순위 글꼴: 시스템 폰트 폴더의 맑은 고딕
     PatchPushLenStr(baseAddress + 0x4B500, static_cast<uint32_t>(baseAddress + 0x14DA9C),
                     "msyh.ttf", 0x08, g_szCjkFallback, "CJK fallback font");
+
+    // 크기별 UI 글꼴을 마루 부리 + 한글로
+    InstallUiFontHooks(baseAddress);
 }
