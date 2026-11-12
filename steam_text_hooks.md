@@ -631,6 +631,80 @@ vtable +0x20 / +0x4c …    → 위젯 폭/높이(+0x30/+0x34)를 서피스 크�
    - `GetChinaFontBitmap`: DIB 크기 = (china_pass 폭 × 배율, 높이 × 배율), `TextOutW(x=0)` → **왼쪽 정렬, 칸 폭에서 잘림**.
      글꼴은 `ChinaFont_GetByHeight(높이 × 배율)`.
 
+### china_pass 결과를 뒤에서 쓰는 방식
+
+- 뒤쪽 경로는 `cGlyphResult.charCode`가 아니라 **`originalText[1]`(TTF 표시)로 2바이트 여부를 판단**하고,
+  1바이트면 **`originalText[0]`만 떼어** 관련 함수에 넘긴다.
+  - `CharItem_Push`: `isTTF = originalText[1]`, `code = originalText[0]`. `charCode`는 `glyph`에 복사만 됨.
+  - 1바이트 쪽 `HiRes_GetGlyphBitmap(code)`, `GetCharRect(code)`, retail 대체(`Byte_ToUnicode` 1바이트)는 모두 이 1바이트만 사용.
+  - `charCode`를 실제로 쓰는 곳은 TTF 쪽 `GetChinaFontBitmap`(`TextOutW(charCode)`)과 `MakeChinaFont`.
+  - 전체 코드를 다 확인한 것은 아니고, **확인한 곳은 모두 이랬다** (사용자 확인 + 이번 분석).
+- 따라서 `china_pass` **훅만으로는** "2바이트지만 비트맵 글리프 `(c1<<8)|c2`로 그려라"를 표현할 수 없다
+  (`originalText[1]=0`으로 돌려주면 c1 한 바이트의 라틴-1 글리프가 그려진다).
+  → **훅 + 소비처 코드 패치**를 같이 하면 가능하다 (아래 "china_pass 비트맵 한글 방식").
+  ~~sneg 경로에서 한글이 갈 수 있는 길은 TTF 경로뿐~~ — 정정 (2026-11-12).
+
+### china_pass 비트맵 한글 방식 (이전 시도, `ApplySNEGPatches`에 주석으로 남아 있음)
+
+- 훅: [text_helper.cpp](PoR_RoMD_steam/text_helper.cpp) `china_pass_Hook` (등록은 [sneg_hook_old.cpp](PoR_RoMD_steam/sneg_hook_old.cpp), `MB(0x468D0)`).
+  한글이면 `charCode = (c1<<8)|c2`, `byteLength = 2`, `originalText[1] = 0`(TTF 경로로 안 빠지게), 폭/높이는 우리 아틀라스 RECT.
+  1바이트면 `charCode = text[0]`(signed char 부호 확장).
+- 소비처 패치 ([sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp) `ApplySNEGPatches` 끝, 모두 주석 처리):
+  `GetCharRect`(vtable +0x24)에 `MOVSX EAX, CL`(= `originalText[0]`)로 넘기던 곳을 `66 0F 7E C0`(`MOVD EAX, XMM0` = charCode)로.
+  대상: subDrawMenu(+0xCAE7E), RenderShadow(+0xB5D43), DrawText(+0xC7E9A), DrawTextLines 쪽 `FUN_5952a4d0`(+0xCA671/CA673/CA6B1),
+  `_V_china_FUN_59522b70`(+0xC2CE9/C2D6F/C2DF5), `FUN_595249a0`(+0xC4E36/C4E96), `FUN_59523f90`(+0xC3FCD/C3FEA),
+  `_1_china`(+0xC36D4, 주석의 `FUN_594a7ca0`는 오기), `_2_china`(+0xC45B7/C45CC).
+- 장점: 레이아웃도 그리기도 **비트맵 폭 하나**만 쓰므로 두 번 줄바꿈이 원리상 없다.
+  고해상도에서도 retail 검사에 실패하면 `src` RECT로 비트맵을 확대하므로 한글이 (픽셀 느낌으로) 제대로 나온다.
+  → TTF 없이 `ScaledEngineText`를 켤 수 있는 가장 깔끔한 길.
+- 확인/주의할 점:
+  1. **XMM0 가정**: subDrawMenu(0x5952ae7e)는 `MOVUPS XMM0,[china_pass 결과]`(0x5952adf1) 이후 그 경로에 CALL이 없어 맞다.
+     나머지 지점은 각각 확인 필요 (중간에 CALL이 있으면 XMM0가 깨짐).
+  2. **exe `GetChar*`가 1바이트로 자름**: 입구가 `MOVSX byte [ESP+4]`. 전체 dword를 받게 하거나 훅으로 아래 키 규칙 적용.
+     (`MOVSX word` 안은 한글 0xB0A1이 0xFFFFB0A1이 되어 키와 안 맞음.) 코드에는 Height/Width만 있고 GetCharRect(0x435e60)는 없음.
+  3. **FontMetrics 훅**이 지금은 `code & 0xFF`로 줄인다 → 아래 키 규칙으로 바꿔야 함.
+  4. `_1_china`/`_2_china` 패치는 효과 없음: `Byte_ToUnicode`는 하위 1바이트만 쓰고, c1이든 c2든 CP949 리드 바이트 범위라 실패
+     → advance 0 → 비트맵 폭. 원래 동작과 같다.
+  5. **줄바꿈**: charCode 0xB0A1 > 0x2E7F 이므로 isChina(949 패치)면 `Wrap_ItemsCJK`가 단어 중간에서 끊는다.
+     `Wrap_ItemsWord`는 바이트 길이 문제. 어느 쪽이든 손봐야 함.
+  6. **빠졌을 수 있는 소비처**: `CharItem_Push`(KeyInput 고해상도 src), `DrawMenuTrunc`, `subDrawMenu_ani`, `Sneg_DrawHMenu_Blit`(china_pass 2곳),
+     WordWrap 쪽(`_V_china_FUN_594a7ca0` 594a7d98은 `in4, PIECE4` 호출). china_pass 호출 19곳 기준으로 다시 대조할 것.
+
+### 글리프 키 규칙 (GetChar* / FontMetrics 공통)
+
+- 원본 폰트의 1바이트 글리프 키는 **char 기준**: 0~127, -128~-1 (int로는 부호 확장, 0xFFFFFF80~0xFFFFFFFF).
+- 한글 키는 int 상위 2바이트를 0으로 채운 `0x0000C1C2` (c1, c2 ∈ 0xA1~0xFE) → **항상 unsigned로 취급**.
+
+```cpp
+inline int NormalizeGlyphKey(int code)
+{
+    uint32_t u = (uint32_t)code;
+    if ((u >> 16) == 0 && u > 0xFF && IsHangul(u >> 8, u & 0xFF))
+        return (int)u;                              // 한글 전체 키 (charCode 경로)
+    return (int)(signed char)(u & 0xFF);            // 1바이트 (MOVSX/MOVZX 어느 쪽이 와도 같은 값)
+}
+```
+
+- 부호 확장 1바이트(0xFFFFFFxx)는 상위 16비트가 0이 아니므로 1바이트로, MOVZX 1바이트(0x80~0xFF)는 `u ≤ 0xFF`이므로 1바이트로 간다.
+- FontMetrics와 함께: 툴팁처럼 바이트 단위로 들어오는 한글 바이트는 `sext8` 값(0xFFFFFFA1 등)이라 1바이트 쪽 → 지금처럼 '가' 반폭.
+  charCode로 들어온 0x0000B0A1은 실제 한글 RECT. 값 범위가 달라서 한 훅에서 공존한다.
+- **PIECE4(상위 바이트 쓰레기) 호출부는 실제로 돌지 않는다**: `fontcalls_exe.txt`의 PIECE4는 DrawMenu, MenuMask, DrawTextLines,
+  CalculateTextExtents, HMenu, DrawTextTextLabel, CalcExtentTextLabel, WordWrap, RenderShadow 안에만 있고, 모두 우리 훅이나 sneg가 통째로 대체한다.
+  실제로 도는 1바이트 호출부는 모두 `sext8`(MOVSX): exe `SprintfMeasure`(0x4769b7), sneg 툴팁(59576cc0, 59576ae0, 5955cb10),
+  sneg china 경로 `GetCharRect`(`sext8(SUBPIECE)`, 위 MOVD 패치 대상).
+  예외: sneg `_V_china_FUN_594a7ca0`(594a7d98) `in4, PIECE4` — sneg WordWrap 쪽이라 지금은 우리 훅이 대체. china_pass 방식을 살리면 따로 확인.
+
+### TTF 한글 글꼴 조건 (고정폭이 필요한가)
+
+- 레이아웃 폭은 `china_pass` 훅이 돌려주는 값(비트맵 한글 폭 `2*ceil(w/2)`)으로 정할 수 있으므로, 글꼴 advance는 레이아웃에 영향이 없다.
+- 그리기는 `GetChinaFontBitmap`이 고정 칸에 `TextOutW(x=0)` — 왼쪽 정렬, 칸을 넘으면 잘림. 그래서 필요한 것은:
+  - **한글 음절 advance가 모두 같은 글꼴**: 대부분의 한글 TTF(맑은 고딕, 마루 부리 포함)가 그렇다. Latin까지 고정폭일 필요는 없다
+    (영문은 이 경로를 타지 않고 비트맵/retail).
+  - **EUC-KR 2바이트 전체가 칸에 들어가는 크기**: 한자, 특수문자(○, ※, 괘선), 전각 영숫자는 폭이 다를 수 있다.
+    `'가'` advance = 칸 폭이 되도록 글꼴 높이를 정하고, 더 넓은 글자는 축소 또는 가운데 정렬.
+  - 가운데 정렬: `GetChinaFontBitmap`의 `TextOutW` x를 `(칸 폭 − 글자 advance)/2`로. 이러면 비례폭 글꼴도 무난하다.
+- 정리: 글꼴을 고정폭으로 바꾸기보다 **폭은 china_pass 훅으로 고정, 크기는 '가' 기준, 그릴 때 가운데 정렬**이 확실하다.
+
 ### 14절 실험이 깨진 이유 (정리)
 
 - china_pass 폭(마루 부리 TTF 폭) ≠ 게임 쪽 폭(cTextManager 줄 분할/박스 크기, 1바이트씩 GetCharRect 또는 FontMetrics) → 두 번 줄바꿈.
@@ -638,6 +712,8 @@ vtable +0x20 / +0x4c …    → 위젯 폭/높이(+0x30/+0x34)를 서피스 크�
 - 영어는 retail advance가 비트맵 폭과 맞게 만들어져 있어 문제가 드러나지 않는다(추정).
 
 ### 고해상도 한글을 다시 시도한다면 (설계 메모, 미구현)
+
+두 갈래가 있다: (A) 아래 TTF 방식, (B) 위 "china_pass 비트맵 한글 방식"(비트맵 확대, 폭 불일치 없음). 줄바꿈(3번)과 모드 분리(5번)는 둘 다 필요.
 
 1. **`china_pass` 훅 하나로 폭을 통일**: 한글 2바이트면 charCode=유니코드, `originalText[1]=1`은 그대로 두고
    **폭 = 우리 비트맵 한글 폭**(아틀라스 키 `(c1<<8)|c2`, 고정폭)을 돌려준다. FontMetrics(바이트당 `ceil(w/2)`)와 합이 같도록 `2*ceil(w/2)`.
@@ -648,3 +724,67 @@ vtable +0x20 / +0x4c …    → 위젯 폭/높이(+0x30/+0x34)를 서피스 크�
    (`Wrap_ItemsWord`는 바이트 길이 문제 때문에 그대로 못 씀).
 4. 게임 쪽 cTextManager 줄 분할/CalculateTextExtents와 툴팁 폭은 지금처럼 우리 훅/FontMetrics가 같은 폭을 쓰게 유지.
 5. 우리 텍스트 훅이 sneg Draw 함수를 통째로 바꾸고 배율을 0으로 고정하는 현재 구조와는 양립하지 않음 → 모드 분리(14절 실험 모드 위에서) 필요.
+
+## 16. 한글 출력 최적 전략 검토 (2026-11-12, 미구현)
+
+### 고려사항 (사용자)
+
+1. 모든 경로에서 실제로 한글이 출력되어야 함.
+2. 가능하면 보기 좋은 TTF 폰트로 출력.
+3. 중국어 경로는 큰 폰트를 리사이즈하는 방식이라 작은 글씨가 깨끗하지 않음. 특히 툴팁처럼 작은 글씨는 희미하게 보임.
+
+### 새로 확인한 것
+
+- **저해상도 블릿도 같은 함수**: `MakeChinaFont`(594a6c50, 800×600 서피스에 찍음)는 `GetChinaFontBitmap(glyph, 1.0)`을 불러
+  알파 `> 0x7F` 픽셀만 찍는다. 즉 2바이트(TTF 표시) 글자의 이미지는 저해상도·고해상도 모두 `GetChinaFontBitmap` 한 곳에서 나온다.
+- **소비처 바이트 패치 불필요**: `originalText[1]=1`(TTF 표시) 글자는 소비처가 `GetCharRect(originalText[0])`을 부르지 않고
+  glyph의 폭/높이로 칸을 만든다. `china_pass` 호출 19곳이 중국어용으로 이미 이 통로를 지원한다.
+- **줄바꿈은 charCode 값으로 선택 가능**: `Wrap_ItemsCJK`는 `charCode > 0x2E7F`면 글자 단위, 이하는 공백에서만 끊는다.
+  `GetChinaFontBitmap`을 우리가 대체하면 charCode에 무엇을 넣을지는 자유. 금칙 표(`5960b118`/`5960b12c`)는 ASCII와 U+3001 이상뿐이라
+  0x100~0x2383 범위로 재매핑하면 겹치지 않는다 (예: 한글 2350자를 `0x100 + 인덱스`).
+- **영문 retail 대체 조건 통과**: sneg 폰트 높이(`FUN_59514f60`) = 전체 글리프 최대 높이(<200). 병합 폰트도 원본과 같다
+  (font0~4 = 18/16/28/13/15). `.ink`의 높이 검사와 1바이트 지문은 그대로 맞는다.
+  14절 실험에서 영문이 거칠게 나온 원인은 아직 모름.
+- 비트맵 한글 폭(고정): font0 13, font1 12, font2 21, font3 10, font4 12 (높이는 원본과 같음).
+
+### 권장안: sneg 2바이트 통로 + 훅 2개
+
+| 훅 | 하는 일 | 해결 |
+|---|---|---|
+| `china_pass`(594a68d0) | 한글이면 폭/높이 = 비트맵 한글 값, `originalText[1]=1`, charCode = 재매핑 값 | 두 번 줄바꿈 (레이아웃 폭 통일), 단어 중간 줄바꿈 |
+| `GetChinaFontBitmap`(594a63d0), 배율 1.0 | 우리 비트맵 한글 글리프 마스크 반환 | 고려사항 1: 저해상도는 지금 본선과 같은 픽셀 |
+| `GetChinaFontBitmap`, 배율 > 1 | TTF를 목표 해상도로 직접 렌더해 반환 (칸 = 비트맵 폭 × 배율, 가운데 정렬) | 고려사항 2, 3: 리사이즈가 아니라 그 크기로 렌더 |
+
+- sneg가 대체하지 않는 게임 함수(MenuMask, CalculateTextExtents, CalcExtentTextLabel, 툴팁 폭)는 지금 훅과 FontMetrics 유지.
+- 1단계가 통과하면 sneg 쪽 함수 통째 훅 7개(DrawMenu, DrawTextLines, HMenu, TextLabel, WordWrap, RenderShadow, KeyInput)를 걷어낼 수 있다
+  → SNEG 업데이트 때 맞춰야 할 코드가 준다.
+
+### 방식 비교
+
+| 방식 | 1. 모든 경로 한글 | 2. TTF | 3. 작은 글씨 | 비용 |
+|---|---|---|---|---|
+| 현재 본선 (함수 통째 훅 + 배율 0) | 됨 (검증 진행 중) | 게임 텍스트는 안 됨 | 픽셀 그대로 선명 | 이미 있음 |
+| 14절 실험 (TTF 폭 그대로) | 줄바꿈 깨짐 | 됨 | 저해상도는 거칠음 | — |
+| 15절 예전 방식 (charCode + 소비처 패치) | 패치 누락 위험 | 안 됨 (비트맵 확대) | 선명 | 패치 20여 곳 |
+| **권장안** | 저해상도는 비트맵으로 보장 | 고해상도에서 됨 | 목표 크기로 직접 렌더 | 훅 2개 + 글꼴 크기 계산 |
+
+### 고려사항 3 (희미한 툴팁)
+
+- "큰 폰트를 줄여 찍는" 곳은 ddraw ImGui(CJK 아틀라스 48px, `FUN_5972b2d0`의 `0x42400000`)이고, 새 UI 툴팁이 여기에 해당.
+- sneg china 경로는 목표 크기로 GDI가 직접 그리지만, 저해상도에서는 알파 이진화 후 확대라 거칠다 (희미함과는 다른 문제).
+- ImGui 쪽은 권장안과 별개로 처리: 48px을 실제 표시 크기에 가깝게, 또는 오버샘플링 조정, 또는 가로획이 얇은 마루 부리 Regular 대신 굵은 고딕 계열. 미시험.
+
+### 확인 필요
+
+- `GetChinaFontBitmap` 반환 구조 `{폭, 높이, 알파 바이트 벡터}`(반환 포인터 = 캐시 노드 + 8)는 디컴파일 기준.
+  캐시(`DAT_5965f1bc`) 키 = (charCode, 폭, 높이, 배율).
+- 이 함수는 폰트 객체를 받지 않는다 → 높이로 폰트를 구분하거나 `originalText[2..3]`에 폰트 번호를 실어야 함.
+- sneg 함수들이 isChina 분기를 타야 하므로 실험 모드의 DrawMenu 그룹 재등록 코드는 계속 필요.
+- 한글 폭이 홀수인 폰트(13, 21)는 FontMetrics 반폭 올림과 글자당 1px 차이 → 툴팁 박스 폭에만 영향.
+
+### 진행 순서
+
+1. 실험 모드(`kr_native_test.txt`)에 두 훅을 넣되 배율 1.0(비트맵)만 구현. `ScaledEngineText` 끈 채 본선과 같은 화면인지 확인 (= 고려사항 1 검증).
+2. 통과하면 배율 > 1에 TTF 렌더 추가.
+3. ImGui 툴팁은 따로.
+- 그때까지 본선(현재 훅 방식)은 그대로 둔다.
