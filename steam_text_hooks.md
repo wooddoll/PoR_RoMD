@@ -726,7 +726,7 @@ inline int NormalizeGlyphKey(int code)
 4. 게임 쪽 cTextManager 줄 분할/CalculateTextExtents와 툴팁 폭은 지금처럼 우리 훅/FontMetrics가 같은 폭을 쓰게 유지.
 5. 우리 텍스트 훅이 sneg Draw 함수를 통째로 바꾸고 배율을 0으로 고정하는 현재 구조와는 양립하지 않음 → 모드 분리(14절 실험 모드 위에서) 필요.
 
-## 16. 한글 출력 최적 전략 검토 (2026-11-12, 미구현)
+## 16. 한글 출력 최적 전략 (2026-11-12 검토, 1~3단계 구현: 1·2단계는 아직 실험 모드 전용)
 
 ### 고려사항 (사용자)
 
@@ -998,3 +998,38 @@ TtfWeight=400
 
 - `PatchCjkWordWrap(base, site, tag)` 로 일반화: sneg `0x47306`(실험 모드), ddraw `0x4E276`.
 - 런타임 주소 환산: ddraw 실행 주소 = Ghidra 주소 + (실행 베이스 - 0x596e0000). 이번 세션은 +0x094B0000 이었다.
+
+## 18. 남은 일 (2026-11-13 기준)
+
+우선순위 순. 끝나면 줄을 지우거나 "완료"로 바꾼다.
+
+### 1. 실험 모드를 본선(기본)으로 올리기 — 가장 큼
+- 16절 1·2단계(sneg 2바이트 통로 `china_glyph.cpp`, 고해상도 마루 부리 TTF)는 아직 게임 폴더 `kr_native_test.txt`(+ `hires`)가 있을 때만 동작.
+  마커 없이 이 경로를 기본으로 쓰게 바꾼다.
+- 그러면 예전 함수 통째 훅 7개(DrawMenu, DrawTextLines, HMenu, TextLabel, WordWrap, RenderShadow, KeyInput)와 배율 0 고정을 걷어낼 수 있다
+  → SNEG 업데이트 때 맞출 코드가 준다. (게임 입구 직접 훅 MenuMask/CalculateTextExtents/CalcExtentTextLabel, FontMetrics 는 유지)
+- 올리기 전 넓게 시험: 캐릭터 생성, 인벤토리, 상점, 저장/불러오기, 지도 메모 입력(커서 위치), 전투 기록, 여러 해상도.
+- 실험 모드에서 한 번 보고된 "화면 왼쪽 아래에서 커서가 오른쪽 아래로 튐"은 이후 재현 안 됨. 넓은 시험 때 같이 확인.
+
+### 2. 원인 미확인 화면 문제
+- 지도 메모 입력창에서 "한글입력 테스트□□"처럼 끝에 네모가 나옴 (일반/실험 모드 둘 다). 미조사.
+- 한글 비트맵 글꼴(`font/font_kr/font0~4`)에 기호/전각 행 A1~AC(`·…“”※○` 등)가 없다. 번역문에서 쓰는 기호를 세어 보고
+  `draw_font_sheet.py` 글꼴 시트에 추가 (16절 "비트맵 글꼴에 기호/전각 행이 없음").
+
+### 3. 배포 전 정리
+- 진단 코드 제거:
+  - `sneg_hook.cpp` `DiagSnegScale` 스레드(실험 분기), `DiagDDrawFontSlots` 스레드(`ApplyDDrawPatches`)
+  - `WordWrap.cpp` `DiagLogText` / `DiagDumpFontSurface` (게임 폴더에 `diag_font_*.bmp` 를 쓴다)
+  - `FontMetrics.cpp` `DiagLogByteCaller`
+  - `china_glyph.cpp` 의 처음 몇 개 `[exp] ttf glyph/font` 로그는 남겨도 무방
+- 48px 한 크기 한글 UI 글꼴(`FUN_5972b2d0`, `UiFontSize`/`UiFontMultiply`): 크기별 글꼴에 한글이 들어가서 사실상 불필요.
+  빼면 시작 시간·메모리가 준다. 설정 키도 정리.
+- 설치 스크립트(`install/install.py`): 새 `version.dll`, `[UiFontSizes]` 기본값을 둘지(해상도마다 요청 px 가 다름), 1번 이후 설정 반영.
+- 번역 데이터 다시 빌드: 전각→반각 정규화(`kr_text.py`)를 스크립트에 넣었지만 실제 데이터 재생성은 미확인.
+- `restore_dialogues.py` 빈 항목 인덱스 어긋남 위험 (예전에 지적, 미수정).
+- UI 글꼴을 한 실행에 두 번 만든다(각 1초 남짓). 필요하면 두 번째를 피하는 방법 조사.
+
+### 4. 개인 시험 환경 (배포와 무관)
+- `%LOCALAPPDATA%\SNEG\POR2\config.ini` 를 1920×1080 창모드(`[Video] Mode=1`)로 바꿔 둠. 원본 `config.ini.before_windowed`.
+- 게임 폴더 `kr_native_test.txt` 는 `71` / 설명 / `hires` (실험 모드 + 고해상도). 일반 모드로 보려면 `.off` 로 이름 변경.
+- 게임 폴더 `languages\ko\language.ini` 의 `[UiFontSizes]` 는 시험으로 바꾼 값(17=27 등).
