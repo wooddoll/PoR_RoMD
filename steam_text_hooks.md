@@ -817,6 +817,31 @@ inline int NormalizeGlyphKey(int code)
 3. 확인할 위험: 소비처가 TTF 글자를 저해상도에서 `MakeChinaFont`(알파 > 0x7F 찍기) 말고 다른 방식으로 그리는 곳, 그림자 텍스트의 그림자 색,
    KeyInput 커서 위치(2바이트 글자 폭), `error.log`의 `prologue mismatch` / `patch site mismatch` / `font atlas surface unexpected`.
 
+### 2단계 구현 (2026-11-12, 게임 확인)
+
+마커 파일에 `hires` 줄이 있을 때만 동작한다 (`ScaledEngineText=1` 필요). 없으면 1단계와 같다.
+
+| 위치 | 내용 |
+|---|---|
+| `GetChinaFontBitmap_Hook`, 배율 > 1 | 원래 함수(왼쪽 정렬, `CreateFontW` 71% 고정) 대신 `BuildTtfGlyph`: 마루 부리(`MaruBuri Regular`, `HANGUL_CHARSET`, `ANTIALIASED_QUALITY`)로 그 크기에 직접 렌더. 칸 = 원래와 같은 `ceil(w*배율-0.001)` × `ceil(h*배율-0.001)` → 레이아웃은 저해상도와 같음. 글자는 칸 가운데, R 채널 = 알파. 글자별 캐시 |
+| `GetTtfFont` | 칸 높이 × 한글 칸 폭('가' RECT 폭 × 배율)마다 글꼴 1개. em = 칸 높이에서 시작해 줄 높이(tmHeight) ≤ 칸 높이, '가' 폭 ≤ 한글 칸 폭이 되게 줄인다. 같은 크기의 ASCII 도 이 글꼴 |
+| `ChinaPass_Hook`, hires | ASCII 0x20~0x7E(와 전각 영숫자)도 TTF 표시(`originalText[1]=1`), 폭 = 아틀라스 RECT. 배율 1.0 은 아틀라스 마스크라 저해상도 화면은 그대로 |
+
+확인 결과: 메뉴/라벨/인벤토리 등 sneg 텍스트 경로가 모두 마루 부리 TTF 로 나오고 크기도 적당. DM 대사 상자와 새 UI 툴팁은 ddraw ImGui 글꼴이라 변화 없음(3단계 대상).
+로그 예 (FHD 창모드, 배율 1.653): `ttf font cell 22 hangulW 17 -> em 16 tmHeight 21`, `cell 30 hangulW 22 -> em 22`, `cell 27 hangulW 20 -> em 20`, `cell 47 hangulW 35 -> em 35`.
+
+**글자 크기/굵기 조절** (게임 폴더 `kr_native_test.txt` 에 줄 추가, 재시작하면 적용, 빌드 불필요)
+
+| 키 | 기본 | 범위 | 효과 |
+|---|---|---|---|
+| `ttfscale=NN` | 100 | 50~150 | 칸에 맞춘 em 에 NN% 를 곱한다. 작게 보이면 105~110, 크면 90~95. 100 초과는 칸(특히 위아래)을 넘어 잘릴 수 있다 |
+| `ttfweight=NNN` | 400 | 100~900 | GDI 굵기. 700 = 굵게. 마루 부리 파일은 Regular 하나라 700 은 GDI 가 합성 굵게 만든다 |
+| `hires` | 없음 | | 2단계 켜기 |
+| 첫 줄 숫자 (예 `71`) | 71 | 50~150 | sneg 원래 china 렌더(`CreateFontW` 훅)의 글꼴 비율. 2단계 우리 렌더에는 영향 없음 (아틀라스에 없는 글자만 원래 렌더로 감) |
+
+- 적용값은 `error.log` 의 `[exp] ttf scale NN% weight NNN` 과 `[exp] ttf font cell … -> em …` 에서 확인.
+- 코드에서 바꾸려면 `china_glyph.cpp` 의 `GetTtfFont`(칸 맞춤 규칙), `MakeTtfFont`(글꼴 속성), `BuildTtfGlyph`(가운데 정렬 `x`, `y`). 세로 위치만 옮기려면 `y = (ch - tmHeight) / 2` 에 오프셋을 더하면 된다.
+
 ### 추가 검토 (2026-11-12 오후): originalText 값, ASCII 통일, CJK 줄바꿈 끄기
 
 **`originalText`에 실제로 들어가는 값** (`china_pass` 디컴파일)

@@ -134,7 +134,7 @@ static bool IsNativeCjkHiRes()
     return s_state == 1;
 }
 
-void InstallChinaGlyphHooks(uintptr_t snegBase);   // china_glyph.cpp
+void InstallChinaGlyphHooks(uintptr_t snegBase, bool hiRes);   // china_glyph.cpp
 
 // Wrap_ItemsCJK(+0x471E0)의 줄바꿈 후보 판정에서 U+2E80 이상 글자 조건을 끈다 → 공백/개행에서만 줄을 나눔.
 // 후보가 없으면 원래 코드가 줄 폭에서 강제로 끊으므로 넘치지 않는다.
@@ -300,7 +300,7 @@ void ApplySNEGPatches(uintptr_t baseAddress)
             }
         }
         // 16절 1단계: china_pass / GetChinaFontBitmap 훅 (한글 = 비트맵 폭 + 비트맵 마스크), CJK 줄바꿈은 공백에서만
-        InstallChinaGlyphHooks(baseAddress);
+        InstallChinaGlyphHooks(baseAddress, IsNativeCjkHiRes());
         PatchCjkWordWrap(baseAddress, 0x47306, "exp");
         if (!IsNativeCjkHiRes()) {
             // 저해상도만: 배율 함수 두 개를 0 으로 (본선과 같은 위치에서 비교하기 위해)
