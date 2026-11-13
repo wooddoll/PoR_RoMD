@@ -1,0 +1,44 @@
+RenderShadow_sneg에서 GetCharRect()에 char형 받음
+
+        59515cc6 c1 e8 08        SHR        puVar7,0x8
+        59515cc6 c1 e8 18        SHR        puVar7,0x12
+
+
+59515d43 
+기존 값: 0F BE C1 (MOVSX EAX, CL - 1바이트 부호 확장 읽기)
+변경 값: 0F B7 C1 (MOVZX EAX, CX - 2바이트 제로 확장 읽기)
+
+
+
+
+
+
+===========
+
+int __thiscall GetCharHeight_00435e00(cFont *this,char param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = FindGlyphIndex_004355c0(this->pCharMap,(int)param_2);
+  return (this->pGlyphs[iVar1]->rect).bottom - (this->pGlyphs[iVar1]->rect).top;
+}
+
+        00435e00 0f be 44        MOVSX      EAX,byte ptr [ESP + param_2]
+                 24 04
+
+• 기존 주소 및 바이너리: 00435e00: 0f be 44 24 04
+• 패치 후 주소 및 바이너리: 00435e00: 0f bf 44 24 04
+부호확장 2바이트 읽기
+
+
+        00435e00 0f be 44        MOVSX      EAX,byte ptr [ESP + param_2]
+                 24 04
+        00435e05 56              PUSH       ESI
+        00435e06 8b f1           MOV        ESI,this
+        00435e08 50              PUSH       EAX
+        00435e09 8b 4e 0c        MOV        this,dword ptr [ESI + 0xc]
+        00435e0c e8 af f7        CALL       FindGlyphIndex_004355c0                          int FindGlyphIndex_004355c0(cCha
+                 ff ff
+
+GetCharWidth_00435e30도 동일
