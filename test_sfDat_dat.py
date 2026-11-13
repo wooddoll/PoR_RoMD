@@ -16,7 +16,7 @@ def save_json(json_path, json_data):
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(json_data, f, ensure_ascii=False, indent=2)
 
-def decode_sfdat(path):
+def decode_sfdat(path, encoding="utf-16le"):
     with open(path, "rb") as f:
         entry_count = struct.unpack("<I", f.read(4))[0]
         total_chars = struct.unpack("<I", f.read(4))[0]
@@ -67,7 +67,14 @@ def decode_sfdat(path):
         end_byte = start_byte + lengths[i] * 2
         raw16 = data[start_byte:end_byte]
 
-        text = raw16.decode("utf-16le").rstrip("\x00")
+        if encoding == "utf-16le":
+            text = raw16.decode("utf-16le", errors="surrogatepass").rstrip("\x00")
+        elif encoding == "cp949":
+            # CP949 바이트를 low byte에서 추출 (byte_pos="low" 방식)
+            cp949_bytes = bytes(raw16[0::2])
+            text = cp949_bytes.decode("cp949", errors="replace").rstrip("\x00")
+        else:
+            raise ValueError(f"지원하지 않는 인코딩: {encoding}")
 
         strings[i] = text
         strings[f'{i}_kr'] = ''
@@ -224,15 +231,13 @@ def encode_sfdat_cp949(strings, out_path, byte_pos="low"):
 
 def verify_cp949(strings, path, byte_pos="low"):
     """생성한 파일을 decode_sfdat으로 다시 읽어, 각 엔트리가 의도한 CP949 바이트와 같은지 검사."""
-    decoded = decode_sfdat(path)   # 키 i -> 문자열(UTF-16LE 디코드)
-    # 디코드된 문자열에서 1유닛=1바이트를 복원
+    decoded = decode_sfdat(path, encoding="cp949")   # CP949로 디코드
     bad = []
     i = 0
     while strings.get(str(i)) is not None:
         kr = strings.get(f'{i}_kr')
         expected = kr.encode("cp949") if kr else None
-        raw = decoded[i].encode("utf-16le")          # 엔트리의 원시 바이트
-        got = raw[0::2] if byte_pos == "low" else raw[1::2]
+        got = decoded[i].encode("cp949", errors="replace") if kr else None
         if expected is not None and got != expected:
             bad.append(i)
         i += 1
@@ -251,10 +256,16 @@ def main():
     )
     parser.add_argument("input_path", help="path to the input file")
     parser.add_argument("output_path", help="path to the output file")
+    parser.add_argument(
+        "-e", "--encoding",
+        default="utf-16le",
+        choices=("utf-16le", "cp949"),
+        help="encoding to use for decode (default: utf-16le)",
+    )
     args = parser.parse_args()
 
     if args.mode == "decode":
-        strings = decode_sfdat(args.input_path)
+        strings = decode_sfdat(args.input_path, encoding=args.encoding)
         with open(args.output_path, "w", encoding="utf-8") as out_file:
             json.dump(strings, out_file, ensure_ascii=False, indent=2)
     else:
