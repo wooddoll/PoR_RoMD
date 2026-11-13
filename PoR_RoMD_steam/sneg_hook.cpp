@@ -1,4 +1,4 @@
-#include "por2.h"
+﻿#include "por2.h"
 
 #include <MinHook.h>
 #include <algorithm>
@@ -720,6 +720,269 @@ static float __cdecl RoleFontSize_Hook(uint32_t kind, float size, int mode)
 static int g_actionTipOpacity = 100;
 typedef void(__thiscall* tAddImage)(void* dl, void* tex, float* pmin, float* pmax, float* uvmin, float* uvmax, uint32_t col);
 static tAddImage g_origAddImage = nullptr;
+// ddraw 표면 메서드 원본 (Blt +0x4E60, BltFast +0x5480). 아래 '저장된 화면 위에 고해상도 글 다시 그리기' 참고
+typedef HRESULT(__stdcall* tSurfBltFast)(uint8_t* dst, int x, int y, uint8_t* src, RECT* rc, uint32_t flags);
+typedef HRESULT(__stdcall* tSurfBlt)(uint8_t* dst, RECT* rd, uint8_t* src, RECT* rs, uint32_t flags, void* fx);
+static tSurfBltFast g_origSurfBltFast = nullptr;
+static tSurfBlt g_origSurfBlt = nullptr;
+static uint8_t* PrimarySurf()
+{
+    return g_ddrawBase ? *reinterpret_cast<uint8_t**>(g_ddrawBase + 0x304310) : nullptr;
+}
+
+// ── 저장된 화면 위에 고해상도 글 다시 그리기 ──
+// 게임은 고정 글(캐릭터 목록 제목, 가운데 안내 글 등)을 한 번만 그리고 곧바로 후면 버퍼를 통째로 저장 표면에 복사한 뒤,
+// 다음 프레임부터는 그 저장 표면만 깐다. 고해상도 글은 ddraw 의 창 크기 UI 레이어에만 있어서, 복사할 때 ddraw 가
+// UI 레이어를 저해상도 후면 버퍼로 점 샘플링해 섞는다(FUN_597e2650 → FUN_597ee950) → 줄이 빠진 저해상도 사본만 남는다.
+// 그래서: 후면 버퍼에 그린 32비트(sneg 고해상도 글) Blt 를 기록해 두고, 후면 버퍼를 저장할 때 그 목록을 저장 표면에 묶어 두었다가,
+// 저장 표면을 후면 버퍼에 통째로 다시 깔 때 그 위에 같은 Blt 를 다시 한다.
+struct HiResBltRec { uint8_t* src; RECT rd; RECT rs; uint32_t flags; };
+struct SavedScreen { uint8_t* surf; std::vector<HiResBltRec> recs; };
+static std::vector<HiResBltRec> g_frameHiRes;     // 마지막으로 화면을 통째로 깐 뒤 그린 고해상도 글
+static std::vector<SavedScreen> g_savedScreens;   // 최근 저장 표면 (최대 8개)
+static bool SurfAddRef(uint8_t* s)
+{
+    __try { (*reinterpret_cast<ULONG(__stdcall***)(void*)>(s))[1](s); return true; }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+static void SurfRelease(uint8_t* s)
+{
+    __try { (*reinterpret_cast<ULONG(__stdcall***)(void*)>(s))[2](s); }
+    __except (EXCEPTION_EXECUTE_HANDLER) {}
+}
+static void ReleaseRecs(std::vector<HiResBltRec>& v)
+{
+    for (HiResBltRec& r : v)
+        SurfRelease(r.src);
+    v.clear();
+}
+static bool SurfInfo(const uint8_t* s, int& w, int& h, int& bpp)
+{
+    __try {
+        w = *reinterpret_cast<const int*>(s + 0x14);
+        h = *reinterpret_cast<const int*>(s + 0x10);
+        bpp = *reinterpret_cast<const int*>(s + 0x98);
+        return true;
+    } __except (EXCEPTION_EXECUTE_HANDLER) {
+        return false;
+    }
+}
+static uint8_t* BackBufferSurf()
+{
+    return g_ddrawBase ? *reinterpret_cast<uint8_t**>(g_ddrawBase + 0x304314) : nullptr;
+}
+// 후면 버퍼에 화면 크기(높이 600 이상) 그림을 까는 것은 새 화면 시작 → 기록을 비운다
+static void ResetOnFullScreenDraw(uint8_t* src)
+{
+    int w, h, bpp;
+    if (src && SurfInfo(src, w, h, bpp) && h >= 600)
+        ReleaseRecs(g_frameHiRes);
+}
+static void ClearFrameHiRes()
+{
+    ReleaseRecs(g_frameHiRes);
+}
+// 저장 표면에 게임이 다른 것을 그리면(후면 버퍼 복사가 아닌 Blt/BltFast, Lock, GetDC) 묶어 둔 글은 더는 맞지 않으니 버린다
+static void DropSavedScreen(const uint8_t* s)
+{
+    for (auto it = g_savedScreens.begin(); it != g_savedScreens.end(); ++it)
+        if (it->surf == s) {
+            static int s_log = 0;
+            if (s_log++ < 10)
+                PLOG_DEBUG << "[ddraw] saved screen " << static_cast<const void*>(s) << " overwritten -> drop " << it->recs.size() << " hi-res text blits";
+            ReleaseRecs(it->recs);
+            SurfRelease(it->surf);
+            g_savedScreens.erase(it);
+            return;
+        }
+}
+static bool IsSavedScreen(const uint8_t* s)
+{
+    for (const SavedScreen& v : g_savedScreens)
+        if (v.surf == s)
+            return true;
+    return false;
+}
+// 고해상도 글 Blt 는 바로 그리지 않고 미뤄 둔다 (g_pendingHiRes). 화면 저장 복사가 바로 뒤따르면 복사 다음에 그려서
+// 저장 화면에 저해상도 사본이 남지 않게 한다. 그 밖에 후면 버퍼를 건드리는 일(다른 그리기, 화면 표시, Lock, GetDC)이
+// 오면 그 전에 그려서 겹치는 순서는 원래대로 둔다.
+static std::vector<HiResBltRec> g_pendingHiRes;
+static void FlushPendingHiRes()
+{
+    if (g_pendingHiRes.empty())
+        return;
+    std::vector<HiResBltRec> v;
+    v.swap(g_pendingHiRes);
+    uint8_t* bb = BackBufferSurf();
+    for (HiResBltRec& r : v) {
+        RECT rd = r.rd, rs = r.rs;
+        if (bb)
+            g_origSurfBlt(bb, &rd, r.src, &rs, r.flags, nullptr);
+        SurfRelease(r.src);
+    }
+}
+// 후면 버퍼에 32비트 원본을 알파로 늘여 그리는 Blt 면 기록하고 미룬다 (true = 미뤘으니 원래 Blt 는 하지 말 것)
+static bool DeferHiResBlt(uint8_t* dst, RECT* rd, uint8_t* src, RECT* rs, uint32_t flags, void* fx)
+{
+    if (fx || !dst || !src || !rd || !rs || dst != BackBufferSurf() || (flags & ~0x1000000u) != 0x20 ||
+        g_frameHiRes.size() >= 256 || g_pendingHiRes.size() >= 256)
+        return false;
+    int w, h, bpp;
+    if (!SurfInfo(src, w, h, bpp) || bpp != 4)
+        return false;
+    if (!SurfAddRef(src))
+        return false;
+    if (!SurfAddRef(src)) {
+        SurfRelease(src);
+        return false;
+    }
+    g_frameHiRes.push_back({ src, *rd, *rs, flags });
+    g_pendingHiRes.push_back({ src, *rd, *rs, flags });
+    return true;
+}
+// 후면 버퍼 → 다른 표면 복사: 지금까지의 고해상도 글 목록을 그 표면에 묶는다
+static void OnBackBufferSaved(uint8_t* dst)
+{
+    for (auto it = g_savedScreens.begin(); it != g_savedScreens.end(); ++it)
+        if (it->surf == dst) {
+            ReleaseRecs(it->recs);
+            SurfRelease(it->surf);
+            g_savedScreens.erase(it);
+            break;
+        }
+    if (g_frameHiRes.empty() || !SurfAddRef(dst))
+        return;
+    SavedScreen s{ dst, {} };
+    for (const HiResBltRec& r : g_frameHiRes)
+        if (SurfAddRef(r.src))
+            s.recs.push_back(r);
+    if (g_savedScreens.size() >= 8) {
+        ReleaseRecs(g_savedScreens.front().recs);
+        SurfRelease(g_savedScreens.front().surf);
+        g_savedScreens.erase(g_savedScreens.begin());
+    }
+    static int s_log = 0;
+    if (s_log++ < 10)
+        PLOG_DEBUG << "[ddraw] saved screen " << static_cast<void*>(dst) << " with " << s.recs.size() << " hi-res text blits";
+    g_savedScreens.push_back(std::move(s));
+}
+// 저장 표면을 후면 버퍼에 통째로 깐 뒤: 새 프레임 시작으로 보고 목록을 비운 다음, 묶어 둔 고해상도 글을 다시 그린다
+static void OnScreenRestored(uint8_t* src, const RECT* rs)
+{
+    int w, h, bpp;
+    if (!SurfInfo(src, w, h, bpp))
+        return;
+    if (rs && (rs->left != 0 || rs->top != 0 || rs->right != w || rs->bottom != h))
+        return;   // 일부만 다시 까는 경우는 건드리지 않는다
+    ReleaseRecs(g_frameHiRes);
+    for (const SavedScreen& s : g_savedScreens) {
+        if (s.surf != src)
+            continue;
+        uint8_t* bb = BackBufferSurf();
+        for (const HiResBltRec& r : s.recs) {
+            RECT rd = r.rd, rsrc = r.rs;
+            g_origSurfBlt(bb, &rd, r.src, &rsrc, r.flags, nullptr);
+            if (g_frameHiRes.size() < 256 && SurfAddRef(r.src))
+                g_frameHiRes.push_back(r);    // 이 화면을 또 저장하면 함께 넘어가도록
+        }
+        break;
+    }
+}
+
+static HRESULT __stdcall SurfBlt_Hook(uint8_t* dst, RECT* rd, uint8_t* src, RECT* rs, uint32_t flags, void* fx)
+{
+    uint8_t* bb = BackBufferSurf();
+    uint8_t* prim = PrimarySurf();
+    if (src && src == bb && dst && dst != bb) {
+        if (dst == prim) {                 // 화면 표시: 미룬 글을 먼저, 그리고 프레임 기록 비우기
+            FlushPendingHiRes();
+            ReleaseRecs(g_frameHiRes);
+            return g_origSurfBlt(dst, rd, src, rs, flags, fx);
+        }
+        const HRESULT hr = g_origSurfBlt(dst, rd, src, rs, flags, fx);   // 화면 저장: 미룬 글 없이 복사
+        OnBackBufferSaved(dst);
+        FlushPendingHiRes();               // 그다음 이번 프레임용으로 그린다
+        return hr;
+    }
+    if (dst && dst == bb) {
+        if (src && (flags & 0x400) == 0 && DeferHiResBlt(dst, rd, src, rs, flags, fx))
+            return DD_OK;
+        FlushPendingHiRes();
+        if (src && (flags & 0x400) == 0) {
+            if (IsSavedScreen(src)) {
+                const HRESULT hr = g_origSurfBlt(dst, rd, src, rs, flags, fx);
+                OnScreenRestored(src, rs);
+                return hr;
+            }
+            ResetOnFullScreenDraw(src);
+        }
+    } else if (dst && dst == prim) {
+        FlushPendingHiRes();
+    } else if (dst && IsSavedScreen(dst)) {
+        DropSavedScreen(dst);
+    }
+    return g_origSurfBlt(dst, rd, src, rs, flags, fx);
+}
+
+static HRESULT __stdcall SurfBltFast_Hook(uint8_t* dst, int x, int y, uint8_t* src, RECT* rc, uint32_t flags)
+{
+    uint8_t* bb = BackBufferSurf();
+    uint8_t* prim = PrimarySurf();
+    if (src && src == bb && dst && dst != bb) {
+        if (dst == prim) {
+            FlushPendingHiRes();
+            ClearFrameHiRes();
+            return g_origSurfBltFast(dst, x, y, src, rc, flags);
+        }
+        const HRESULT hr = g_origSurfBltFast(dst, x, y, src, rc, flags);
+        OnBackBufferSaved(dst);
+        FlushPendingHiRes();
+        return hr;
+    }
+    if (dst && (dst == bb || dst == prim))
+        FlushPendingHiRes();
+    else if (dst && IsSavedScreen(dst))
+        DropSavedScreen(dst);
+    if (dst && dst == bb && src && IsSavedScreen(src)) {
+        const HRESULT hr = g_origSurfBltFast(dst, x, y, src, rc, flags);
+        OnScreenRestored(src, rc);
+        return hr;
+    }
+    if (dst && dst == bb)
+        ResetOnFullScreenDraw(src);
+    return g_origSurfBltFast(dst, x, y, src, rc, flags);
+}
+
+// 미룬 고해상도 글을 그려야 하는 다른 때: 화면 표시(Flip), 후면 버퍼 Lock / GetDC
+typedef HRESULT(__stdcall* tSurfFlip)(uint8_t* s, void* target, uint32_t flags);
+typedef HRESULT(__stdcall* tSurfLock)(uint8_t* s, RECT* rc, void* desc, uint32_t flags, HANDLE ev);
+typedef HRESULT(__stdcall* tSurfGetDC)(uint8_t* s, HDC* dc);
+static tSurfFlip g_origSurfFlip = nullptr;
+static tSurfLock g_origSurfLock = nullptr;
+static tSurfGetDC g_origSurfGetDC = nullptr;
+static HRESULT __stdcall SurfFlip_Hook(uint8_t* s, void* target, uint32_t flags)
+{
+    FlushPendingHiRes();
+    ReleaseRecs(g_frameHiRes);    // 한 프레임이 끝났다: 다음 화면 저장에는 이번 프레임 이후에 그린 글만 묶는다
+    return g_origSurfFlip(s, target, flags);
+}
+static HRESULT __stdcall SurfLock_Hook(uint8_t* s, RECT* rc, void* desc, uint32_t flags, HANDLE ev)
+{
+    if (s && (s == BackBufferSurf() || s == PrimarySurf()))
+        FlushPendingHiRes();
+    else if (s && IsSavedScreen(s) && (flags & 0x10) == 0)   // DDLOCK_READONLY 가 아니면
+        DropSavedScreen(s);
+    return g_origSurfLock(s, rc, desc, flags, ev);
+}
+static HRESULT __stdcall SurfGetDC_Hook(uint8_t* s, HDC* dc)
+{
+    if (s && (s == BackBufferSurf() || s == PrimarySurf()))
+        FlushPendingHiRes();
+    else if (s && IsSavedScreen(s))
+        DropSavedScreen(s);
+    return g_origSurfGetDC(s, dc);
+}
+
 static void __fastcall AddImage_Hook(void* dl, void* /*edx*/, void* tex, float* pmin, float* pmax, float* uvmin, float* uvmax, uint32_t col)
 {
     const uint32_t off = RetOff(_ReturnAddress());
@@ -1080,6 +1343,29 @@ static void InstallUiFontHooks(uintptr_t base)
     }
 
     g_ddrawBase = base;
+    {   // 저장된 화면 위에 고해상도 글 다시 그리기: 표면 메서드 5개 (하나라도 프롤로그가 다르면 전부 건너뜀)
+        struct { uint32_t off; uint8_t pro[6]; size_t n; void* hook; void** orig; const char* name; } surf[] = {
+            { 0x4E60, { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x50 }, 6, reinterpret_cast<void*>(&SurfBlt_Hook), reinterpret_cast<void**>(&g_origSurfBlt), "Blt" },
+            { 0x5480, { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x40 }, 6, reinterpret_cast<void*>(&SurfBltFast_Hook), reinterpret_cast<void**>(&g_origSurfBltFast), "BltFast" },
+            { 0x5D50, { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x0C }, 6, reinterpret_cast<void*>(&SurfFlip_Hook), reinterpret_cast<void**>(&g_origSurfFlip), "Flip" },
+            { 0x61F0, { 0x55, 0x8B, 0xEC, 0xE8 }, 4, reinterpret_cast<void*>(&SurfLock_Hook), reinterpret_cast<void**>(&g_origSurfLock), "Lock" },
+            { 0x5FD0, { 0x55, 0x8B, 0xEC, 0x56, 0x8B, 0x75 }, 6, reinterpret_cast<void*>(&SurfGetDC_Hook), reinterpret_cast<void**>(&g_origSurfGetDC), "GetDC" },
+        };
+        bool ok = true;
+        for (auto& e : surf)
+            if (memcmp(reinterpret_cast<void*>(base + e.off), e.pro, e.n) != 0) {
+                PLOG_ERROR << "[ddraw] surface " << e.name << " prologue mismatch -> saved-screen hi-res text fix disabled";
+                ok = false;
+            }
+        for (auto& e : surf) {
+            if (!ok)
+                break;
+            void* t = reinterpret_cast<void*>(base + e.off);
+            st = MH_CreateHook(t, e.hook, e.orig);
+            if (st == MH_OK) st = MH_EnableHook(t);
+            PLOG_DEBUG << "[ddraw] surface " << e.name << " hook status=" << st;
+        }
+    }
     // 신UI 글자 크기 키가 바로 닿지 않는 곳: 역할별 크기 함수, 왼쪽 위 게임 글
     {
         static const uint8_t kRoleSizePro[] = { 0x55, 0x8B, 0xEC, 0x51, 0x56, 0x8B, 0x75, 0x08, 0x57, 0x83, 0xFE, 0x06 };
