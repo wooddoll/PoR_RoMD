@@ -1040,6 +1040,6 @@ TtfWeight=400
 - `sneg_ui_strings.dat` 711개 번역(9절). 튜토리얼 아이콘 위치, 설정창 글자 넘침을 게임에서 확인.
 
 ### 4. 개인 시험 환경 (배포와 무관)
-- `%LOCALAPPDATA%\SNEG\POR2\config.ini` 를 1920×1080 창모드(`[Video] Mode=1`)로 바꿔 둠. 원본 `config.ini.before_windowed`.
+- `%LOCALAPPDATA%\SNEG\POR2\config.ini`: 창모드로 시험 중(원본 `config.ini.before_windowed`). `WindowWidth/Height` 를 직접 1920×1080(16:9)으로 넣었더니 창은 21:9 목록 크기로 열리면서 화면이 가로로 찌그러졌다 → 0 으로 되돌림. 창 크기 목록은 바탕 화면 해상도 × 5/6, 3/4, 2/3, 1/2 (모니터 비율 유지), 설정창에서 고른다.
 - 게임 폴더 `kr_native_test.txt` 는 `71` / 설명 / `hires` (실험 모드 + 고해상도). 일반 모드로 보려면 `.off` 로 이름 변경.
 - 게임 폴더 `languages\ko\language.ini` 의 `[UiFontSizes]` 는 시험으로 바꾼 값(17=27 등).
