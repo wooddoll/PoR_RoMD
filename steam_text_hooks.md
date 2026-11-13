@@ -890,17 +890,29 @@ TtfWeight=400
 `sneg_hook.cpp` `InstallUiFontHooks` (MinHook, 두 모드 공통):
 - `AddFontTTF_Hook`: 경로가 PoRGothic 이면 → `languages\ko\<UiFontFile>`, 범위 → 라틴(0x20~0x7E, 0xA0~0xFF) + `sneg_ui_cjk_characters.txt`(2429자) → 크기마다 마루 부리 영문+한글.
 - `RetailRegister_Hook`: `UiLatin=maru`(기본)이면 비트맵 라틴 덮어쓰기 등록을 건너뜀. `retail` 이면 원래대로(영문은 게임 비트맵, 한글만 크기별).
-- 크기별 조절 `[UiFontSizes]`: 키 = 요청 px 반올림, 값 = 쓸 px(6~96). 값이 키와 같으면 원래 크기(소수점) 그대로.
-  목록에 없는 크기는 처음 만날 때 `N=N` 으로 자동 추가(`WritePrivateProfileString`) → 해상도가 바뀌어도 새 크기가 채워진다.
-  표는 시작할 때 한 번 읽어 메모리에 둔다(`LoadUiSizeMap`).
-  FHD 창모드 목록: 17 18 19 20 21 22 23 24 25 26 27 28 30 38 40 42. 가장 큰 쪽(38~42)이 캐릭터 이름 등, 가장 작은 쪽이 작은 설명 글.
-  - 아틀라스만 쓸 px 로 만들면 보이는 크기는 그대로다(UI 가 요청 px 로 그리고 ImGui 가 그릴 px / FontSize 로 줄임). 그래서 그릴 px 도 바꾼다:
-    - `FUN_5978a750`(`+0xAA750`) `ImFont* (글꼴정보*, float* outSize)`: 그리기(`FUN_59789850`)·측정(`FUN_59789c70`)이 글꼴과 그릴 px 를 얻는 곳.
-      보통 outSize = 글꼴정보[4](요청 px), retail 슬롯은 retail 높이 * 배율 / 0.7. → outSize 에 표 적용.
-      (글꼴정보 = `FUN_5978a0c0` 의 {kind, slot, scale, font, 요청 px, retail 그릴 px} — [5] 는 그리기에 안 쓰여서 여기를 바꾸면 효과 없음)
-    - 인라인 아이콘(마우스 버튼 등)이 있는 글(`FUN_5973b4c0` 참, 튜토리얼 영문 DM 대사 등)은 위 함수를 안 거치고 요청 px 를 직접 넘긴다 →
-      `FUN_5973b530`(`+0x5B530` 그리기), `FUN_5973b6d0`(`+0x5B6D0` 측정), `FUN_5973b750`(`+0x5B750` 1차 줄바꿈) 의 size 인자에도 표 적용.
-    - 주의: 바뀐 크기가 다시 이 함수들로 들어오는 곳이 있으면 두 번 적용될 수 있다(바뀐 px 의 줄을 `N=N` 으로 두면 문제없음).
+- **크기 조절 `[UiFontScale]`** (2026-11-13, 게임 확인. 예전 `[UiFontSizes]` px 표는 해상도마다 키가 달라 없앰).
+  값은 % (50~300, 해상도와 무관). 없는 키는 시작할 때 100 으로 채운다. 실제 배율 = 역할 키 × 하위 키.
+  - 역할 키 (`config.ini [Text]` 순서 = kind): `Overlay`(0) `Dialogue`(1) `Menu`(2) `Inventory`(3) `Action`(4) `Prompt`(5) `Radial`(6) `Settings`(7).
+  - 적용 1: `FUN_5978a0c0`(`+0xAA0C0`, 글꼴정보 {kind, slot, scale, font, 요청 px, retail 그릴 px}) 의 scale/size 에 곱한다(`UiFontInfo_Hook`).
+    이어 [3],[4] 를 `FUN_5978a750`(`+0xAA750`, 그리기·측정이 글꼴/그릴 px 를 얻는 곳)이 줄 값으로 맞춘다 → 인라인 아이콘 글도 같은 크기.
+    Overlay·Dialogue 는 여기로 바뀜.
+  - 적용 2: `FUN_597204b0`(`+0x404B0`, `float (kind, size, mode)` 역할별 px 를 retail 배수로 고름)의 결과에 kind 2~6 역할 키를 곱한다
+    (`RoleFontSize_Hook`). 행동 막대·팔레트·인벤토리 등 신UI 창이 이것으로 크기를 정한다. Settings(설정창)는 바뀌지 않음(조사 중단, 사용자 판단).
+  - Overlay 하위 키 (`FUN_5978a0c0` 를 부른 곳의 반환 오프셋으로 가름, `g_uiOverlaySub`):
+    `OverlayActionPreview` +0xAD081 `FUN_5978cf80` 반투명 행동 미리보기 툴팁 /
+    `OverlayItem` +0x6515A `FUN_59745110`(툴팁 상자 도우미) 아이템 설명 툴팁 /
+    `OverlayStatus` +0x77E8A `FUN_59757dd0` 왼쪽 아래 캐릭터 상태 툴팁 /
+    `OverlayRollLog` 왼쪽 위 주사위 굴림 등(`FUN_5975eb60`, 크기를 `FUN_59720700`(반환 +0x7EE83)·`FUN_5971db50`(`+0x3DB50`)로 직접 계산 → 두 결과에 곱함).
+  - `ActionIconTooltip`: 행동 아이콘 툴팁("수색 (-2)", `FUN_5974d580`). Action 역할이고 `FUN_597204b0` 반환 +0x6D6D0(제목)/+0x6D6F0(본문)일 때 곱한다.
+  - 예전 이름(`OverlayCursor`/`OverlayActionBar`/`OverlayHint`/`OverlayActionIcon`)은 새 키가 없으면 값을 옮기고 지운다.
+  - 표에 없는 `FUN_5978a0c0` 호출 위치는 `[ddraw] UI font caller not mapped: <역할> +0x<오프셋>` 으로 한 번씩 기록(새 하위 키 찾기용).
+    크기 키가 안 닿는 글을 찾을 때는 `ImDrawList::AddText`(`FUN_597b9340`, `+0xD9340`, **thiscall**)에 호출 경로·크기·글 앞부분을 찍는 임시 훅이 빨랐다
+    (cdecl 로 걸었다가 시작 때 죽음 → `__fastcall(ecx, edx, ...)` 로).
+- **`[UiStyle] ActionIconTooltipOpacity`** (0~100, 기본 100): 행동 아이콘 툴팁 배경 불투명도. 이 창은 `FUN_5974d580` 의 param_7 경로
+  `FUN_5974c8c0`(`+0x6C8C0`, 검은 바탕 AddRectFilled `push 0xFF000000`(+0x6C938) + 테두리 조각 8개)로 그려진다.
+  행동 막대 등 2곳도 같이 쓰므로 툴팁에서 부를 때(반환 +0x6DFBF)만 알파 바이트를 바꿨다 되돌린다. 테두리·글자는 불투명.
+  다른 두 경로(패널 그림 `FUN_597b7f20` AddImage 흰색 / 단색 0xF51E1C19 +0x6E1A1)도 같이 줄인다(게임에서는 안 쓰이는 듯).
+  설치 기본값: `OverlayActionPreview=130`, `OverlayRollLog=90`, `ActionIconTooltip=80`, 불투명도 70.
 - **로딩 6초 지연 → 커닝 표** (측정: UI 글꼴 준비 `FUN_597223b0` 7.0초, 그중 stb 래스터화 `FUN_597ba8e0` 0.9초뿐).
   글꼴별 후처리 `FUN_59721df0`(`+0x41DF0`: TTF 를 별도 엔진으로 파싱 → 글리프 폭 재계산 → 커닝 표)이 기본 40px 글꼴(2,709자)을
   준비 한 번에 2~3번 처리하고, 커닝 표 `FUN_59720180`(`+0x40180`)이 글리프 N² 쌍을 물어 매번 2초.
@@ -1038,7 +1050,7 @@ TtfWeight=400
   - `china_glyph.cpp` 의 처음 몇 개 `[exp] ttf glyph/font` 로그는 남겨도 무방
 - 48px 한 크기 한글 UI 글꼴(`FUN_5972b2d0`, `UiFontSize`/`UiFontMultiply`): 크기별 글꼴에 한글이 들어가서 사실상 불필요.
   빼면 시작 시간·메모리가 준다. 설정 키도 정리.
-- 설치 스크립트(`install/install.py`): 새 `version.dll`, `[UiFontSizes]` 기본값을 둘지(해상도마다 요청 px 가 다름), 1번 이후 설정 반영.
+- 설치 스크립트(`install/install.py`): 새 `version.dll`, 1번 이후 설정 반영. (`[UiFontScale]`/`[UiStyle]` 기본값은 넣음)
 - 번역 데이터 다시 빌드: 전각→반각 정규화(`kr_text.py`)를 스크립트에 넣었지만 실제 데이터 재생성은 미확인.
 - `restore_dialogues.py` 빈 항목 인덱스 어긋남 위험 (예전에 지적, 미수정).
 - UI 글꼴을 한 실행에 두 번 만든다(각 1초 남짓). 필요하면 두 번째를 피하는 방법 조사.
@@ -1049,4 +1061,4 @@ TtfWeight=400
 ### 4. 개인 시험 환경 (배포와 무관)
 - `%LOCALAPPDATA%\SNEG\POR2\config.ini`: 창모드로 시험 중(원본 `config.ini.before_windowed`). `WindowWidth/Height` 를 직접 1920×1080(16:9)으로 넣었더니 창은 21:9 목록 크기로 열리면서 화면이 가로로 찌그러졌다 → 0 으로 되돌림. 창 크기 목록은 바탕 화면 해상도 × 5/6, 3/4, 2/3, 1/2 (모니터 비율 유지), 설정창에서 고른다.
 - 게임 폴더 `kr_native_test.txt` 는 `71` / 설명 / `hires` (실험 모드 + 고해상도). 일반 모드로 보려면 `.off` 로 이름 변경.
-- 게임 폴더 `languages\ko\language.ini` 의 `[UiFontSizes]` 는 시험으로 바꾼 값(17=27 등).
+- 게임 폴더 `languages\ko\language.ini` 의 `[UiFontSizes]` 는 더 이상 안 쓴다(지워도 됨).

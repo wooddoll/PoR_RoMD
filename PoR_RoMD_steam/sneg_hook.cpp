@@ -3,6 +3,7 @@
 #include <MinHook.h>
 #include <algorithm>
 #include <map>
+#include <tuple>
 #include <vector>
 #include "help_util.h"
 
@@ -644,54 +645,170 @@ static tRetailRegister g_origRetailRegister = nullptr;
 static char            g_uiFontPath[MAX_PATH] = {};
 static bool            g_uiLatinMaru = true;
 static std::vector<uint16_t> g_uiRanges;
-// 크기별 조절: language.ini [UiFontSizes] 의 "요청 px(반올림)=쓸 px".
-//  - 아틀라스: AddFontFromFileTTF 를 쓸 px 로 (선명도)
-//  - 그리기/측정: FUN_5978a0c0 (글꼴 정보 {kind, slot, scale, font, 래스터 px, 그릴 px}) 의 그릴 px 에 쓸 px / 요청 px 를 곱한다
-//    (ImGui 는 그릴 px / font->FontSize 로 축소·확대하므로 아틀라스만 바꾸면 보이는 크기는 그대로다)
-// 목록에 없는 크기는 처음 만날 때 "N=N" 으로 자동 추가한다 → ini 에 전체 목록이 생기고 값만 고치면 된다.
-// 값이 키와 같으면 원래 크기(소수점 포함) 그대로.
-static std::map<int, int> g_uiSizeMap;      // 시작할 때 ini 에서 한 번 읽는다 (매 프레임 파일 읽기 방지)
+// 글꼴 역할별 크기 배율: language.ini [UiFontScale] "<역할>=%" (기본 100, 50~300).
+//   역할 = ddraw UI 글꼴 kind (config.ini [Text] *Font 순서): 0 Overlay(툴팁 등), 1 Dialogue(DM 대사 상자), 2 Menu,
+//   3 Inventory, 4 Action, 5 Prompt, 6 Radial, 7 Settings(설정창). 해상도와 무관한 키라서 배포용 설정으로 쓸 수 있다.
+//   FUN_5978a0c0(글꼴정보, kind, slot, scale, size) 의 scale/size 에 곱한다 → 크기를 명시해 그리는 글에 적용된다.
+//   게임 확인: Overlay(툴팁), Dialogue(DM 대사) 는 바뀜. Settings(설정창)·Menu 는 바뀌지 않음
+//   (글꼴 조회 FUN_59720640 에 곱해 봐도 효과 없음, 사용자 판단으로 조사 중단).
+static const char* const kUiFontRole[8] = { "Overlay", "Dialogue", "Menu", "Inventory", "Action", "Prompt", "Radial", "Settings" };
+static int g_uiRoleScale[8] = { 100, 100, 100, 100, 100, 100, 100, 100 };
+// Overlay(툴팁) 는 그리는 곳이 여러 개라 호출 위치(FUN_5978a0c0 의 반환 주소, ddraw 기준 오프셋)로 한 번 더 나눈다.
+// 실제 배율 = 역할 키 × 하위 키. ddraw 가 바뀌면 오프셋이 달라질 수 있다 (그때는 하위 키만 효과가 없어짐).
+// oldKey: 예전 이름 (새 키가 ini 에 없으면 그 값을 이어받고 예전 키는 지운다).
+struct UiSubScale { uint32_t retOff; const char* key; const char* oldKey; int pct; };
+static UiSubScale g_uiOverlaySub[] = {
+    { 0xAD081, "OverlayActionPreview", "OverlayCursor",    100 },  // FUN_5978cf80: 반투명 행동 미리보기(설명) 툴팁
+    { 0x6515A, "OverlayItem",          "OverlayActionBar", 100 },  // FUN_59745110 (툴팁 상자 도우미): 아이템 설명 툴팁
+    { 0x77E8A, "OverlayStatus",        "OverlayHint",      100 },  // FUN_59757dd0: 왼쪽 아래 캐릭터 상태 툴팁
+    { 0,       "OverlayRollLog",       nullptr,            100 },  // FUN_5975eb60: 왼쪽 위 주사위 굴림 등 (별도 훅)
+    { 0,       "ActionIconTooltip",    "OverlayActionIcon", 100 }, // FUN_5974d580: 행동 아이콘 툴팁 (Action 역할, 별도 훅)
+};
+enum { kSubRollLog = 3, kSubActionIcon = 4 };
+static uintptr_t g_ddrawBase = 0;
 
-static void LoadUiSizeMap()
+static uint32_t RetOff(void* ret)
+{
+    return static_cast<uint32_t>(reinterpret_cast<uintptr_t>(ret) - g_ddrawBase);
+}
+
+// FUN_5975eb60: 왼쪽 위 게임 글 덧그리기 (주사위 굴림 표시 등, 테두리 글).
+// FUN_5978a0c0 를 거치지 않고 글자 크기를 직접 계산한다:
+//   FUN_59720700(0, slot, h) (ddraw +0x40700, 부른 곳 반환 +0x7EE83) 또는 FUN_5971db50(h, w) (+0x3DB50, 부르는 곳은 여기뿐).
+// 두 함수 결과에 Overlay × OverlayRollLog 배율을 곱한다. (둘 다 float 를 x87 ST0 로 돌려준다)
+static float RollLogScale(float r)
+{
+    return r * (g_uiRoleScale[0] * g_uiOverlaySub[kSubRollLog].pct / 100) / 100.0f;
+}
+typedef float(__cdecl* tSlotFontSize)(int a, int slot, float h);
+static tSlotFontSize g_origSlotFontSize = nullptr;
+static float __cdecl SlotFontSize_Hook(int a, int slot, float h)
+{
+    const float r = g_origSlotFontSize(a, slot, h);
+    return (g_uiFontPath[0] && RetOff(_ReturnAddress()) == 0x7EE83) ? RollLogScale(r) : r;
+}
+typedef float(__cdecl* tPopupFontSize)(float a, float b);
+static tPopupFontSize g_origPopupFontSize = nullptr;
+static float __cdecl PopupFontSize_Hook(float a, float b)
+{
+    const float r = g_origPopupFontSize(a, b);
+    return g_uiFontPath[0] ? RollLogScale(r) : r;
+}
+
+// FUN_597204b0 (ddraw +0x404B0): float (kind, size, mode) — 역할별로 글자 px 를 retail 글꼴 배수에 맞춰 고른다.
+// 행동 막대·팔레트·인벤토리 등 신UI 창이 FUN_5978a0c0 없이 이것으로 크기를 정한다 → 결과에 역할 키를 곱한다.
+//   - kind 0/1/7 (Overlay/Dialogue/Settings) 은 FUN_5978a0c0 쪽에서 이미 곱하거나 건드리지 않으므로 제외.
+//   - 행동 아이콘 툴팁 (FUN_5974d580, 반환 +0x6D6D0 제목 / +0x6D6F0 본문) 은 Action × ActionIconTooltip.
+typedef float(__cdecl* tRoleFontSize)(uint32_t kind, float size, int mode);
+static tRoleFontSize g_origRoleFontSize = nullptr;
+static float __cdecl RoleFontSize_Hook(uint32_t kind, float size, int mode)
+{
+    const float r = g_origRoleFontSize(kind, size, mode);
+    if (!g_uiFontPath[0] || kind < 2 || kind > 6)
+        return r;
+    int pct = g_uiRoleScale[kind];
+    const uint32_t off = RetOff(_ReturnAddress());
+    if (off == 0x6D6D0 || off == 0x6D6F0)
+        pct = pct * g_uiOverlaySub[kSubActionIcon].pct / 100;
+    return pct == 100 ? r : r * pct / 100.0f;
+}
+
+// 행동 아이콘 툴팁 배경 불투명도 ([UiStyle] ActionIconTooltipOpacity, 0~100%, 기본 100).
+// FUN_5974d580 의 배경은 둘 중 하나:
+//   - 패널 그림 (DAT_59a14ec8 있음): FUN_597b7f20 (ImDrawList::AddImage, thiscall, col=흰색) 3번 → 훅에서 col 알파를 줄인다.
+//   - 단색: AddRectFilled col 0xF51E1C19 (push 즉치값 +0x6E1A1) → 알파 바이트를 패치.
+static int g_actionTipOpacity = 100;
+typedef void(__thiscall* tAddImage)(void* dl, void* tex, float* pmin, float* pmax, float* uvmin, float* uvmax, uint32_t col);
+static tAddImage g_origAddImage = nullptr;
+static void __fastcall AddImage_Hook(void* dl, void* /*edx*/, void* tex, float* pmin, float* pmax, float* uvmin, float* uvmax, uint32_t col)
+{
+    const uint32_t off = RetOff(_ReturnAddress());
+    if (off >= 0x6D580 && off < 0x6E830)      // FUN_5974d580 (행동 아이콘 툴팁) 안에서 부른 것만
+        col = (col & 0x00FFFFFF) | (((col >> 24) * g_actionTipOpacity / 100) << 24);
+    g_origAddImage(dl, tex, pmin, pmax, uvmin, uvmax, col);
+}
+
+// 테두리 있는 판 (param_7 경로): FUN_5974c8c0(dl, rect, scale) = 검은 바탕 AddRectFilled(0xFF000000, push 즉치값 +0x6C938)
+// + 테두리 조각 8개. 행동 막대 등 다른 2곳도 같이 쓰므로, 툴팁에서 부를 때(반환 +0x6DFBF)만 바탕 알파 바이트를 잠깐 바꾼다.
+static uint8_t* g_framedFillAlpha = nullptr;   // push 0xFF000000 의 마지막 바이트 (쓰기 가능하게 열어 둠)
+typedef void(__cdecl* tFramedPanel)(void* dl, float* rect, float scale);
+static tFramedPanel g_origFramedPanel = nullptr;
+static void __cdecl FramedPanel_Hook(void* dl, float* rect, float scale)
+{
+    if (g_framedFillAlpha && RetOff(_ReturnAddress()) == 0x6DFBF) {
+        *g_framedFillAlpha = static_cast<uint8_t>(0xFF * g_actionTipOpacity / 100);
+        g_origFramedPanel(dl, rect, scale);
+        *g_framedFillAlpha = 0xFF;
+        return;
+    }
+    g_origFramedPanel(dl, rect, scale);
+}
+
+static void LoadUiScaleMap()
 {
     char ini[MAX_PATH];
     if (!GetKoLanguageIni(ini, MAX_PATH))
         return;
-    std::vector<char> sec(16 * 1024);
-    const DWORD n = GetPrivateProfileSectionA("UiFontSizes", sec.data(), static_cast<DWORD>(sec.size()), ini);
-    for (const char* p = sec.data(); p < sec.data() + n && *p; p += strlen(p) + 1) {
-        const int k = atoi(p);
-        const char* eq = strchr(p, '=');
-        const int v = eq ? atoi(eq + 1) : 0;
-        if (k > 0 && v >= 6 && v <= 96)
-            g_uiSizeMap[k] = v;
-    }
-    PLOG_DEBUG << "[ddraw] UI font size map: " << g_uiSizeMap.size() << " entries";
-}
-
-// 요청 px → 쓸 px (없으면 ini 에 N=N 추가 후 그대로)
-static float AdjustUiFontSize(float size)
-{
-    const int key = static_cast<int>(size + 0.5f);
-    if (key <= 0)
-        return size;
-    auto it = g_uiSizeMap.find(key);
-    if (it == g_uiSizeMap.end()) {
-        g_uiSizeMap[key] = key;
-        char ini[MAX_PATH], k[16];
-        if (GetKoLanguageIni(ini, MAX_PATH)) {
-            wsprintfA(k, "%d", key);
-            WritePrivateProfileStringA("UiFontSizes", k, k, ini);
+    auto readKey = [&](const char* key, int& out) {
+        const int v = static_cast<int>(GetPrivateProfileIntA("UiFontScale", key, -1, ini));
+        if (v < 0)
+            WritePrivateProfileStringA("UiFontScale", key, "100", ini);    // 없는 키는 100 으로 채워 둔다
+        else if (v >= 50 && v <= 300)
+            out = v;
+    };
+    for (int k = 0; k < 8; ++k)
+        readKey(kUiFontRole[k], g_uiRoleScale[k]);
+    for (UiSubScale& s : g_uiOverlaySub) {
+        if (s.oldKey && GetPrivateProfileIntA("UiFontScale", s.key, -1, ini) < 0) {
+            const int old = static_cast<int>(GetPrivateProfileIntA("UiFontScale", s.oldKey, -1, ini));
+            if (old >= 50 && old <= 300) {
+                char buf[16];
+                wsprintfA(buf, "%d", old);
+                WritePrivateProfileStringA("UiFontScale", s.key, buf, ini);
+            }
+            WritePrivateProfileStringA("UiFontScale", s.oldKey, nullptr, ini);   // 예전 키 지우기
         }
-        return size;
+        readKey(s.key, s.pct);
     }
-    return (it->second == key) ? size : static_cast<float>(it->second);
+    {
+        const int v = static_cast<int>(GetPrivateProfileIntA("UiStyle", "ActionIconTooltipOpacity", -1, ini));
+        if (v < 0)
+            WritePrivateProfileStringA("UiStyle", "ActionIconTooltipOpacity", "100", ini);
+        else
+            g_actionTipOpacity = v > 100 ? 100 : v;
+    }
+    PLOG_DEBUG << "[ddraw] UI font scale Overlay " << g_uiRoleScale[0] << " (preview " << g_uiOverlaySub[0].pct
+               << ", item " << g_uiOverlaySub[1].pct << ", status " << g_uiOverlaySub[2].pct
+               << ", roll log " << g_uiOverlaySub[kSubRollLog].pct << ") Dialogue " << g_uiRoleScale[1]
+               << " Action " << g_uiRoleScale[4] << " (icon tooltip " << g_uiOverlaySub[kSubActionIcon].pct << ")";
 }
 
-// FUN_5978a750 (ddraw +0xAA750): ImFont* (글꼴정보* info, float* outSize)
-//   그리기(FUN_59789850)와 측정(FUN_59789c70)이 모두 이 함수로 글꼴과 그릴 px 를 얻는다.
-//   보통은 outSize = info[4](요청 px), retail 슬롯은 retail 높이 * 배율 / 0.7 로 다시 계산.
-//   돌려준 글꼴은 그 요청 px 로 등록된 것(아틀라스는 위 훅이 쓸 px 로 만듦)이므로 outSize 만 쓸 px 로 바꾼다.
+static int GetUiRoleScale(uint32_t kind, uintptr_t ret = 0)
+{
+    if (kind >= 8)
+        return 100;
+    int pct = g_uiRoleScale[kind];
+    if (kind == 0 && g_ddrawBase && ret > g_ddrawBase) {
+        const uint32_t off = static_cast<uint32_t>(ret - g_ddrawBase);
+        for (const UiSubScale& s : g_uiOverlaySub)
+            if (s.retOff && s.retOff == off)
+                return pct * s.pct / 100;
+    }
+    // [진단] 표에 없는 호출 위치 (역할, 오프셋) 를 한 번씩 기록 — 새 하위 키를 찾을 때 쓴다
+    if (g_ddrawBase && ret > g_ddrawBase) {
+        static std::vector<uint64_t> s_seen;
+        const uint64_t id = (static_cast<uint64_t>(kind) << 32) | static_cast<uint32_t>(ret - g_ddrawBase);
+        if (s_seen.size() < 64 && std::find(s_seen.begin(), s_seen.end(), id) == s_seen.end()) {
+            s_seen.push_back(id);
+            PLOG_DEBUG << "[ddraw] UI font caller not mapped: " << kUiFontRole[kind] << " +0x" << std::hex
+                       << static_cast<uint32_t>(ret - g_ddrawBase) << std::dec;
+        }
+    }
+    return pct;
+}
+
+// FUN_5978a750 (ddraw +0xAA750): ImFont* (글꼴정보* info, float* outSize) — 그리기·측정이 글꼴과 그릴 px 를 얻는 곳.
+//   보통은 outSize = info[4], retail 슬롯은 retail 높이 * info[2](배율) / 0.7. 훅하지 않고 주소로 직접 부른다.
 typedef void* (__cdecl* tUiFontForDraw)(uint32_t* info, float* outSize);
 static tUiFontForDraw g_origUiFontForDraw = nullptr;
 
@@ -709,14 +826,22 @@ static char __cdecl RetailTextPath_Hook(uint32_t* info, const char* text, float 
 }
 
 // FUN_5978a0c0 (ddraw +0xAA0C0): 글꼴정보 {kind, slot, scale, font, 요청 px, retail 그릴 px} 를 만든다.
-// 인라인 아이콘 글(FUN_5973b530/6d0/750)은 여기의 font/요청 px([3],[4])를 그대로 쓰는데,
-// 보통 글(FUN_5978a750)은 retail 슬롯이면 retail 높이 * 배율 / 0.7 로 다시 계산해서 크기가 달랐다
-// (튜토리얼 아이콘 대사가 일반 대사보다 작음). → [3],[4] 를 FUN_5978a750 이 줄 값으로 맞춘다 (크기 표 적용 전 값).
+//  1) [UiFontScale] 배율을 scale/size 에 곱한다.
+//  2) 인라인 아이콘 글(FUN_5973b530/6d0/750)은 여기의 font/요청 px([3],[4])를 그대로 쓰는데,
+//     보통 글(FUN_5978a750)은 retail 슬롯이면 retail 높이 * 배율 / 0.7 로 다시 계산해서 크기가 달랐다
+//     (튜토리얼 아이콘 대사가 일반 대사보다 작음). → [3],[4] 를 FUN_5978a750 이 줄 값으로 맞춘다.
 typedef uint32_t* (__cdecl* tUiFontInfo)(uint32_t* out, uint32_t kind, uint32_t slot, float scale, float size);
 static tUiFontInfo g_origUiFontInfo = nullptr;
 
 static uint32_t* __cdecl UiFontInfo_Hook(uint32_t* out, uint32_t kind, uint32_t slot, float scale, float size)
 {
+    if (g_uiFontPath[0]) {
+        const int pct = GetUiRoleScale(kind, reinterpret_cast<uintptr_t>(_ReturnAddress()));
+        if (pct != 100) {
+            scale = scale * pct / 100.0f;
+            size = size * pct / 100.0f;
+        }
+    }
     uint32_t* r = g_origUiFontInfo(out, kind, slot, scale, size);
     if (r && g_uiFontPath[0] && g_origUiFontForDraw) {
         float s = 0.0f;
@@ -727,42 +852,6 @@ static uint32_t* __cdecl UiFontInfo_Hook(uint32_t* out, uint32_t kind, uint32_t 
         }
     }
     return r;
-}
-
-static void* __cdecl UiFontForDraw_Hook(uint32_t* info, float* outSize)
-{
-    void* font = g_origUiFontForDraw(info, outSize);
-    if (outSize && *outSize > 0.0f && g_uiFontPath[0])
-        *outSize = AdjustUiFontSize(*outSize);
-    return font;
-}
-
-// 인라인 아이콘(마우스 버튼 등) 이 들어 있는 글(FUN_5973b4c0 참)은 FUN_5978a750 을 거치지 않고
-// 글꼴정보의 글꼴/요청 px 를 그대로 넘긴다 → 같은 크기 표를 여기서도 적용 (영문 DM 대사 등)
-//   FUN_5973b530 (+0x5B530) 그리기: (out, drawList, font, size, x, y, color, text, wrap)
-//   FUN_5973b6d0 (+0x5B6D0) 측정  : (out, font, size, text, wrap)
-//   FUN_5973b750 (+0x5B750) 1차 줄바꿈: (out, font, size, text, wrap)
-typedef void* (__cdecl* tIconTextDraw)(void* out, void* dl, void* font, float size, float x, float y, float color, const char* text, float wrap);
-typedef void* (__cdecl* tIconTextMeasure)(void* out, void* font, float size, const char* text, float wrap);
-static tIconTextDraw    g_origIconTextDraw = nullptr;
-static tIconTextMeasure g_origIconTextMeasure = nullptr;
-static tIconTextMeasure g_origIconTextWrap = nullptr;
-
-static float MapUiSize(float size)
-{
-    return (size > 0.0f && g_uiFontPath[0]) ? AdjustUiFontSize(size) : size;
-}
-static void* __cdecl IconTextDraw_Hook(void* out, void* dl, void* font, float size, float x, float y, float color, const char* text, float wrap)
-{
-    return g_origIconTextDraw(out, dl, font, MapUiSize(size), x, y, color, text, wrap);
-}
-static void* __cdecl IconTextMeasure_Hook(void* out, void* font, float size, const char* text, float wrap)
-{
-    return g_origIconTextMeasure(out, font, MapUiSize(size), text, wrap);
-}
-static void* __cdecl IconTextWrap_Hook(void* out, void* font, float size, const char* text, float wrap)
-{
-    return g_origIconTextWrap(out, font, MapUiSize(size), text, wrap);
 }
 
 static bool EndsWithI(const char* s, const char* suffix)
@@ -850,7 +939,6 @@ static void* __fastcall AddFontTTF_Hook(void* atlas, void* edx, const char* path
     if (swap) {
         usePath = g_uiFontPath;
         useRanges = g_uiRanges.data();
-        useSize = AdjustUiFontSize(size);
         cacheKey.second = static_cast<int>(useSize + 0.5f);
         auto it = g_uiFontCache.find(cacheKey);
         if (it != g_uiFontCache.end())
@@ -924,7 +1012,7 @@ static void InstallUiFontHooks(uintptr_t base)
         }
     }
 
-    LoadUiSizeMap();
+    LoadUiScaleMap();
 
     static const uint8_t kAddFontPro[] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x08, 0x01, 0x00, 0x00 };
     static const uint8_t kRetailPro[]  = { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08, 0x57, 0x8B, 0x7D, 0x08 };
@@ -969,23 +1057,6 @@ static void InstallUiFontHooks(uintptr_t base)
         PLOG_ERROR << "[ddraw] AddFontDefault prologue mismatch";
     }
 
-    struct IconHook { uint32_t off; uint8_t pro[6]; void* detour; void** orig; const char* name; };
-    const IconHook iconHooks[] = {
-        { 0x5B530, { 0x55, 0x8B, 0xEC, 0x6A, 0xFF, 0x68 }, reinterpret_cast<void*>(&IconTextDraw_Hook),    reinterpret_cast<void**>(&g_origIconTextDraw),    "icon text draw" },
-        { 0x5B6D0, { 0x55, 0x8B, 0xEC, 0x8B, 0x45, 0x0C }, reinterpret_cast<void*>(&IconTextMeasure_Hook), reinterpret_cast<void**>(&g_origIconTextMeasure), "icon text measure" },
-        { 0x5B750, { 0x55, 0x8B, 0xEC, 0x83, 0xEC, 0x08 }, reinterpret_cast<void*>(&IconTextWrap_Hook),    reinterpret_cast<void**>(&g_origIconTextWrap),    "icon text wrap" },
-    };
-    for (const IconHook& h : iconHooks) {
-        void* target = reinterpret_cast<void*>(base + h.off);
-        if (memcmp(target, h.pro, sizeof(h.pro)) != 0) {
-            PLOG_ERROR << "[ddraw] " << h.name << " prologue mismatch";
-            continue;
-        }
-        st = MH_CreateHook(target, h.detour, h.orig);
-        if (st == MH_OK) st = MH_EnableHook(target);
-        PLOG_DEBUG << "[ddraw] " << h.name << " size hook status=" << st;
-    }
-
     // 영문만 있는 글의 retail 비트맵 경로 끄기, 아이콘 글 크기 맞추기
     {
         static const uint8_t kRetailTextPro[] = { 0x55, 0x8B, 0xEC, 0x6A, 0xFF, 0x68, 0x4D, 0x21, 0x82, 0x59 };
@@ -1002,21 +1073,83 @@ static void InstallUiFontHooks(uintptr_t base)
         if (memcmp(info, kInfoPro, sizeof(kInfoPro)) == 0) {
             st = MH_CreateHook(info, reinterpret_cast<void*>(&UiFontInfo_Hook), reinterpret_cast<void**>(&g_origUiFontInfo));
             if (st == MH_OK) st = MH_EnableHook(info);
-            PLOG_DEBUG << "[ddraw] UI font info (icon text size) hook status=" << st;
+            PLOG_DEBUG << "[ddraw] UI font info (case scale, icon text size) hook status=" << st;
         } else {
             PLOG_ERROR << "[ddraw] UI font info prologue mismatch";
         }
     }
 
-    static const uint8_t kDrawPro[] = { 0x55, 0x8B, 0xEC, 0x56, 0x8B, 0x75, 0x08, 0x57, 0x8B, 0x7D, 0x0C };
-    void* forDraw = reinterpret_cast<void*>(base + 0xAA750);
-    if (memcmp(forDraw, kDrawPro, sizeof(kDrawPro)) == 0) {
-        st = MH_CreateHook(forDraw, reinterpret_cast<void*>(&UiFontForDraw_Hook), reinterpret_cast<void**>(&g_origUiFontForDraw));
-        if (st == MH_OK) st = MH_EnableHook(forDraw);
-        PLOG_DEBUG << "[ddraw] UI font draw size hook status=" << st;
-    } else {
-        PLOG_ERROR << "[ddraw] UI font draw size prologue mismatch";
+    g_ddrawBase = base;
+    // 신UI 글자 크기 키가 바로 닿지 않는 곳: 역할별 크기 함수, 왼쪽 위 게임 글
+    {
+        static const uint8_t kRoleSizePro[] = { 0x55, 0x8B, 0xEC, 0x51, 0x56, 0x8B, 0x75, 0x08, 0x57, 0x83, 0xFE, 0x06 };
+        void* rs = reinterpret_cast<void*>(base + 0x404B0);
+        if (memcmp(rs, kRoleSizePro, sizeof(kRoleSizePro)) == 0) {
+            st = MH_CreateHook(rs, reinterpret_cast<void*>(&RoleFontSize_Hook), reinterpret_cast<void**>(&g_origRoleFontSize));
+            if (st == MH_OK) st = MH_EnableHook(rs);
+            PLOG_DEBUG << "[ddraw] role font size (Menu..Radial, action icon tooltip) hook status=" << st;
+        } else {
+            PLOG_ERROR << "[ddraw] role font size prologue mismatch";
+        }
+        // 행동 아이콘 툴팁 배경 불투명도
+        if (g_actionTipOpacity < 100) {
+            static const uint8_t kImgPro[] = { 0x55, 0x8B, 0xEC, 0x51, 0xF7, 0x45, 0x1C, 0x00, 0x00, 0x00, 0xFF, 0x56, 0x8B, 0xF1 };
+            void* ai = reinterpret_cast<void*>(base + 0xD7F20);
+            if (memcmp(ai, kImgPro, sizeof(kImgPro)) == 0) {
+                st = MH_CreateHook(ai, reinterpret_cast<void*>(&AddImage_Hook), reinterpret_cast<void**>(&g_origAddImage));
+                if (st == MH_OK) st = MH_EnableHook(ai);
+                PLOG_DEBUG << "[ddraw] action icon tooltip panel opacity hook status=" << st;
+            } else {
+                PLOG_ERROR << "[ddraw] AddImage prologue mismatch";
+            }
+            uint8_t* fill = reinterpret_cast<uint8_t*>(base + 0x6E1A0);   // 68 19 1C 1E F5 = push 0xF51E1C19
+            static const uint8_t kFill[] = { 0x68, 0x19, 0x1C, 0x1E, 0xF5 };
+            if (memcmp(fill, kFill, sizeof(kFill)) == 0) {
+                DWORD old;
+                VirtualProtect(fill + 4, 1, PAGE_EXECUTE_READWRITE, &old);
+                fill[4] = static_cast<uint8_t>(0xF5 * g_actionTipOpacity / 100);
+                VirtualProtect(fill + 4, 1, old, &old);
+            }
+            uint8_t* black = reinterpret_cast<uint8_t*>(base + 0x6C938);  // 68 00 00 00 FF = push 0xFF000000
+            static const uint8_t kBlack[] = { 0x68, 0x00, 0x00, 0x00, 0xFF };
+            static const uint8_t kPanelPro[] = { 0x55, 0x8B, 0xEC, 0x81, 0xEC, 0x18, 0x01, 0x00, 0x00 };
+            void* fp = reinterpret_cast<void*>(base + 0x6C8C0);
+            DWORD old;
+            if (memcmp(black, kBlack, sizeof(kBlack)) == 0 && memcmp(fp, kPanelPro, sizeof(kPanelPro)) == 0 &&
+                VirtualProtect(black + 4, 1, PAGE_EXECUTE_READWRITE, &old)) {
+                g_framedFillAlpha = black + 4;
+                st = MH_CreateHook(fp, reinterpret_cast<void*>(&FramedPanel_Hook), reinterpret_cast<void**>(&g_origFramedPanel));
+                if (st == MH_OK) st = MH_EnableHook(fp);
+                PLOG_DEBUG << "[ddraw] action icon tooltip framed panel opacity hook status=" << st;
+            } else {
+                PLOG_ERROR << "[ddraw] framed panel bytes mismatch";
+            }
+        }
+        static const uint8_t kSlotPro[] = { 0x55, 0x8B, 0xEC, 0x6A, 0xFF, 0x68 };
+        void* sf = reinterpret_cast<void*>(base + 0x40700);
+        if (memcmp(sf, kSlotPro, sizeof(kSlotPro)) == 0) {
+            st = MH_CreateHook(sf, reinterpret_cast<void*>(&SlotFontSize_Hook), reinterpret_cast<void**>(&g_origSlotFontSize));
+            if (st == MH_OK) st = MH_EnableHook(sf);
+            PLOG_DEBUG << "[ddraw] popup slot font size hook status=" << st;
+        } else {
+            PLOG_ERROR << "[ddraw] popup slot font size prologue mismatch";
+        }
+        static const uint8_t kPopPro[] = { 0x55, 0x8B, 0xEC, 0x51, 0xF3, 0x0F, 0x10, 0x55, 0x0C };
+        void* pf = reinterpret_cast<void*>(base + 0x3DB50);
+        if (memcmp(pf, kPopPro, sizeof(kPopPro)) == 0) {
+            st = MH_CreateHook(pf, reinterpret_cast<void*>(&PopupFontSize_Hook), reinterpret_cast<void**>(&g_origPopupFontSize));
+            if (st == MH_OK) st = MH_EnableHook(pf);
+            PLOG_DEBUG << "[ddraw] popup font size hook status=" << st;
+        } else {
+            PLOG_ERROR << "[ddraw] popup font size prologue mismatch";
+        }
     }
+    // FUN_5978a750 은 훅하지 않고 직접 부른다 (UiFontInfo_Hook 에서 font/그릴 px 계산용)
+    static const uint8_t kDrawPro[] = { 0x55, 0x8B, 0xEC, 0x56, 0x8B, 0x75, 0x08, 0x57, 0x8B, 0x7D, 0x0C };
+    if (memcmp(reinterpret_cast<void*>(base + 0xAA750), kDrawPro, sizeof(kDrawPro)) == 0)
+        g_origUiFontForDraw = reinterpret_cast<tUiFontForDraw>(base + 0xAA750);
+    else
+        PLOG_ERROR << "[ddraw] UI font draw size function mismatch";
 }
 
 void ApplyDDrawPatches(uintptr_t baseAddress)

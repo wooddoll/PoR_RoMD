@@ -266,9 +266,15 @@ def snegLanguageIni(gamePath):
         #   TtfScale/TtfWeight : 게임 텍스트 고해상도 TTF (china_glyph.cpp)
         #   UiFontFile         : SNEG UI(ImGui) 글꼴 파일 (languages\ko 안)
         #   UiLatin            : maru = UI 영문도 마루 부리, retail = 게임 비트맵 영문
-        #   [UiFontSizes]      : UI 글자 크기별 "요청px=쓸px". 게임이 처음 실행될 때 쓰는 크기를 자동으로 채운다
+        #   [UiFontScale]      : UI 글자 크기 배율(%, 50~300). 역할 키 × 하위 키. 해상도와 무관
+        #   [UiStyle]          : 행동 아이콘 툴팁 배경 불투명도(%, 0~100)
         f.write("\n[Font]\nTtfScale=100\nTtfWeight=400\n"
                 "UiFontFile=MaruBuri-Regular.ttf\nUiLatin=maru\n")
+        f.write("\n[UiFontScale]\nOverlay=100\nDialogue=100\nMenu=100\nInventory=100\n"
+                "Action=100\nPrompt=100\nRadial=100\nSettings=100\n"
+                "OverlayActionPreview=130\nOverlayItem=100\nOverlayStatus=100\n"
+                "OverlayRollLog=90\nActionIconTooltip=80\n")
+        f.write("\n[UiStyle]\nActionIconTooltipOpacity=70\n")
     print("ok")
     return True
 
