@@ -1,4 +1,5 @@
 #include "por2.h"
+#include "help_util.h"
 #include <string.h>
 
 #define WIN32_LEAN_AND_MEAN
@@ -44,10 +45,107 @@ static inline bool IsCloseBracket(int c) {
 /*  WordWrap 객체                                                       */
 /*  원본: BOOL __thiscall (원본 함수) 을 위해 __fastcall + dummy edx        */
 /* ------------------------------------------------------------------ */
+// [진단] 폰트 아틀라스 서피스(16bpp 565)를 diag_font_<ptr>.bmp 로 저장. 폰트마다 1회. 배포 전 제거
+static void DiagDumpFontSurface(cFont* font)
+{
+    static void* s_done[16] = {};
+    for (int i = 0; i < 16; ++i) {
+        if (s_done[i] == font) return;
+        if (!s_done[i]) { s_done[i] = font; break; }
+    }
+    IDirectDrawSurface7* s = font->GetSurface();
+    if (!s) return;
+    DDSURFACEDESC2 d = {};
+    d.dwSize = sizeof(d);
+    if (s->Lock(NULL, &d, DDLOCK_WAIT, NULL) != DD_OK) return;
+
+    const int w = (int)d.dwWidth, h = (int)d.dwHeight, bpp = (int)d.ddpfPixelFormat.dwRGBBitCount;
+    PLOG_DEBUG << "[diag] font=" << (void*)font << " surface=" << (void*)s << " " << w << "x" << h
+               << " bpp=" << bpp << " pitch=" << d.lPitch << " atlas=" << font->atlasWidth << "x" << font->atlasHeight;
+
+    if (bpp == 16 && w > 0 && h > 0 && d.lpSurface) {
+        char name[64];
+        wsprintfA(name, "diag_font_%p.bmp", font);
+        HANDLE f = CreateFileA(name, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (f != INVALID_HANDLE_VALUE) {
+            const int rowBytes = (w * 3 + 3) & ~3;
+            BITMAPFILEHEADER fh = {};
+            BITMAPINFOHEADER ih = {};
+            fh.bfType = 0x4D42;
+            fh.bfOffBits = sizeof(fh) + sizeof(ih);
+            fh.bfSize = fh.bfOffBits + rowBytes * h;
+            ih.biSize = sizeof(ih); ih.biWidth = w; ih.biHeight = -h; ih.biPlanes = 1; ih.biBitCount = 24;
+            DWORD wr;
+            WriteFile(f, &fh, sizeof(fh), &wr, NULL);
+            WriteFile(f, &ih, sizeof(ih), &wr, NULL);
+            BYTE* row = (BYTE*)_malloc(rowBytes);
+            for (int y = 0; y < h; ++y) {
+                const WORD* src = (const WORD*)((const BYTE*)d.lpSurface + y * d.lPitch);
+                memset(row, 0, rowBytes);
+                for (int x = 0; x < w; ++x) {
+                    WORD p = src[x];
+                    row[x * 3 + 0] = (BYTE)((p & 0x1F) << 3);
+                    row[x * 3 + 1] = (BYTE)(((p >> 5) & 0x3F) << 2);
+                    row[x * 3 + 2] = (BYTE)(((p >> 11) & 0x1F) << 3);
+                }
+                WriteFile(f, row, rowBytes, &wr, NULL);
+            }
+            _free(row);
+            CloseHandle(f);
+        }
+    }
+    s->Unlock(NULL);
+
+    // '가'(0xB0A1) 글리프 Rect
+    int idx = font->pCharMap->FindGlyphIndex(0xB0A1);
+    if (idx >= 0) {
+        RECT& r = font->pGlyphs[idx]->rect;
+        PLOG_DEBUG << "[diag] font=" << (void*)font << " glyph 0xB0A1 idx=" << idx
+                   << " rect=" << r.left << "," << r.top << "," << r.right << "," << r.bottom
+                   << " glyphSurface=" << (void*)font->pGlyphs[idx]->pSurface;
+    }
+}
+
+// [진단] '?' 원인 확인용: 텍스트 바이트와 글리프 조회 실패를 error.log 에 남긴다. 배포 전 제거
+static void DiagLogText(cTextLayout* self)
+{
+    DiagDumpFontSurface(self->m_pFont);
+    static int s_logged = 0;
+    if (s_logged >= 40) return;
+    const unsigned char* t = (const unsigned char*)self->m_pszText;
+    bool interesting = false;
+    for (int i = 0; t[i] && i < 256; ++i)
+        if (t[i] >= 0x80 || t[i] == '?') { interesting = true; break; }
+    if (!interesting) return;
+    ++s_logged;
+
+    char hex[3 * 48 + 1] = {};
+    int n = 0;
+    for (int i = 0; t[i] && i < 48; ++i)
+        n += wsprintfA(hex + n, "%02X ", t[i]);
+
+    int missing = 0, firstMissing = 0;
+    for (int i = 0; t[i] && i < 256; ) {
+        int code = getCharCode((const char*)t, i);
+        if (self->m_pFont->pCharMap->FindGlyphIndex(code) < 0) {
+            if (!missing) firstMissing = code;
+            ++missing;
+        }
+        i += (0xFF < code) ? 2 : 1;
+    }
+    PLOG_DEBUG << "[diag] WordWrap font=" << (void*)self->m_pFont
+               << " glyphs=" << self->m_pFont->glyphCount
+               << " map=" << self->m_pFont->pCharMap->count
+               << " missing=" << missing << " first=0x" << std::hex << firstMissing
+               << " text=" << hex;
+}
+
 BOOL __fastcall cTextLayout_WordWrap_Hook(cTextLayout* self, void* /*edx*/)
 {
     if (!self || !self->m_pszText || !self->m_pFont)
         return FALSE;
+
+    DiagLogText(self);
 
     int charIdx = 0;
     int nMaxWidth = 0;        // local_18 : 최대 줄 너비 값

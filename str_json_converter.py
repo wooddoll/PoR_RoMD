@@ -20,6 +20,7 @@ Options:
 import argparse
 import functools
 import json
+from kr_text import encode_kr, normalize_fullwidth
 import os
 import sys
 
@@ -101,7 +102,7 @@ def json_to_str(str_dir: str, json_file: str) -> None:
             if not isinstance(line, str):
                 print(f'Error: Value in "{key}" must be a string', file=sys.stderr)
                 sys.exit(1)
-            encoded_lines.append(line.encode('euc-kr'))
+            encoded_lines.append(encode_kr(line))
 
         content = b'\x0a'.join(encoded_lines) + b'\x0a'
 

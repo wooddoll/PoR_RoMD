@@ -6,6 +6,7 @@
 
 #include "hooks.h"
 #include "help_util.h"
+#include "data_redirect.h"
 
 DWORD WINAPI InitHookThread(LPVOID lpParam)
 {
@@ -20,7 +21,6 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
     plog::init(plog::error, &debugOutputAppender);
 #endif
     
-    /*
     bool ret = LoadSettings(L"language.ini");
     resetLogLevel();
 
@@ -32,8 +32,8 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
         //OutputDebugStringA("[version.dll proxy] korean.ini load failed.\n");
         PLOG_ERROR << "[version.dll proxy] language.ini load failed.";
     }
-    */
-    //ApplyMemoryPatches();
+
+    ApplyMemoryPatches();
 
     return 0;
 }
@@ -45,6 +45,9 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
     {
     case DLL_PROCESS_ATTACH:
         DisableThreadLibraryCalls(hModule);
+        // Data_kr 리다이렉트는 게임이 파일을 읽기 전에 걸어야 하므로 스레드가 아니라 여기서 바로 설치한다.
+        // (version.dll 은 exe 의 정적 import 라서 이 시점에 exe IAT 는 이미 채워져 있고 WinMain 전이다)
+        InstallDataRedirect();
         {
             HANDLE hThread = CreateThread(NULL, 0, InitHookThread, NULL, 0, NULL);
             if (hThread)

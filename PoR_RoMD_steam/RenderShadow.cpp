@@ -54,13 +54,17 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
     /////////////////////////////////////////////////////////////////////////
 
     const char* text = self->m_pszText;
-    const int   text_len = (int)strlen(text);
+    const int   text_len = text ? (int)strlen(text) : 0;
 
-    if (!text || text_len < 1 || !self->m_pFont)
+    // 빈 문자열은 그릴 게 없을 뿐 성공으로 처리해야 한다.
+    // 게임 SetText(0x4445f0)는 RenderShadow 가 TRUE 를 반환해야 위젯 폭/높이(+0x30/+0x34)를
+    // 서피스 크기로 갱신한다. FALSE 를 반환하면 생성 시 크기(예: 400x400)가 남아서
+    // 알파 블렌딩(0x4451f0 / sneg 0xB5760)이 작은 서피스를 넘어 읽고 죽는다.
+    if (text_len < 1)
     {
         pSrc->Unlock(NULL);
         pDst->Unlock(NULL);
-        return FALSE;
+        return TRUE;
 	}
 
     int charIdx = 0;

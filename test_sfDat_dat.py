@@ -1,5 +1,6 @@
 import argparse
 import struct
+from kr_text import encode_kr, normalize_fullwidth
 import os
 import json
 
@@ -76,8 +77,8 @@ def decode_sfdat(path, encoding="utf-16le"):
         else:
             raise ValueError(f"지원하지 않는 인코딩: {encoding}")
 
-        strings[i] = text
-        strings[f'{i}_kr'] = ''
+        strings[i] = {}
+        strings[i]['en'] = text
 
     return strings
 
@@ -176,7 +177,7 @@ def cp949_to_wide(text, byte_pos="low"):
     byte_pos="low" : [b, 0x00] (ASCII의 UTF-16LE와 동일한 배치, 기본값)
     byte_pos="high": [0x00, b]
     """
-    raw = text.encode("cp949")  # cp949로 표현 불가능한 문자가 있으면 UnicodeEncodeError
+    raw = normalize_fullwidth(text).encode("cp949")  # cp949로 표현 불가능한 문자가 있으면 UnicodeEncodeError
     out = bytearray()
     for b in raw:
         if byte_pos == "low":
@@ -237,7 +238,7 @@ def verify_cp949(strings, path, byte_pos="low"):
     while strings.get(str(i)) is not None:
         kr = strings.get(f'{i}_kr')
         expected = kr.encode("cp949") if kr else None
-        got = decoded[i].encode("cp949", errors="replace") if kr else None
+        got = decoded[i]['en'].encode("cp949", errors="replace") if kr else None
         if expected is not None and got != expected:
             bad.append(i)
         i += 1

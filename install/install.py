@@ -1,10 +1,12 @@
 import sys
 import os
+import json
 import shutil
 from tkinter import Tk, filedialog
 
 from read_binary_to_json import check_checkdata_in_exe
 from build_fonts import build_font
+import sneg_ui_strings
 
 
 def resource_path(relative_path):
@@ -32,9 +34,18 @@ def check_por2(dirpath):
     filepath = os.path.join(dirpath, 'por2main.exe')
     if not os.path.isfile(filepath):
         return False
-        
+
+    # SNEG 재출시판(Steam 등): 실행 파일이 원본과 달라 exe 검사 대신 sneg.dll 존재로 확인
+    if is_sneg(dirpath):
+        return os.path.isfile(os.path.join(dirpath, 'sneg.dll'))
+
     jsonpath = os.path.join(embedded_data_path, 'exe_test.json')
     return check_checkdata_in_exe(jsonpath, filepath)
+
+
+def is_sneg(gamePath):
+    """'sneg_ui' 폴더가 있으면 SNEG 재출시판(2026, Steam 등), 없으면 2001년 원본."""
+    return os.path.isdir(os.path.join(gamePath, 'sneg_ui'))
 
 def get_folder_path():
     if len(sys.argv) > 1:
@@ -60,156 +71,321 @@ def get_folder_path():
     print(f"{gamePath}는 올바른 PoR2 폴더가 아닙니다.")
     sys.exit()
 
-def installDll(gamePath, embedded_data_path):
-    print("한글 출력용 DLL 파일을 복사합니다... ", end='')
+def installDll(gamePath, embedded_data_path, sneg):
+    # 버전에 맞는 version.dll 을 골라 version.dll 이름으로 복사
+    src = 'version_sneg.dll' if sneg else 'version_2001.dll'
+    print(f"한글 출력용 DLL 파일을 복사합니다 ({src})... ", end='')
+    srcPath = os.path.join(embedded_data_path, src)
+    if not os.path.isfile(srcPath):
+        print(f"실패: 패치 데이터에 {src} 가 없습니다.")
+        return False
     shutil.copy2(os.path.join(embedded_data_path, 'minhook.x32.dll'), gamePath)
-    shutil.copy2(os.path.join(embedded_data_path, 'version.dll'), gamePath)
+    shutil.copy2(srcPath, os.path.join(gamePath, 'version.dll'))
     print("ok")
     return True
 
-def inputYN():
+KR_DIR_NAME = 'Data_kr'     # version.dll(data_redirect)이 읽는 폴더. language.ini [Settings] DataPath 기본값과 같아야 함
+
+LEGACY_DIRS = ['Fonts', 'Dialogue', 'STR']
+
+
+def askYN(prompt):
     while True:
-        user_input = input("그래도 진행하시겠습니까? (y/n): ").strip().lower()
-        
+        user_input = input(f"{prompt} (y/n): ").strip().lower()
         if user_input == 'y':
-            print("▶️ 작업을 계속 진행합니다.")
             return True
-        elif user_input == 'n':
-            print("❌ 사용자가 작업을 취소했습니다. 프로그램을 종료합니다.")
-            sys.exit()  # 프로그램 즉시 안전하게 종료
-        else:
-            print("잘못된 입력입니다. 'y' 또는 'n'만 입력해 주세요.")
+        if user_input == 'n':
+            return False
+        print("잘못된 입력입니다. 'y' 또는 'n'만 입력해 주세요.")
+
+
+def getKrPath(gamePath):
+    return os.path.join(gamePath, KR_DIR_NAME)
+
+
+def restoreLegacyInstall(gamePath, embedded_data_path):
+    """v1.0 인스톨러는 Data\\X 를 Data\\X_backup 으로 옮기고 한글 파일을 Data\\X 에 덮었다.
+    이번 버전은 원본을 건드리지 않으므로, 그 흔적이 있으면 원본으로 되돌린다."""
+    DataPath = os.path.join(gamePath, 'Data')
+    sfDatPath = os.path.join(gamePath, 'sfDat.dat')
+
+    found = [d for d in LEGACY_DIRS if os.path.isdir(os.path.join(DataPath, d + '_backup'))]
+    hasSfDatBackup = os.path.isfile(sfDatPath + '.backup')
+    if not found and not hasSfDatBackup:
+        return True
+
+    print("\n이전 버전(v1.0) 한글패치 설치 흔적이 있습니다:")
+    for d in found:
+        print(f"  Data/{d}_backup")
+    if hasSfDatBackup:
+        print("  sfDat.dat.backup")
+    print("이번 버전은 원본 파일을 그대로 두고 Data_kr 폴더에 설치합니다.")
+    if not askYN("백업해 둔 원본 파일을 원래 위치로 되돌릴까요?"):
+        print("원본 복구를 건너뜁니다. (폰트는 *_backup 폴더의 원본으로 만듭니다)")
+        return False
+
+    for d in found:
+        cur = os.path.join(DataPath, d)
+        bak = os.path.join(DataPath, d + '_backup')
+        if os.path.isdir(cur):
+            shutil.rmtree(cur)
+        os.rename(bak, cur)
+        print(f"  Data/{d} 복구 ok")
+
+    if hasSfDatBackup:
+        if os.path.isfile(sfDatPath):
+            os.remove(sfDatPath)
+        os.rename(sfDatPath + '.backup', sfDatPath)
+        print("  sfDat.dat 복구 ok")
+
+    # v1.0 은 자막(.sbv)을 Data/Bink 에 바로 넣었다
+    binkPath = os.path.join(DataPath, 'Bink')
+    srcBink = os.path.join(embedded_data_path, 'Bink')
+    removed = 0
+    if os.path.isdir(binkPath) and os.path.isdir(srcBink):
+        for file_name in os.listdir(srcBink):
+            target = os.path.join(binkPath, file_name)
+            if file_name.lower().endswith('.sbv') and os.path.isfile(target):
+                os.remove(target)
+                removed += 1
+    if removed:
+        print(f"  Data/Bink 의 이전 자막 파일 {removed}개 삭제 ok")
+    return True
+
+
+def prepareKrFolder(gamePath):
+    krPath = getKrPath(gamePath)
+    if os.path.isdir(krPath) and os.listdir(krPath):
+        print(f"\n'{krPath}' 폴더가 이미 있습니다.")
+        if askYN("기존 내용을 지우고 새로 설치할까요? (n 이면 덮어씁니다)"):
+            shutil.rmtree(krPath)
+    os.makedirs(krPath, exist_ok=True)
+    return krPath
+
 
 def installFont(gamePath, embedded_data_path):
     DataPath = os.path.join(gamePath, 'Data')
-    FontsPath = os.path.join(DataPath, 'Fonts')
-    
-    print("Data/Font 폴더를 Data/Font_backup 으로 보관합니다.")
-    Fonts_backup = os.path.join(DataPath, 'Fonts_backup')
-    if not os.path.exists(Fonts_backup):
-        os.rename(FontsPath, Fonts_backup)        
-        os.makedirs(FontsPath, exist_ok=True)
-    else:
-        print(f"⚠️ 경고: '{os.path.join(DataPath, 'Fonts_backup')}' 폴더가 이미 존재합니다.")
-        print(f"이전 백업이 유효하다고 가정하고 백업하지 않고 진행합니다.", end='')
-        inputYN()
-        
-    print("Data/Font 폴더에 한글 폰트를 생성합니다... ")
-    build_font('font0', Fonts_backup, 
-               os.path.join(embedded_data_path, 'font/Umdot14.ttf_18.png'),
-               os.path.join(embedded_data_path, 'font/Umdot14.ttf_18.txt'),
-               FontsPath)
-    build_font('font1', Fonts_backup, 
-                os.path.join(embedded_data_path, 'font/Umdot12.ttf_16.png'),
-                os.path.join(embedded_data_path, 'font/Umdot12.ttf_16.txt'),
-                FontsPath)
-    build_font('font2', Fonts_backup, 
-                os.path.join(embedded_data_path, 'font/Umdot20-Bold.ttf_28.png'),
-                os.path.join(embedded_data_path, 'font/Umdot20-Bold.ttf_28.txt'),
-                FontsPath)
-    build_font('font3', Fonts_backup, 
-                os.path.join(embedded_data_path, 'font/Galmuri9.ttf_13.png'),
-                os.path.join(embedded_data_path, 'font/Galmuri9.ttf_13.txt'),
-                FontsPath)
-    build_font('font4', Fonts_backup, 
-                os.path.join(embedded_data_path, 'font/Galmuri11.ttf_15.png'),
-                os.path.join(embedded_data_path, 'font/Galmuri11.ttf_15.txt'),
-                FontsPath)
-    return True
+    # 원본 폰트: v1.0 백업이 남아 있으면 그쪽이 원본이다
+    srcFonts = os.path.join(DataPath, 'Fonts_backup')
+    if not os.path.isdir(srcFonts):
+        srcFonts = os.path.join(DataPath, 'Fonts')
+    dstFonts = os.path.join(getKrPath(gamePath), 'Fonts')
+    print(f"{KR_DIR_NAME}/Fonts 폴더에 한글 폰트를 생성합니다... ")
+    return buildFonts(srcFonts, dstFonts, embedded_data_path)
+
+
+def buildFonts(srcFonts, dstFonts, embedded_data_path):
+    os.makedirs(dstFonts, exist_ok=True)
+    fonts = [
+        ('font0', 'font/Umdot14.ttf_18'),
+        ('font1', 'font/Umdot12.ttf_16'),
+        ('font2', 'font/Umdot20-Bold.ttf_28'),
+        ('font3', 'font/Galmuri9.ttf_13'),
+        ('font4', 'font/Galmuri11.ttf_15'),
+    ]
+    ok = True
+    for name, base in fonts:
+        ok &= bool(build_font(name, srcFonts,
+                              os.path.join(embedded_data_path, base + '.png'),
+                              os.path.join(embedded_data_path, base + '.txt'),
+                              dstFonts))
+    return ok
+
+
+def copyFiles(src_dir, dst_dir, ext):
+    os.makedirs(dst_dir, exist_ok=True)
+    copied_count = 0
+    for file_name in os.listdir(src_dir):
+        if file_name.lower().endswith(ext):
+            shutil.copy2(os.path.join(src_dir, file_name), os.path.join(dst_dir, file_name))
+            copied_count += 1
+    return copied_count
+
 
 def installDialogue(gamePath, embedded_data_path):
-    DataPath = os.path.join(gamePath, 'Data')
-    DialoguePath = os.path.join(DataPath, 'Dialogue')
-    print("Data/Dialogue 폴더를 Data/Dialogue_backup 으로 보관합니다.")
-    if not os.path.exists(os.path.join(DataPath, 'Dialogue_backup')):
-        os.rename(DialoguePath, os.path.join(DataPath, 'Dialogue_backup'))        
-        os.makedirs(DialoguePath, exist_ok=True)
-    else:
-        print(f"⚠️ 경고: '{os.path.join(DataPath, 'Dialogue_backup')}' 폴더가 이미 존재합니다.")
-        print(f"이전 백업이 유효하다고 가정하고 백업하지 않고 진행합니다.", end='')
-        inputYN()
-        
-    print("Data/Dialogue 폴더로 한글 대화 파일을 복사합니다... ", end='')
-    shutil.copy2(os.path.join(DataPath, 'Dialogue_backup/all.db'), DialoguePath)
-    shutil.copy2(os.path.join(DataPath, 'Dialogue_backup/all.idx'), DialoguePath)
-    
-    source_dir = os.path.join(embedded_data_path, 'Dialogue')
-    copied_count = 0
-    for file_name in os.listdir(source_dir):
-        if file_name.lower().endswith('.por'):
-            source_path = os.path.join(source_dir, file_name)
-            target_path = os.path.join(DialoguePath, file_name)
-        
-            shutil.copy2(source_path, target_path)
-            copied_count += 1
-    
+    print(f"{KR_DIR_NAME}/Dialogue 폴더로 한글 대화 파일을 복사합니다... ", end='')
+    n = copyFiles(os.path.join(embedded_data_path, 'Dialogue'),
+                  os.path.join(getKrPath(gamePath), 'Dialogue'), '.por')
     print("ok")
-    return copied_count == 1398
+    return n == 1398
+
 
 def installSTR(gamePath, embedded_data_path):
-    DataPath = os.path.join(gamePath, 'Data')
-    STRPath = os.path.join(DataPath, 'STR')
-    print("Data/STR 폴더를 Data/STR_backup 으로 보관합니다.")
-    if not os.path.exists(os.path.join(DataPath, 'STR_backup')):
-        os.rename(STRPath, os.path.join(DataPath, 'STR_backup'))        
-        os.makedirs(STRPath, exist_ok=True)
-    else:
-        print(f"⚠️ 경고: '{os.path.join(DataPath, 'STR_backup')}' 폴더가 이미 존재합니다.")
-        print(f"이전 백업이 유효하다고 가정하고 백업하지 않고 진행합니다.", end='')
-        inputYN()
-        
-    print("Data/STR 폴더로 한글 이름 파일을 복사합니다... ", end='')
-    
-    source_dir = os.path.join(embedded_data_path, 'STR')
-    copied_count = 0
-    for file_name in os.listdir(source_dir):
-        if file_name.lower().endswith('.str'):
-            source_path = os.path.join(source_dir, file_name)
-            target_path = os.path.join(STRPath, file_name)
-        
-            shutil.copy2(source_path, target_path)
-            copied_count += 1
-
+    print(f"{KR_DIR_NAME}/STR 폴더로 한글 이름 파일을 복사합니다... ", end='')
+    n = copyFiles(os.path.join(embedded_data_path, 'STR'),
+                  os.path.join(getKrPath(gamePath), 'STR'), '.str')
     print("ok")
-    return copied_count == 44
+    return n == 44
+
 
 def installBink(gamePath, embedded_data_path):
-    DataPath = os.path.join(gamePath, 'Data')
-    STRPath = os.path.join(DataPath, 'Bink')
-
-    print("Data/Bink 폴더로 한글 자막 파일을 복사합니다... ", end='')
-    
-    source_dir = os.path.join(embedded_data_path, 'Bink')
-    copied_count = 0
-    for file_name in os.listdir(source_dir):
-        if file_name.lower().endswith('.sbv'):
-            source_path = os.path.join(source_dir, file_name)
-            target_path = os.path.join(STRPath, file_name)
-        
-            shutil.copy2(source_path, target_path)
-            copied_count += 1
-
+    print(f"{KR_DIR_NAME}/Bink 폴더로 한글 자막 파일을 복사합니다... ", end='')
+    n = copyFiles(os.path.join(embedded_data_path, 'Bink'),
+                  os.path.join(getKrPath(gamePath), 'Bink'), '.sbv')
     print("ok")
-    return copied_count == 10
+    return n == 10
+
 
 def installSFDat(gamePath, embedded_data_path):
-    sfDatPath = os.path.join(gamePath, 'sfDat.dat')
-
-    print("sfDat.dat 파일을 sfDat.dat.backup 으로 보관합니다.")
-    if not os.path.exists(sfDatPath + '.backup'):
-        os.rename(sfDatPath, sfDatPath + '.backup')
-    else:
-        print(f"⚠️ 경고: '{sfDatPath}.backup' 파일이 이미 존재합니다.")
-        print(f"이전 백업이 유효하다고 가정하고 백업하지 않고 진행합니다.", end='')
-        inputYN()
-            
-    print("sfDat.dat 파일을 복사합니다... ", end='')
-
-    source_dir = os.path.join(embedded_data_path, 'sfDat.dat')
-    shutil.copy2(source_dir, sfDatPath)
-
+    print(f"{KR_DIR_NAME}/sfDat.dat 파일을 복사합니다... ", end='')
+    shutil.copy2(os.path.join(embedded_data_path, 'sfDat.dat'),
+                 os.path.join(getKrPath(gamePath), 'sfDat.dat'))
     print("ok")
     return True
+
+
+# ======================================================================
+#  SNEG 재출시판 (2026, Steam 등): languages\ko 한국어 언어팩으로 설치
+#  - 원본 파일은 건드리지 않는다 (Data\Bink 에 자막 .sbv 만 추가)
+#  - 게임 설정창의 언어 목록에 '한국어' 로 나오고, 선택하면 다음 실행부터 적용
+# ======================================================================
+KO_LANG = 'ko'
+SNEG_CJK_FONT = 'MaruBuri-Regular.ttf'          # version.dll 이 ImGui CJK 글꼴로 읽는 파일 (languages\ko\)
+SNEG_CJK_FONT_LICENSE = 'MaruBuri-OFL.txt'     # 있으면 같이 복사
+
+
+def getKoPath(gamePath):
+    return os.path.join(gamePath, 'languages', KO_LANG)
+
+
+def prepareKoFolder(gamePath):
+    koPath = getKoPath(gamePath)
+    if os.path.isdir(koPath) and os.listdir(koPath):
+        print(f"\n'{koPath}' 폴더가 이미 있습니다.")
+        if askYN("기존 내용을 지우고 새로 설치할까요? (n 이면 덮어씁니다)"):
+            shutil.rmtree(koPath)
+    os.makedirs(koPath, exist_ok=True)
+    return koPath
+
+
+def snegLanguageIni(gamePath):
+    print(f"languages/{KO_LANG}/language.ini 를 만듭니다... ", end='')
+    with open(os.path.join(getKoPath(gamePath), 'language.ini'), 'w', encoding='ascii', newline='\r\n') as f:
+        f.write("[Language]\nCodePage=949\nRelease=Korean patch by wooddoll\n")
+        # 글꼴 설정 (version.dll). steam_text_hooks.md 16절 참고
+        #   TtfScale/TtfWeight : 게임 텍스트 고해상도 TTF (china_glyph.cpp)
+        #   UiFontFile         : SNEG UI(ImGui) 글꼴 파일 (languages\ko 안)
+        #   UiLatin            : maru = UI 영문도 마루 부리, retail = 게임 비트맵 영문
+        #   [UiFontScale]      : UI 글자 크기 배율(%, 50~300). 역할 키 × 하위 키. 해상도와 무관
+        #   [UiStyle]          : 행동 아이콘 툴팁 배경 불투명도(%, 0~100)
+        f.write("\n[Font]\nTtfScale=100\nTtfWeight=400\n"
+                "UiFontFile=MaruBuri-Regular.ttf\nUiLatin=maru\n")
+        f.write("\n[UiFontScale]\nOverlay=100\nDialogue=100\nMenu=100\nInventory=100\n"
+                "Action=100\nPrompt=100\nRadial=100\nSettings=100\n"
+                "OverlayActionPreview=130\nOverlayItem=100\nOverlayStatus=100\n"
+                "OverlayRollLog=90\nActionIconTooltip=80\n")
+        f.write("\n[UiStyle]\nActionIconTooltipOpacity=70\n")
+    print("ok")
+    return True
+
+
+def snegData(gamePath, embedded_data_path):
+    koData = os.path.join(getKoPath(gamePath), 'data')
+    print(f"languages/{KO_LANG}/data 폴더로 한글 대화/이름 파일을 복사합니다... ", end='')
+    n1 = copyFiles(os.path.join(embedded_data_path, 'Dialogue'), os.path.join(koData, 'Dialogue'), '.por')
+    n2 = copyFiles(os.path.join(embedded_data_path, 'STR'), os.path.join(koData, 'STR'), '.str')
+    shutil.copy2(os.path.join(embedded_data_path, 'sfDat.dat'), os.path.join(getKoPath(gamePath), 'sfDat.dat'))
+    print("ok")
+    return n1 == 1398 and n2 == 44
+
+
+def snegBink(gamePath, embedded_data_path):
+    # 자막은 영상(.bik)과 같은 폴더에서 찾는다 (version.dll bink_hook). 영상은 원본 Data\Bink 에 있으므로 거기에 추가
+    print("Data/Bink 폴더에 한글 자막 파일(.sbv)을 추가합니다... ", end='')
+    n = copyFiles(os.path.join(embedded_data_path, 'Bink'), os.path.join(gamePath, 'Data', 'Bink'), '.sbv')
+    print("ok")
+    return n == 10
+
+
+def snegFont(gamePath, embedded_data_path):
+    # 원본 Data\Fonts 를 바탕으로 한글 병합 폰트를 languages\ko\data\fonts 에 만든다
+    srcFonts = os.path.join(gamePath, 'Data', 'Fonts')
+    dstFonts = os.path.join(getKoPath(gamePath), 'data', 'fonts')
+    print(f"languages/{KO_LANG}/data/fonts 폴더에 한글 폰트를 생성합니다... ")
+    ok = buildFonts(srcFonts, dstFonts, embedded_data_path)
+
+    # 설정창/툴팁 등 새 UI(ImGui)용 한글 글꼴
+    print(f"languages/{KO_LANG} 폴더에 UI용 한글 글꼴({SNEG_CJK_FONT})을 복사합니다... ", end='')
+    fontDir = os.path.join(embedded_data_path, 'font')
+    shutil.copy2(os.path.join(fontDir, SNEG_CJK_FONT), getKoPath(gamePath))
+    lic = os.path.join(fontDir, SNEG_CJK_FONT_LICENSE)
+    if os.path.isfile(lic):
+        shutil.copy2(lic, getKoPath(gamePath))
+    shutil.copy2(os.path.join(embedded_data_path, 'sneg_ui_cjk_characters.txt'), getKoPath(gamePath))
+    print("ok")
+    return ok
+
+
+def snegUiStrings(gamePath):
+    # 루트 sneg_ui_strings.dat (영어) 를 바탕으로 언어 코드 ko + 언어 이름 '한국어' 를 넣어 만든다
+    print(f"languages/{KO_LANG}/sneg_ui_strings.dat 를 만듭니다... ", end='')
+    src = os.path.join(gamePath, 'sneg_ui_strings.dat')
+    if not os.path.isfile(src):
+        print("실패: 게임 폴더에 sneg_ui_strings.dat 가 없습니다.")
+        return False
+    _, items = sneg_ui_strings.load(src)
+    key = f'ui.settings.language.{KO_LANG}'
+    items = [it for it in items if it[0] != key]
+    items.append([key, 65001, '한국어'.encode('utf-8')])
+    # 한국어 번역 (translation/sneg_ui_strings_ko.json 을 Data 에 넣어 둔 것, install/sneg_ui_ko.py 로 관리).
+    # 게임 쪽 영어 원문이 번역할 때의 영어와 같은 항목만 바꾼다 → SNEG 업데이트로 문구가 바뀌면 새 영어를 그대로 둔다.
+    translated = 0
+    trPath = os.path.join(embedded_data_path, 'sneg_ui_strings_ko.json')
+    if os.path.isfile(trPath):
+        tr = {t['key']: t for t in json.load(open(trPath, encoding='utf-8')) if t.get('ko')}
+        for it in items:
+            t = tr.get(it[0])
+            if t and sneg_ui_strings.text(it[1], it[2]) == t['en']:
+                it[1], it[2] = 65001, t['ko'].encode('utf-8')
+                translated += 1
+    items.sort(key=lambda it: it[0])
+    sneg_ui_strings.save(os.path.join(getKoPath(gamePath), 'sneg_ui_strings.dat'), KO_LANG, items)
+    print(f"ok (번역 {translated}/{len(items)})")
+    return True
+
+
+def writeIni(path, section, key, value):
+    import ctypes
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return bool(ctypes.windll.kernel32.WritePrivateProfileStringW(section, key, value, path))
+
+
+def snegSettings():
+    # %LOCALAPPDATA%\SNEG\POR2 : config.ini [Text] CodePage=949, game_settings.ini [Text] Language=ko
+    base = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'SNEG', 'POR2')
+    print("게임 설정에 한국어(코드페이지 949)를 지정합니다... ", end='')
+    ok = writeIni(os.path.join(base, 'config.ini'), 'Text', 'CodePage', '949')
+    ok &= writeIni(os.path.join(base, 'game_settings.ini'), 'Text', 'Language', KO_LANG)
+    print("ok" if ok else "실패")
+    return ok
+
+
+def installSneg(gamePath):
+    print("\nSNEG 재출시판으로 확인되었습니다. languages/ko 한국어 언어팩으로 설치합니다.")
+    prepareKoFolder(gamePath)
+    return [
+        ('DLL', installDll(gamePath, embedded_data_path, True)),
+        ('language.ini', snegLanguageIni(gamePath)),
+        ('data', snegData(gamePath, embedded_data_path)),
+        ('Bink', snegBink(gamePath, embedded_data_path)),
+        ('Fonts', snegFont(gamePath, embedded_data_path)),
+        ('sneg_ui_strings.dat', snegUiStrings(gamePath)),
+        ('설정', snegSettings()),
+    ]
+
+
+def install2001(gamePath):
+    print("\n2001년 원본으로 확인되었습니다. Data_kr 폴더로 설치합니다.")
+    restoreLegacyInstall(gamePath, embedded_data_path)
+    prepareKrFolder(gamePath)
+    return [
+        ('DLL', installDll(gamePath, embedded_data_path, False)),
+        ('Bink', installBink(gamePath, embedded_data_path)),
+        ('Fonts', installFont(gamePath, embedded_data_path)),
+        ('sfDat.dat', installSFDat(gamePath, embedded_data_path)),
+        ('Dialogue', installDialogue(gamePath, embedded_data_path)),
+        ('STR', installSTR(gamePath, embedded_data_path)),
+    ]
 
 
 if __name__ == "__main__":
@@ -219,9 +395,8 @@ if __name__ == "__main__":
 ======================================================================
 
 ⚠️  [중요: 버전 호환성 안내]
-본 한글패치는 2001년 원본(Original) 버전에서만 정상 동작합니다.
-2026년 11월에 출시 예정인 새로운 릴리즈 버전에서는 동작하지 않으니 
-설치 전 본인의 게임 버전을 반드시 확인해 주시기 바랍니다.
+본 한글패치는 2001년 원본(Original) 버전과 2026년 SNEG 재출시판(Steam 등)을 지원합니다.
+선택한 게임 폴더에 'sneg_ui' 폴더가 있으면 재출시판, 없으면 2001년 원본으로 보고 설치합니다.
 
 
 수정 및 업데이트 버전은 항상 https://github.com/wooddoll/PoR_RoMD 에서 배포하고 있습니다.
@@ -236,10 +411,9 @@ if __name__ == "__main__":
 아래의 모든 이용약관 및 주의사항에 동의한 것으로 간주됩니다. 
 내용을 반드시 읽고 동의하시는 경우에만 설치를 진행해 주시기 바랍니다.
 
-✔ 특정 버전 전용 (2001년 원본)
-본 패치는 오직 2001년 발매된 원본 게임 환경에 맞춰 제작되었습니다. 
-2026년 11월 새 릴리즈 버전과는 아직 호환되지 않으며, 
-새 버전 구동 시 발생하는 오류에 대해서는 지원하지 않습니다.
+✔ 지원 버전
+2001년 원본과 2026년 SNEG 재출시판에 맞춰 제작되었습니다. 
+재출시판은 이후 업데이트로 내부 구조가 바뀌면 동작하지 않을 수 있습니다.
 
 ✔ 정품 소유자 전용
 본 한글패치는 해당 게임의 정품 패키지 또는 디지털 에디션 등을 
@@ -267,7 +441,20 @@ if __name__ == "__main__":
 ✒️  사용 폰트 안내
 • 움돋 (Umdot, https://monadabxy.com/fonts/umdot/) - SIL Open Font License 1.1
 • 갈무리 (Galmuri, https://quiple.dev/font/galmuri) - SIL Open Font License 1.1
+• 마루 부리 (MaruBuri, 재출시판 새 UI용) - SIL Open Font License 1.1
 
+
+📁  설치 방식 (2001년 원본)
+• 원본 Data 폴더와 sfDat.dat 는 수정하지 않고, 한글 파일은 모두 Data_kr 폴더에 설치합니다.
+  게임은 version.dll 이 Data_kr 에 있는 파일을 원본 대신 읽도록 해 줍니다.
+• 이전 버전(v1.0)으로 설치한 흔적(*_backup)이 있으면 원본으로 되돌릴지 묻습니다.
+• 패치 제거: 게임 폴더의 Data_kr 폴더, version.dll, minhook.x32.dll 을 지우면 됩니다.
+
+📁  설치 방식 (SNEG 재출시판)
+• 게임의 언어팩 구조를 이용해 languages/ko 폴더에 한국어 언어팩을 설치합니다.
+  원본 파일은 수정하지 않고, Data/Bink 에 자막 파일(.sbv)만 추가합니다.
+• 게임 설정을 한국어(코드페이지 949)로 지정합니다. 설정창 언어 목록에서 '한국어' 를 볼 수 있습니다.
+• 패치 제거: languages/ko 폴더, version.dll, minhook.x32.dll 을 지우고 설정창에서 다른 언어를 고르면 됩니다.
 
 🛠️  기술 안내 및 알림
 • 백신 오진 관련 안내
@@ -289,12 +476,10 @@ if __name__ == "__main__":
 
     gamePath = get_folder_path()
 
-    installDll(gamePath, embedded_data_path)
-    installBink(gamePath, embedded_data_path)
-    installFont(gamePath, embedded_data_path)
-    installSFDat(gamePath, embedded_data_path)
-    installDialogue(gamePath, embedded_data_path)
-    installSTR(gamePath, embedded_data_path)
+    results = installSneg(gamePath) if is_sneg(gamePath) else install2001(gamePath)
+    failed = [name for name, ok in results if not ok]
+    if failed:
+        print("\n⚠️ 확인이 필요한 항목: " + ", ".join(failed))
 
     print("\n✨ 모든 패치가 잘 끝났습니다.")
     print("📝 문제가 있으면 https://github.com/wooddoll/PoR_RoMD 에 issue로 올려주세요.")
