@@ -695,6 +695,40 @@ static float AdjustUiFontSize(float size)
 typedef void* (__cdecl* tUiFontForDraw)(uint32_t* info, float* outSize);
 static tUiFontForDraw g_origUiFontForDraw = nullptr;
 
+// FUN_5978a7f0 (ddraw +0xAA7F0): 글자가 모두 retail(게임 비트맵) 글꼴에 있으면(= ASCII 만) 비트맵 글리프로
+// 줄을 나누고 그리는 경로 (그리기 FUN_59789850, 측정 FUN_59789c70 이 먼저 묻는다). 거짓이면 TTF 경로.
+// UiLatin=maru 이면 항상 거짓 → "DM:", "1706 x 720" 같은 영문만 있는 글도 마루 부리로.
+typedef char(__cdecl* tRetailTextPath)(uint32_t* info, const char* text, float wrap, void* outLines, void* outWidths);
+static tRetailTextPath g_origRetailTextPath = nullptr;
+
+static char __cdecl RetailTextPath_Hook(uint32_t* info, const char* text, float wrap, void* outLines, void* outWidths)
+{
+    if (g_uiLatinMaru && g_uiFontPath[0])
+        return 0;
+    return g_origRetailTextPath(info, text, wrap, outLines, outWidths);
+}
+
+// FUN_5978a0c0 (ddraw +0xAA0C0): 글꼴정보 {kind, slot, scale, font, 요청 px, retail 그릴 px} 를 만든다.
+// 인라인 아이콘 글(FUN_5973b530/6d0/750)은 여기의 font/요청 px([3],[4])를 그대로 쓰는데,
+// 보통 글(FUN_5978a750)은 retail 슬롯이면 retail 높이 * 배율 / 0.7 로 다시 계산해서 크기가 달랐다
+// (튜토리얼 아이콘 대사가 일반 대사보다 작음). → [3],[4] 를 FUN_5978a750 이 줄 값으로 맞춘다 (크기 표 적용 전 값).
+typedef uint32_t* (__cdecl* tUiFontInfo)(uint32_t* out, uint32_t kind, uint32_t slot, float scale, float size);
+static tUiFontInfo g_origUiFontInfo = nullptr;
+
+static uint32_t* __cdecl UiFontInfo_Hook(uint32_t* out, uint32_t kind, uint32_t slot, float scale, float size)
+{
+    uint32_t* r = g_origUiFontInfo(out, kind, slot, scale, size);
+    if (r && g_uiFontPath[0] && g_origUiFontForDraw) {
+        float s = 0.0f;
+        void* font = g_origUiFontForDraw(r, &s);
+        if (font && s > 0.0f) {
+            r[3] = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(font));
+            memcpy(&r[4], &s, 4);
+        }
+    }
+    return r;
+}
+
 static void* __cdecl UiFontForDraw_Hook(uint32_t* info, float* outSize)
 {
     void* font = g_origUiFontForDraw(info, outSize);
@@ -763,6 +797,12 @@ static bool BuildUiRanges()
     std::vector<uint16_t> cps;
     for (uint32_t c = 0x20; c <= 0xFF; ++c)
         if (c < 0x7F || c >= 0xA0) cps.push_back(static_cast<uint16_t>(c));
+    // 새 UI 문구에 쓰이는 기호: 라틴 확장 A, 일반 구두점(– — ‘ ’ “ ” … 등), 통화/상표, 화살표
+    // (예: "1–6 캐릭터 전환" 의 en dash 가 없어서 '?' 로 나왔다)
+    static const uint16_t kExtra[][2] = { {0x0100, 0x017F}, {0x2010, 0x205E}, {0x20AC, 0x20AC},
+                                          {0x2122, 0x2122}, {0x2190, 0x21FF}, {0x2212, 0x2212} };
+    for (const auto& r : kExtra)
+        for (uint32_t c = r[0]; c <= r[1]; ++c) cps.push_back(static_cast<uint16_t>(c));
     for (size_t i = 0; i < buf.size(); ) {         // UTF-8 디코드 (BMP 만)
         const uint8_t b = buf[i];
         uint32_t cp = 0; size_t len = 1;
@@ -944,6 +984,28 @@ static void InstallUiFontHooks(uintptr_t base)
         st = MH_CreateHook(target, h.detour, h.orig);
         if (st == MH_OK) st = MH_EnableHook(target);
         PLOG_DEBUG << "[ddraw] " << h.name << " size hook status=" << st;
+    }
+
+    // 영문만 있는 글의 retail 비트맵 경로 끄기, 아이콘 글 크기 맞추기
+    {
+        static const uint8_t kRetailTextPro[] = { 0x55, 0x8B, 0xEC, 0x6A, 0xFF, 0x68, 0x4D, 0x21, 0x82, 0x59 };
+        void* t = reinterpret_cast<void*>(base + 0xAA7F0);
+        if (memcmp(t, kRetailTextPro, 6) == 0) {    // 6 바이트만 비교 (뒤 4바이트는 재배치되는 주소)
+            st = MH_CreateHook(t, reinterpret_cast<void*>(&RetailTextPath_Hook), reinterpret_cast<void**>(&g_origRetailTextPath));
+            if (st == MH_OK) st = MH_EnableHook(t);
+            PLOG_DEBUG << "[ddraw] retail text path (ASCII bitmap) hook status=" << st;
+        } else {
+            PLOG_ERROR << "[ddraw] retail text path prologue mismatch";
+        }
+        static const uint8_t kInfoPro[] = { 0x55, 0x8B, 0xEC, 0xF3, 0x0F, 0x10, 0x45, 0x14 };
+        void* info = reinterpret_cast<void*>(base + 0xAA0C0);
+        if (memcmp(info, kInfoPro, sizeof(kInfoPro)) == 0) {
+            st = MH_CreateHook(info, reinterpret_cast<void*>(&UiFontInfo_Hook), reinterpret_cast<void**>(&g_origUiFontInfo));
+            if (st == MH_OK) st = MH_EnableHook(info);
+            PLOG_DEBUG << "[ddraw] UI font info (icon text size) hook status=" << st;
+        } else {
+            PLOG_ERROR << "[ddraw] UI font info prologue mismatch";
+        }
     }
 
     static const uint8_t kDrawPro[] = { 0x55, 0x8B, 0xEC, 0x56, 0x8B, 0x75, 0x08, 0x57, 0x8B, 0x7D, 0x0C };
