@@ -93,46 +93,40 @@ static void PatchCodePage950To949(uintptr_t base, const uint32_t* rvas, size_t c
 
 // ---------------------------------------------------------------------------
 // [실험] SNEG 자체 CJK(china) 렌더 경로로 한글 출력
-// 게임 폴더에 kr_native_test.txt 가 있으면: 950->949 패치 + sneg 의 china/고해상도 경로를 그대로 쓰고
+// languages\ko\language.ini [Render] NativeCjk=1 이면: 950->949 패치 + sneg 의 china/고해상도 경로를 그대로 쓰고
 // 우리 텍스트 훅(배율 0 고정, DrawMenu/DrawTextLines/HMenu/TextLabel/WordWrap/RenderShadow/KeyInput,
-// 게임 입구 직접 훅, FontMetrics)은 모두 끈다. 파일을 지우면 원래 동작.
+// 게임 입구 직접 훅, FontMetrics)은 모두 끈다. 0 이거나 키가 없으면 원래 동작.
+//   [Render] HiRes=1        : 고해상도(*_ani) 경로를 막지 않는다 (16절 2단계, config.ini [Text] ScaledEngineText=1 필요)
+//   [Render] CjkFontScale=% : china 글꼴(마루 부리/맑은 고딕) 높이 배율 (50~150, 기본 71)
+// (예전에는 게임 폴더 kr_native_test.txt 마커 파일로 켰다)
 // ---------------------------------------------------------------------------
+static int KoRenderIni(const char* key, int def)
+{
+    char path[MAX_PATH];
+    DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
+    char* slash = (n > 0 && n < MAX_PATH) ? strrchr(path, '\\') : nullptr;
+    if (!slash || (slash - path) + 32 >= MAX_PATH)
+        return def;
+    lstrcpyA(slash + 1, "languages\\ko\\language.ini");
+    return static_cast<int>(GetPrivateProfileIntA("Render", key, def, path));
+}
+
 bool IsNativeCjkTest()
 {
     static int s_state = -1;
     if (s_state < 0) {
-        char path[MAX_PATH];
-        DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
-        char* slash = (n > 0 && n < MAX_PATH) ? strrchr(path, '\\') : nullptr;
-        if (slash) lstrcpyA(slash + 1, "kr_native_test.txt");
-        s_state = (slash && GetFileAttributesA(path) != INVALID_FILE_ATTRIBUTES) ? 1 : 0;
-        PLOG_DEBUG << "[exp] native CJK test mode = " << s_state;
+        s_state = KoRenderIni("NativeCjk", 0) != 0 ? 1 : 0;
+        PLOG_DEBUG << "[exp] native CJK mode = " << s_state;
     }
     return s_state == 1;
 }
 
-// [실험] kr_native_test.txt 에 "hires" 가 있으면 고해상도(*_ani) 경로를 막지 않는다 (16절 2단계용).
-// 없으면 1단계: 배율 함수 두 개를 0 으로 고정해서 저해상도(배율 1.0) 비트맵 경로만 쓴다.
+// HiRes=0 이면 1단계: 배율 함수 두 개를 0 으로 고정해서 저해상도(배율 1.0) 비트맵 경로만 쓴다.
 static bool IsNativeCjkHiRes()
 {
     static int s_state = -1;
     if (s_state < 0) {
-        s_state = 0;
-        char path[MAX_PATH];
-        DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
-        char* slash = (n > 0 && n < MAX_PATH) ? strrchr(path, '\\') : nullptr;
-        if (slash) {
-            lstrcpyA(slash + 1, "kr_native_test.txt");
-            HANDLE f = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-            if (f != INVALID_HANDLE_VALUE) {
-                char buf[256] = {};
-                DWORD rd = 0;
-                ReadFile(f, buf, sizeof(buf) - 1, &rd, NULL);
-                CloseHandle(f);
-                _strlwr_s(buf);
-                s_state = strstr(buf, "hires") ? 1 : 0;
-            }
-        }
+        s_state = KoRenderIni("HiRes", 0) != 0 ? 1 : 0;
         PLOG_DEBUG << "[exp] hi-res text = " << s_state;
     }
     return s_state == 1;
@@ -227,22 +221,9 @@ static void HookSnegCreateFontW(uintptr_t baseAddress)
     if (*reinterpret_cast<void**>(slot) == real && real) {
         g_origCreateFontW = reinterpret_cast<tCreateFontW>(real);
         patchDWORD(slot, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(&Sneg_CreateFontW_Hook)));
-        // 배율: 게임 폴더 kr_native_test.txt 첫 줄에 숫자(%)가 있으면 그 값
-        char path[MAX_PATH];
-        DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
-        char* slash = (n > 0 && n < MAX_PATH) ? strrchr(path, '\\') : nullptr;
-        if (slash) {
-            lstrcpyA(slash + 1, "kr_native_test.txt");
-            HANDLE f = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-            if (f != INVALID_HANDLE_VALUE) {
-                char buf[16] = {};
-                DWORD rd = 0;
-                ReadFile(f, buf, sizeof(buf) - 1, &rd, NULL);
-                CloseHandle(f);
-                int v = atoi(buf);
-                if (v >= 50 && v <= 150) g_cjkFontScalePercent = v;
-            }
-        }
+        // 배율: language.ini [Render] CjkFontScale (50~150)
+        const int v = KoRenderIni("CjkFontScale", g_cjkFontScalePercent);
+        if (v >= 50 && v <= 150) g_cjkFontScalePercent = v;
         PLOG_DEBUG << "[exp] sneg CreateFontW hooked, scale " << g_cjkFontScalePercent << "%";
     } else {
         PLOG_ERROR << "[exp] sneg CreateFontW IAT slot mismatch";

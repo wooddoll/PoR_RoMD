@@ -7,7 +7,7 @@
 //   - china_pass        : 한글이면 폭/높이 = 우리 비트맵 아틀라스의 한글 RECT, charCode = 유니코드, TTF 표시
 //                         → sneg 레이아웃(줄바꿈 포함)과 렌더 칸이 비트맵 폭 하나로 통일된다.
 //   - GetChinaFontBitmap: 배율 1.0 이면 아틀라스 글리프 픽셀(0xFFFF)을 알파 0xFF 마스크로 돌려준다.
-//                         배율 > 1 (2단계, 마커에 hires) 이면 마루 부리 TTF 를 그 크기로 직접 렌더한다.
+//                         배율 > 1 (2단계, language.ini [Render] HiRes=1) 이면 마루 부리 TTF 를 그 크기로 직접 렌더한다.
 //                         칸 = 원래 함수와 같은 ceil(w*배율), ceil(h*배율). 글꼴 크기는 '가'가 한글 칸에 맞게,
 //                         글자는 칸 가운데.
 // 2단계(hires)에서는 ASCII(0x20~0x7E)도 TTF 표시로 보내 고해상도 글꼴을 마루 부리 하나로 통일한다
@@ -55,7 +55,7 @@ cFont* g_fontByHeight[256] = {};
 std::map<uint64_t, std::unique_ptr<CachedBitmap>> g_bitmapCache;    // 배율 1.0 (아틀라스)
 std::map<uint64_t, std::unique_ptr<CachedBitmap>> g_ttfCache;       // 배율 > 1 (TTF)
 
-bool g_hiRes = false;       // 마커 파일에 hires (2단계)
+bool g_hiRes = false;       // language.ini [Render] HiRes=1 (2단계)
 int  g_ttfScalePercent = 100;   // language.ini [Font] TtfScale : 맞춘 글꼴 크기(em)에 곱하는 % (50~150)
 int  g_ttfWeight = FW_NORMAL;   // language.ini [Font] TtfWeight : 100~900 (400 보통, 700 굵게)
 
@@ -419,31 +419,6 @@ bool HookWithTrampoline(uintptr_t target, void* detour, void** orig, const char*
 
 } // namespace
 
-// sneg_hook.cpp 의 실험 모드에서 호출
-// 마커 파일(kr_native_test.txt)에서 "key=숫자" 를 찾는다. 없으면 def
-static int ReadMarkerInt(const char* key, int def, int lo, int hi)
-{
-    char path[MAX_PATH];
-    DWORD n = GetModuleFileNameA(NULL, path, MAX_PATH);
-    char* slash = (n > 0 && n < MAX_PATH) ? strrchr(path, '\\') : nullptr;
-    if (!slash)
-        return def;
-    lstrcpyA(slash + 1, "kr_native_test.txt");
-    HANDLE f = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    if (f == INVALID_HANDLE_VALUE)
-        return def;
-    char buf[1024] = {};
-    DWORD rd = 0;
-    ReadFile(f, buf, sizeof(buf) - 1, &rd, NULL);
-    CloseHandle(f);
-    _strlwr_s(buf);
-    const char* p = strstr(buf, key);
-    if (!p)
-        return def;
-    const int v = atoi(p + strlen(key));
-    return (v >= lo && v <= hi) ? v : def;
-}
-
 // languages\ko\language.ini [Font] 의 정수 값. 없거나 범위 밖이면 def
 static int ReadLanguageIniInt(const char* key, int def, int lo, int hi)
 {
@@ -460,11 +435,9 @@ static int ReadLanguageIniInt(const char* key, int def, int lo, int hi)
 void InstallChinaGlyphHooks(uintptr_t snegBase, bool hiRes)
 {
     g_hiRes = hiRes;
-    // 기본값: languages\ko\language.ini [Font] TtfScale / TtfWeight. 마커 파일의 ttfscale= / ttfweight= 가 있으면 그쪽 (시험용)
+    // languages\ko\language.ini [Font] TtfScale / TtfWeight
     g_ttfScalePercent = ReadLanguageIniInt("TtfScale", 100, 50, 150);
     g_ttfWeight = ReadLanguageIniInt("TtfWeight", FW_NORMAL, 100, 900);
-    g_ttfScalePercent = ReadMarkerInt("ttfscale=", g_ttfScalePercent, 50, 150);
-    g_ttfWeight = ReadMarkerInt("ttfweight=", g_ttfWeight, 100, 900);
     PLOG_DEBUG << "[exp] ttf scale " << g_ttfScalePercent << "% weight " << g_ttfWeight;
     HookWithTrampoline(snegBase + 0x468D0, reinterpret_cast<void*>(&ChinaPass_Hook),
                        reinterpret_cast<void**>(&g_origChinaPass), "china_pass");

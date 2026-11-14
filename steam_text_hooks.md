@@ -537,6 +537,7 @@ vtable +0x20 / +0x4c …    → 위젯 폭/높이(+0x30/+0x34)를 서피스 크�
 ### 실험 모드 (코드는 남겨 둠, 기본은 꺼짐)
 
 - 켜는 법: 게임 폴더에 `kr_native_test.txt` 를 둔다. **첫 줄 = china 글꼴 높이 배율(%)**, 50~150, 기본 71. 파일을 지우면 원래(훅) 방식.
+  - **2026-11-14 부터 마커 파일 대신 `languages\ko\language.ini` `[Render]`**: `NativeCjk=1`(실험 경로), `HiRes=1`(고해상도), `CjkFontScale=71`. 마커 파일은 더 이상 읽지 않는다.
 - `IsNativeCjkTest()` ([sneg_hook.cpp](PoR_RoMD_steam/sneg_hook.cpp)) 가 참이면:
   - 950→949 패치는 그대로, ddraw CJK/마루부리 패치도 그대로.
   - 끄는 것: 배율 0 고정(`0xC58B0`, `0xC5830`), sneg 쪽 텍스트 훅 7개, 게임 입구 직접 훅, 알파 블렌딩 가드.
@@ -852,7 +853,7 @@ TtfWeight=400
 | `TtfScale` | 100 | 50~150 | 칸에 맞춘 em 에 % 를 곱한다. 작게 보이면 105~110, 크면 90~95. 100 초과는 칸(특히 위아래)을 넘어 잘릴 수 있다 |
 | `TtfWeight` | 400 | 100~900 | GDI 굵기. 700 = 굵게. 마루 부리 파일은 Regular 하나라 700 은 GDI 가 합성 굵게 만든다 |
 
-시험용으로 마커 파일 `kr_native_test.txt` 에 `ttfscale=NN` / `ttfweight=NNN` 줄을 넣으면 language.ini 보다 우선한다.
+(예전: 마커 파일의 `ttfscale=`/`ttfweight=` 줄이 우선했으나 2026-11-14 에 없앰. 이제 language.ini `[Font]` 만 읽는다.)
 마커의 `hires` 는 2단계 켜기, 첫 줄 숫자(예 `71`, 50~150)는 sneg 원래 china 렌더(`CreateFontW` 훅)의 글꼴 비율로
 2단계 우리 렌더에는 영향 없음(아틀라스에 없는 글자만 원래 렌더로 감).
 
@@ -1023,7 +1024,7 @@ TtfWeight=400
 우선순위 순. 끝나면 줄을 지우거나 "완료"로 바꾼다.
 
 ### 1. 실험 모드를 본선(기본)으로 올리기 — 가장 큼
-- 16절 1·2단계(sneg 2바이트 통로 `china_glyph.cpp`, 고해상도 마루 부리 TTF)는 아직 게임 폴더 `kr_native_test.txt`(+ `hires`)가 있을 때만 동작.
+- 16절 1·2단계(sneg 2바이트 통로 `china_glyph.cpp`, 고해상도 마루 부리 TTF)는 아직 `language.ini [Render] NativeCjk=1`(+ `HiRes=1`)일 때만 동작 (인스톨러가 넣는다).
   마커 없이 이 경로를 기본으로 쓰게 바꾼다.
 - 그러면 예전 함수 통째 훅 7개(DrawMenu, DrawTextLines, HMenu, TextLabel, WordWrap, RenderShadow, KeyInput)와 배율 0 고정을 걷어낼 수 있다
   → SNEG 업데이트 때 맞출 코드가 준다. (게임 입구 직접 훅 MenuMask/CalculateTextExtents/CalcExtentTextLabel, FontMetrics 는 유지)
@@ -1077,5 +1078,5 @@ TtfWeight=400
 
 ### 4. 개인 시험 환경 (배포와 무관)
 - `%LOCALAPPDATA%\SNEG\POR2\config.ini`: 창모드로 시험 중(원본 `config.ini.before_windowed`). `WindowWidth/Height` 를 직접 1920×1080(16:9)으로 넣었더니 창은 21:9 목록 크기로 열리면서 화면이 가로로 찌그러졌다 → 0 으로 되돌림. 창 크기 목록은 바탕 화면 해상도 × 5/6, 3/4, 2/3, 1/2 (모니터 비율 유지), 설정창에서 고른다.
-- 게임 폴더 `kr_native_test.txt` 는 `71` / 설명 / `hires` (실험 모드 + 고해상도). 일반 모드로 보려면 `.off` 로 이름 변경.
+- 실험 모드/고해상도는 `languages\ko\language.ini [Render] NativeCjk` / `HiRes` (예전 `kr_native_test.txt` 는 안 읽음). 일반 모드로 보려면 `NativeCjk=0`.
 - 게임 폴더 `languages\ko\language.ini` 의 `[UiFontSizes]` 는 더 이상 안 쓴다(지워도 됨).

@@ -141,6 +141,10 @@ def snegLanguageIni(gamePath):
         #   UiLatin            : maru = UI 영문도 마루 부리, retail = 게임 비트맵 영문
         #   [UiFontScale]      : UI 글자 크기 배율(%, 50~300). 역할 키 × 하위 키. 해상도와 무관
         #   [UiStyle]          : 행동 아이콘 툴팁 배경 불투명도(%, 0~100)
+        #   [Render] NativeCjk : 1 = sneg 자체 CJK(china) 경로로 한글 출력 (0 = 예전 텍스트 훅)
+        #            HiRes     : 1 = 고해상도 TTF 글 (config.ini [Text] ScaledEngineText=1 필요)
+        #            CjkFontScale : china 글꼴 높이 배율(%, 50~150)
+        f.write("\n[Render]\nNativeCjk=1\nHiRes=1\nCjkFontScale=71\n")
         f.write("\n[Font]\nTtfScale=100\nTtfWeight=400\n"
                 "UiFontFile=MaruBuri-Regular.ttf\nUiLatin=maru\n")
         f.write("\n[UiFontScale]\nOverlay=100\nDialogue=100\nMenu=100\nInventory=100\n"
@@ -261,7 +265,8 @@ def installSneg(gamePath):
 if __name__ == "__main__":
     print("""
 ======================================================================
-  🕹️  Pool of Radiance: Ruins of Myth Drannor 유저 한글 패치 (SNEG 재출시판)
+  🕹️  Pool of Radiance: Ruins of Myth Drannor(SNEG 재출시판) 
+                    유저 한글 패치 v2026.11.14
 ======================================================================
 
 ⚠️  [중요: 버전 호환성 안내]
@@ -311,7 +316,7 @@ if __name__ == "__main__":
 ✒️  사용 폰트 안내
 • 움돋 (Umdot, https://monadabxy.com/fonts/umdot/) - SIL Open Font License 1.1
 • 갈무리 (Galmuri, https://quiple.dev/font/galmuri) - SIL Open Font License 1.1
-• 마루 부리 (MaruBuri, 새 UI용) - SIL Open Font License 1.1
+• 마루 부리 (MaruBuri, https://hangeul.naver.com/font) - SIL Open Font License 1.1
 
 
 📁  설치 방식
