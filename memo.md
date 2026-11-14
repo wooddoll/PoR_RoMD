@@ -4,6 +4,10 @@
 - directx8.0a
     - fast memory copy인가? 키면 안됨
 
+## installer build
+* .venv\Scripts\activate
+* pyinstaller --noconfirm install.spec #--noconfirm을 붙이면 이전 결과물을 덮어쓸지 묻지 않음
+
 ## check
 * sfDat.dat: test_sfDat_dat.py,
 
