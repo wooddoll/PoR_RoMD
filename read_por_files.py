@@ -140,9 +140,9 @@ def rebuild_json(en_dialoure, kr_dialoure, export_json):
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print("Usage: python read_all_idx.py por-json <dialogue_dir> <to_export.json>")
-        print("       python read_all_idx.py json-por <en_dialoure_dir> <to_export.json> <dialogue_dir>")
-        print("       python read_all_idx.py combined <eng_dialogue_dir> <kor_dialogue_dir> <to_export.json>")
+        print("Usage: python read_por_files.py por-json <dialogue_dir> <to_export.json>")
+        print("       python read_por_files.py json-por <en_dialoure_dir> <to_export.json> <dialogue_dir>")
+        print("       python read_por_files.py combined <eng_dialogue_dir> <kor_dialogue_dir> <to_export.json>")
         print("  <dialogue_dir>     - Path to the game directory (e.g., '../Pool of Radiance/Data/Dialogue')")
         print("  <to_export.json> - JSON file containing combined dialogue data")
         sys.exit(1)

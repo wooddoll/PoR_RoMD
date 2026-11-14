@@ -6,7 +6,7 @@
     - fast memory copy인가? 키면 안됨
 
 
-[![Pool of Radiance2 (2001) 한글화 테스트 1](http://img.youtube.com/vi/ZXoTMiSzAwU/0.jpg)](https://youtu.be/ZXoTMiSzAwU)
+[![Pool of Radiance2 (2001) 한글화 테스트 2](http://img.youtube.com/vi/0i5LKx4wD0U/0.jpg)](https://youtu.be/0i5LKx4wD0U)
 
 
 ## check
