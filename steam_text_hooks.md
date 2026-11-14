@@ -1066,6 +1066,8 @@ TtfWeight=400
 - 48px 한 크기 한글 UI 글꼴(`FUN_5972b2d0`, `UiFontSize`/`UiFontMultiply`): 크기별 글꼴에 한글이 들어가서 사실상 불필요.
   빼면 시작 시간·메모리가 준다. 설정 키도 정리.
 - 설치 스크립트(`install/install.py`): 새 `version.dll`, 1번 이후 설정 반영. (`[UiFontScale]`/`[UiStyle]` 기본값은 넣음)
+  - 2026-11-14: SNEG 전용으로 정리(2001판 코드·데이터 제거). `install` 폴더 `.venv` 에서 `pyinstaller install.spec` → `dist/por2_kor_patch_sneg.exe` (아이콘 `Pool2.ico`).
+    UI 문자열은 미리 만든 `Data/sneg_ui_strings.dat`(번역문만) 값을 게임 루트 dat 의 같은 키에 덮어쓴다. 원문이 든 `translation/sneg_ui_strings_ko.json` 은 배포·커밋하지 않는다.
 - 번역 데이터 다시 빌드: 전각→반각 정규화(`kr_text.py`)를 스크립트에 넣었지만 실제 데이터 재생성은 미확인.
 - `restore_dialogues.py` 빈 항목 인덱스 어긋남 위험 (예전에 지적, 미수정).
 - UI 글꼴을 한 실행에 두 번 만든다(각 1초 남짓). 필요하면 두 번째를 피하는 방법 조사.
