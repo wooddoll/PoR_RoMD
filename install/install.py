@@ -131,7 +131,7 @@ def installDll(gamePath):
     return True
 
 
-def snegLanguageIni(gamePath):
+def snegLanguageIni(gamePath, hiRes):
     print(f"languages/{KO_LANG}/language.ini 를 만듭니다... ", end='')
     with open(os.path.join(getKoPath(gamePath), 'language.ini'), 'w', encoding='ascii', newline='\r\n') as f:
         f.write("[Language]\nCodePage=949\nRelease=Korean patch by wooddoll\n")
@@ -144,14 +144,14 @@ def snegLanguageIni(gamePath):
         #   [Render] NativeCjk : 1 = sneg 자체 CJK(china) 경로로 한글 출력 (0 = 예전 텍스트 훅)
         #            HiRes     : 1 = 고해상도 TTF 글 (config.ini [Text] ScaledEngineText=1 필요)
         #            CjkFontScale : china 글꼴 높이 배율(%, 50~150)
-        f.write("\n[Render]\nNativeCjk=1\nHiRes=1\nCjkFontScale=71\n")
+        f.write(f"\n[Render]\nNativeCjk=1\nHiRes={1 if hiRes else 0}\nCjkFontScale=71\n")
         f.write("\n[Font]\nTtfScale=100\nTtfWeight=400\n"
                 "UiFontFile=MaruBuri-Regular.ttf\nUiLatin=maru\n")
         f.write("\n[UiFontScale]\nOverlay=100\nDialogue=100\nMenu=100\nInventory=100\n"
                 "Action=100\nPrompt=100\nRadial=100\nSettings=100\n"
-                "OverlayActionPreview=130\nOverlayItem=100\nOverlayStatus=100\n"
-                "OverlayRollLog=90\nActionIconTooltip=80\n")
-        f.write("\n[UiStyle]\nActionIconTooltipOpacity=70\n")
+                "OverlayActionPreview=110\nOverlayItem=110\nOverlayStatus=110\n"
+                "OverlayRollLog=90\nActionIconTooltip=100\n")
+        f.write("\n[UiStyle]\nActionIconTooltipOpacity=50\n")
     print("ok")
     return True
 
@@ -238,27 +238,53 @@ def writeIni(path, section, key, value):
     return bool(ctypes.windll.kernel32.WritePrivateProfileStringW(section, key, value, path))
 
 
-def snegSettings():
-    # %LOCALAPPDATA%\SNEG\POR2 : config.ini [Text] CodePage=949, game_settings.ini [Text] Language=ko
+def askHiRes():
+    print(r"""
+----------------------------------------------------------------------
+🔠 고해상도 글꼴
+  켜면 대사·메뉴·이름 등 게임 글자를 화면 해상도에 맞춰 매끈한 TTF(마루 부리)로 그립니다.
+  끄면 원작처럼 800×600 비트맵 글꼴(움돋/갈무리)을 확대해서 보여 줍니다.
+  (실험 중인 기능이라 화면에 따라 어색한 곳이 있을 수 있습니다)
+
+  나중에 끄려면 아래 두 값을 0 으로 바꾸거나, 인스톨러를 다시 실행해 n 을 고르세요.
+    • <게임 폴더>\languages\ko\language.ini   [Render] HiRes=0
+    • %LOCALAPPDATA%\SNEG\POR2\config.ini     [Text]   ScaledEngineText=0
+----------------------------------------------------------------------""")
+    return askYN("고해상도 글꼴을 사용할까요?")
+
+
+def snegSettings(hiRes):
+    # %LOCALAPPDATA%\SNEG\POR2 : config.ini [Text] CodePage=949 / ScaledEngineText, game_settings.ini [Text] Language=ko
+    # ScaledEngineText: sneg 고해상도 글(*_ani) 스위치. 게임은 [Text] DefaultsRevision 이 0 이 아닐 때만 이 값을 읽는다.
     base = os.path.join(os.environ.get('LOCALAPPDATA', ''), 'SNEG', 'POR2')
+    cfg = os.path.join(base, 'config.ini')
     print("게임 설정에 한국어(코드페이지 949)를 지정합니다... ", end='')
-    ok = writeIni(os.path.join(base, 'config.ini'), 'Text', 'CodePage', '949')
+    ok = writeIni(cfg, 'Text', 'CodePage', '949')
+    ok &= writeIni(cfg, 'Text', 'ScaledEngineText', '1' if hiRes else '0')
     ok &= writeIni(os.path.join(base, 'game_settings.ini'), 'Text', 'Language', KO_LANG)
     print("ok" if ok else "실패")
+    if hiRes:
+        import ctypes
+        buf = ctypes.create_unicode_buffer(16)
+        ctypes.windll.kernel32.GetPrivateProfileStringW('Text', 'DefaultsRevision', '0', buf, 16, cfg)
+        if buf.value.strip() in ('', '0'):
+            print("  ※ 게임을 아직 한 번도 실행하지 않은 것 같습니다. 고해상도 글꼴이 안 보이면")
+            print("    게임을 한 번 실행했다가 끈 뒤 이 인스톨러를 다시 실행해 주세요.")
     return ok
 
 
 def installSneg(gamePath):
     print("\nlanguages/ko 폴더에 한국어 언어팩을 설치합니다.")
     prepareKoFolder(gamePath)
+    hiRes = askHiRes()
     return [
         ('DLL', installDll(gamePath)),
-        ('language.ini', snegLanguageIni(gamePath)),
+        ('language.ini', snegLanguageIni(gamePath, hiRes)),
         ('data', snegData(gamePath)),
         ('Bink', snegBink(gamePath)),
         ('Fonts', snegFont(gamePath)),
         ('sneg_ui_strings.dat', snegUiStrings(gamePath)),
-        ('설정', snegSettings()),
+        ('설정', snegSettings(hiRes)),
     ]
 
 
