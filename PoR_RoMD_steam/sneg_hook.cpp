@@ -133,6 +133,7 @@ static bool IsNativeCjkHiRes()
 }
 
 void InstallChinaGlyphHooks(uintptr_t snegBase, bool hiRes);   // china_glyph.cpp
+void InstallQuickSaveHook(uintptr_t snegBase);                  // quicksave.cpp
 
 // Wrap_ItemsCJK(+0x471E0)의 줄바꿈 후보 판정에서 U+2E80 이상 글자 조건을 끈다 → 공백/개행에서만 줄을 나눔.
 // 후보가 없으면 원래 코드가 줄 폭에서 강제로 끊으므로 넘치지 않는다.
@@ -236,6 +237,7 @@ void ApplySNEGPatches(uintptr_t baseAddress)
 #define MB(addr)    (baseAddress + (addr))
 
     PatchCodePage950To949(baseAddress, kSnegCp950, _countof(kSnegCp950), "sneg");
+    InstallQuickSaveHook(baseAddress);      // F5 빠른 저장 (quicksave.cpp)
 
     if (IsNativeCjkTest()) {
         // DrawMenu 그룹(FUN_5627a050)은 SNEG_Load 때 isChina(950 기준)로 판단해 이미 건너뛰었을 수 있다.

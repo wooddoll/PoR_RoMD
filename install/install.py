@@ -291,7 +291,7 @@ def installSneg(gamePath):
 if __name__ == "__main__":
     print("""
 ======================================================================
-  🕹️  Pool of Radiance: Ruins of Myth Drannor(SNEG 재출시판) 
+  🕹️  Pool of Radiance: Ruins of Myth Drannor(steam build id: 26503525) 
                     유저 한글 패치 v2026.11.14
 ======================================================================
 
