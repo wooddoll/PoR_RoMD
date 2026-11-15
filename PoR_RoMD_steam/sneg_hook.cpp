@@ -165,28 +165,6 @@ static const uint32_t kSnegCp950[] = { 0x46696, 0x46926, 0x46935, 0x4696D, 0xAE5
 //            FUN_59760450 의 요청 구조체 코드페이지(+0x8091A)
 static const uint32_t kDDrawCp950[] = { 0x4B5D4, 0x4BBC7, 0x8091A };
 
-// [진단/실험] 고해상도 텍스트 배율 판단에 쓰이는 플래그와 배율 함수 결과를 주기적으로 기록
-//   FUN_562758b0 (+0xC58B0) = DrawMenu 등 배율, FUN_56275830 (+0xC5830) = TextLabel 배율
-//   조건: (ScaledEngineText || isChina) && c8 && ca && cb && [+0x1E44EF] && 배율 >= 1.01
-static DWORD WINAPI DiagSnegScale(LPVOID p)
-{
-    const uintptr_t base = reinterpret_cast<uintptr_t>(p);
-    typedef float(__cdecl* tScale)();
-    typedef bool(__cdecl* tBool)();
-    for (int i = 0; i < 6; ++i) {
-        Sleep(i == 0 ? 3000 : 10000);
-        const uint8_t* f = reinterpret_cast<const uint8_t*>(base + 0x1E43C8);
-        float s1 = reinterpret_cast<tScale>(base + 0xC58B0)();
-        bool china = reinterpret_cast<tBool>(base + 0x46690)();
-        char buf[200];
-        sprintf_s(buf, "c8=%d SET(c9)=%d ca=%d cb=%d ef=%d legacy=%d isChina=%d scaleMenu=%.3f",
-                  f[0], f[1], f[2], f[3], *reinterpret_cast<const uint8_t*>(base + 0x1E44EF),
-                  *reinterpret_cast<const uint8_t*>(base + 0x23926C), china, s1);
-        PLOG_DEBUG << "[diag] sneg scale " << buf;
-    }
-    return 0;
-}
-
 // sneg.dll 로드 직후(SNEG_Load 전) DLL 로드 알림에서 호출됨 (dllmain.cpp). 로거가 아직 없을 수 있음
 void EarlySnegPatch(uintptr_t baseAddress)
 {
@@ -295,7 +273,6 @@ void ApplySNEGPatches(uintptr_t baseAddress)
             patchBytes(MB(0x000C58B0), kZero, sizeof(kZero));
             patchBytes(MB(0x000C5830), kZero, sizeof(kZero));
         }
-        CloseHandle(CreateThread(NULL, 0, DiagSnegScale, reinterpret_cast<LPVOID>(baseAddress), 0, NULL));
         return;     // 우리 텍스트 훅, 알파 블렌딩 가드는 생략
     }
 
@@ -582,31 +559,6 @@ static bool BuildCjkFontDir()
     g_cjkFontDirStr.size = strlen(g_cjkFontDir);
     g_cjkFontDirStr.capacity = (g_cjkFontDirStr.size < 16) ? 16 : g_cjkFontDirStr.size;
     return g_cjkFontDirStr.size >= 16;      // 16 미만이면 SSO 배치라 포인터 방식이 안 맞음 (실제로는 없음)
-}
-
-// [진단] ddraw 게임폰트/retail 글꼴 슬롯 상태가 바뀔 때마다 error.log 에 기록. 배포 전 제거
-//   +0x31A828 + i*0x200C : [0]=sneg 글리프표 받음, [1]=bit1(arial 경로), [2]=bit2(PoRGothic 경로)
-//   +0x31A384 + i*0x3C   : 글꼴 모드 (3 = retailfont 사용 가능 판정에 쓰임)
-//   +0x31A638 + i*0x3C   : 외곽선 글꼴 로드 시도함
-static DWORD WINAPI DiagDDrawFontSlots(LPVOID p)
-{
-    const uintptr_t base = reinterpret_cast<uintptr_t>(p);
-    char last[256] = {};
-    for (;;) {
-        char cur[256];
-        int n = 0;
-        for (int i = 0; i < 8; ++i) {
-            const uint8_t* g = reinterpret_cast<const uint8_t*>(base + 0x31A828 + i * 0x200C);
-            const int mode = *reinterpret_cast<const int*>(base + 0x31A384 + i * 0x3C);
-            const uint8_t tried = *reinterpret_cast<const uint8_t*>(base + 0x31A638 + i * 0x3C);
-            n += wsprintfA(cur + n, "%d:%d%d%d/m%d/o%d ", i, g[0], g[1], g[2], mode, tried);
-        }
-        if (lstrcmpA(cur, last) != 0) {
-            lstrcpyA(last, cur);
-            PLOG_DEBUG << "[diag] ddraw font slots " << cur;
-        }
-        Sleep(300);
-    }
 }
 
 // ---------------------------------------------------------------------------
@@ -1423,8 +1375,6 @@ static void InstallUiFontHooks(uintptr_t base)
 
 void ApplyDDrawPatches(uintptr_t baseAddress)
 {
-    CloseHandle(CreateThread(NULL, 0, DiagDDrawFontSlots, reinterpret_cast<LPVOID>(baseAddress), 0, NULL));
-
     PatchCodePage950To949(baseAddress, kDDrawCp950, _countof(kDDrawCp950), "ddraw");
 
     // SNEG 내레이션(DM 대사) 상자의 1차 줄바꿈: 한글은 공백에서만 (위 PatchCjkWordWrap 설명)

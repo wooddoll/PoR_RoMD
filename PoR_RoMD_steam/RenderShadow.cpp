@@ -7,19 +7,6 @@
 
 #include "help_util.h"
 
-// IDirectDrawSurface7 vtable: Blt=0x14, Lock=0x64, Unlock=0x80
-static void* g_watch = nullptr;                       // 훅에서 pDst 저장
-typedef HRESULT(__stdcall* tLock)(void*, RECT*, DDSURFACEDESC2*, DWORD, HANDLE);
-static tLock g_origLock = nullptr;
-static HRESULT __stdcall Lock_Spy(void* s, RECT* r, DDSURFACEDESC2* d, DWORD f, HANDLE h)
-{
-    //if (s == g_watch) 
-    {
-        PLOG_DEBUG << "Lock " << std::hex << std::showbase << s << " ret=" << _ReturnAddress();
-    }
-    return g_origLock(s, r, d, f, h);
-}
-
 BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
 {
     IDirectDrawSurface7* pDst = self->GetTargetSurface();
@@ -122,33 +109,6 @@ BOOL __fastcall cTextLayout_RenderShadow_Hook(cTextLayout* self, void* /*edx*/)
         yOffset += self->m_nLineHeight;
     }
 
-
-    {
-#if 0
-        if (g_watch == nullptr) {
-            uintptr_t vtable = *reinterpret_cast<uintptr_t*>(pDst);
-            uintptr_t targetAddr = vtable + 0x64;
-            uint32_t origAddr = *reinterpret_cast<uint32_t*>(targetAddr);
-            g_origLock = reinterpret_cast<tLock>(origAddr);
-            g_watch = pDst; // 관찰 대상 등록
-
-            patchDWORD(targetAddr, reinterpret_cast<uintptr_t>(Lock_Spy));
-        }
-
-		int xOffset = 0;
-        int yOffset = 0;
-        int dstRowOffset = dstPitchW * yOffset;
-        WORD* dstRow = dstBase + (dstRowOffset + xOffset);
-        int width = 5;
-        int height = 10;
-        for (int iy = 0; iy < height; ++iy) {
-            for (int ix = 0; ix < width; ++ix) {
-                dstRow[ix] = 0xF800;
-            }
-            dstRow += dstPitchW;
-        }
-#endif
-    }
     pSrc->Unlock(NULL);
     pDst->Unlock(NULL);
 

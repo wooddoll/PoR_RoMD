@@ -1098,18 +1098,21 @@ exe 주소는 고정(이미지 베이스 0x400000), sneg 주소는 Ghidra 베이
     - 시험 조건: `config.ini [Text] ScaledEngineText=1`(고해상도 글), `[Video] UiLayer` 원래 값.
 
 ### 3. 배포 전 정리
-- 진단 코드 제거:
-  - `sneg_hook.cpp` `DiagSnegScale` 스레드(실험 분기), `DiagDDrawFontSlots` 스레드(`ApplyDDrawPatches`)
-  - `WordWrap.cpp` `DiagLogText` / `DiagDumpFontSurface` (게임 폴더에 `diag_font_*.bmp` 를 쓴다)
-  - `FontMetrics.cpp` `DiagLogByteCaller`
-  - `china_glyph.cpp` 의 처음 몇 개 `[exp] ttf glyph/font` 로그는 남겨도 무방
-- 48px 한 크기 한글 UI 글꼴(`FUN_5972b2d0`, `UiFontSize`/`UiFontMultiply`): 크기별 글꼴에 한글이 들어가서 사실상 불필요.
-  빼면 시작 시간·메모리가 준다. 설정 키도 정리.
+- 진단 코드 제거 — 완료 (2026-11-15): `DiagSnegScale`, `DiagDDrawFontSlots`, `DiagLogText`/`DiagDumpFontSurface`, `DiagLogByteCaller`,
+  `RenderShadow.cpp` 의 Lock 감시(`Lock_Spy`, `#if 0` 블록). 남긴 것: `china_glyph.cpp` 처음 몇 개 `[exp]` 로그,
+  `[ddraw] UI font caller not mapped`(64개 상한, 새 하위 키 찾기용).
+- 48px 한 크기 한글 UI 글꼴 — **빼지 않음** (2026-11-15 확인). `AddCjkFont`(`FUN_5972b2d0`)가 만든 글꼴은 `ranges+0xC` 에 저장되고,
+  `FUN_597223b0` 가 아틀라스를 만든 뒤 `FUN_5972b0c0(atlas, ranges)` 가 아틀라스의 **다른 모든 글꼴**에 대해
+  그 글꼴에 없는 글자(`FUN_597ba060`(FindGlyphNoFallback) == 0)를 이 CJK 글꼴의 글리프를 크기 비율로 늘려 `FUN_597b7d40`(AddGlyph)로 넣는다.
+  즉 Built-in, SourceSans3, 게임 비트맵 글꼴 등 한글이 없는 글꼴의 한글 대체 글꼴이다. 크기별 retail 글꼴은 우리 범위에 한글이 있어 대체가 안 일어날 뿐.
+  `UiFontSize`/`UiFontMultiply` 는 이 대체 글리프에만 영향.
 - 설치 스크립트(`install/install.py`): 새 `version.dll`, 1번 이후 설정 반영. (`[UiFontScale]`/`[UiStyle]` 기본값은 넣음)
   - 2026-11-14: SNEG 전용으로 정리(2001판 코드·데이터 제거). `install` 폴더 `.venv` 에서 `pyinstaller install.spec` → `dist/por2_kor_patch_sneg.exe` (아이콘 `Pool2.ico`).
     UI 문자열은 미리 만든 `Data/sneg_ui_strings.dat`(번역문만) 값을 게임 루트 dat 의 같은 키에 덮어쓴다. 원문이 든 `translation/sneg_ui_strings_ko.json` 은 배포·커밋하지 않는다.
-- `restore_dialogues.py` 빈 항목 인덱스 어긋남 위험 (예전에 지적, 미수정).
-- UI 글꼴을 한 실행에 두 번 만든다(각 1초 남짓). 필요하면 두 번째를 피하는 방법 조사.
+- `restore_dialogues.py` 인덱스 어긋남 — 완료 (2026-11-15): 순서(인덱스)로 맞추던 안 쓰는 `main()` 을 지우고 키("퀘스트,대사")로 찾는 쪽만 남김.
+- UI 글꼴을 한 실행에 두 번 만든다(각 1초 남짓). 아틀라스 준비 `FUN_597223b0` 를 부르는 곳은 두 곳:
+  `FUN_59720de0`(동기, 마지막 인자 = 아틀라스가 비었으면 1) 과 스레드 시작 함수 `lpStartAddress_10041fb0`(+0x41FB0, 백그라운드, 마지막 인자 0).
+  어느 쪽이 왜 두 번 도는지는 런타임 확인 필요 (미착수).
 
 ### 3-1. 새 UI 문자열 번역 — 완료 (2026-11-13), 게임 확인 완료 (2026-11-15, 문제 없음)
 - `sneg_ui_strings.dat` 711개 번역(9절).
