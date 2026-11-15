@@ -24,6 +24,8 @@
 #include <cstdio>
 #include "help_util.h"
 
+bool IsKoreanSelected();    // sneg_hook.cpp
+
 namespace {
 
 typedef char(__thiscall* tSaveFile)(void* game, const char* name, int level, const char* oldFile, uint8_t isAuto);
@@ -58,13 +60,17 @@ DWORD g_loadPosted = 0;     // 빠른 불러오기 사건을 보낸 시각 (0 = 
 
 // 메시지는 '달리기 ON' 같은 상태 메시지와 같은 왼쪽 위 창(SNEG 가 ddraw TTF 로 다시 그림)에 나온다.
 // 게임 글은 EUC-KR(949) 이므로 소스의 UTF-8 문자열을 949 로 바꿔 넘긴다.
-void ShowMessage(const char* utf8)
+// 한국어가 아니면 영문 메시지를 그대로 쓴다 (그때는 949 글꼴이 없으므로)
+void ShowMessage(const char* utf8, const char* english)
 {
     wchar_t w[128];
     char mb[256];
-    if (!MultiByteToWideChar(CP_UTF8, 0, utf8, -1, w, _countof(w)) ||
-        !WideCharToMultiByte(949, 0, w, -1, mb, sizeof(mb), nullptr, nullptr))
+    if (!IsKoreanSelected()) {
+        lstrcpynA(mb, english, sizeof(mb));
+    } else if (!MultiByteToWideChar(CP_UTF8, 0, utf8, -1, w, _countof(w)) ||
+               !WideCharToMultiByte(949, 0, w, -1, mb, sizeof(mb), nullptr, nullptr)) {
         return;
+    }
     __try {
         const uintptr_t owner = *reinterpret_cast<const uintptr_t*>(kMsgOwner);
         void* self = owner ? *reinterpret_cast<void* const*>(owner + 0x2C) : nullptr;
@@ -106,10 +112,13 @@ void QuickSave()
     int* g = nullptr;
     if (!CanSave(g)) {
         PLOG_DEBUG << "[quicksave] not allowed now (mode " << *reinterpret_cast<const int*>(kGameMode) << ")";
-        ShowMessage(u8"지금은 빠른 저장을 할 수 없습니다");
+        ShowMessage(u8"지금은 빠른 저장을 할 수 없습니다", "Cannot quick save now");
         return;
     }
-    ShowMessage(SaveAs(g, "QUICKSAVE") ? u8"빠른 저장 완료" : u8"빠른 저장 실패");
+    if (SaveAs(g, "QUICKSAVE"))
+        ShowMessage(u8"빠른 저장 완료", "Quick saved");
+    else
+        ShowMessage(u8"빠른 저장 실패", "Quick save failed");
 }
 
 // 세이브 폴더: SNEG 는 게임의 ./savegames 를 %LOCALAPPDATA%\SNEG\POR2\savegames 로 돌린다. 없으면 게임 폴더 쪽.
@@ -169,13 +178,13 @@ void QuickLoad()
 {
     int* g = GameGlobals();
     if (!g || *reinterpret_cast<const int*>(kGameMode) != 3) {
-        ShowMessage(u8"지금은 빠른 불러오기를 할 수 없습니다");
+        ShowMessage(u8"지금은 빠른 불러오기를 할 수 없습니다", "Cannot quick load now");
         return;
     }
     uint32_t number = 0;
     if (!FindSaveNumber("QUICKSAVE", number)) {
         PLOG_DEBUG << "[quicksave] QUICKSAVE not found";
-        ShowMessage(u8"빠른 저장 파일이 없습니다");
+        ShowMessage(u8"빠른 저장 파일이 없습니다", "No quick save found");
         return;
     }
     void* queue = *reinterpret_cast<void**>(kEventQueue);
@@ -204,7 +213,7 @@ void CheckLoadDone()
     if (!CanSave(g))
         return;
     g_loadPosted = 0;
-    ShowMessage(u8"빠른 불러오기 완료");
+    ShowMessage(u8"빠른 불러오기 완료", "Quick loaded");
 }
 
 uint32_t __fastcall PostEvent_Hook(void* queue, void* edx,
@@ -239,7 +248,7 @@ void CheckRestAutosave()
         return;
     g_restEnded = 0;
     if (SaveAs(g, "AUTOSAVE"))
-        ShowMessage(u8"휴식 후 자동 저장 완료");
+        ShowMessage(u8"휴식 후 자동 저장 완료", "Autosaved after rest");
 }
 
 // 키를 막 눌렀는가 (게임 창이 앞에 있을 때만)

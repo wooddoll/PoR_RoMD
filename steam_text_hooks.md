@@ -303,6 +303,16 @@ por2main.exe 정적 import
 5. ✅ 확인: `languages\zh-hant\language.ini` 원래 CodePage는 950이 아니라 테스트하면서 949로 바꿔 둔 상태였음(11절),
    언어 폴더에는 `sfDat.dat`, `data\…`(데이터 덮어쓰기), `sneg_ui_strings.dat`, `language.ini`가 들어 있음.
 
+### 다른 언어를 골랐을 때 (2026-11-15)
+- SNEG 는 설정창에서 고른 언어를 `%LOCALAPPDATA%\SNEG\POR2\game_settings.ini [Text] Language` 에 언어 폴더 이름(`ko`, `de` …)으로 쓴다.
+  인스톨러는 여기에 `ko`, `config.ini [Text] CodePage=949` 를 넣는다.
+- `IsKoreanSelected()`(`sneg_hook.cpp`): 시작 때 한 번 읽어서 `ko` 가 아니면 한글 패치를 걸지 않는다. **영어를 고르면 `Language=` 빈 값**이 된다(`config.ini CodePage=949` 는 그대로 남음).
+  끄는 것: sneg/ddraw 950→949 패치와 글꼴·텍스트 훅 전부(`EarlySnegPatch`, `ApplySNEGPatches`, `ApplyDDrawPatches`), 게임 텍스트 훅(`ApplyMemoryPatches`), Bink 자막.
+  빠른 저장은 그대로 두고 메시지만 영문.
+  이전에는 언어와 상관없이 걸려서, 영어로 바꿔도 UI 글꼴이 마루 부리 + 한글 크기 배율로 바뀌어 크기가 이상했다.
+- 영어를 골라도 아이템·오브젝트 이름이 한글로 나온 것은 게임 루트 `sfDat.dat` 가 한글판으로 덮여 있었기 때문(개발용 `install/build_dialogue.bat` 이 루트에도 쓴다).
+  인스톨러는 `languages/ko` 에만 쓴다. 루트 파일은 Steam "게임 파일 무결성 확인"으로 되돌린다.
+
 ## 10. 시작 크래시 (인트로 영상 `movie010` 직후) — 해결
 
 ### 증상

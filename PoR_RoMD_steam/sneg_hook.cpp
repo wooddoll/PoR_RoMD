@@ -92,6 +92,28 @@ static void PatchCodePage950To949(uintptr_t base, const uint32_t* rvas, size_t c
 }
 
 // ---------------------------------------------------------------------------
+// 게임 설정창에서 고른 언어가 한국어인가.
+// SNEG 는 %LOCALAPPDATA%\SNEG\POR2\game_settings.ini [Text] Language 에 언어 폴더 이름(ko, de, ...)을 쓴다.
+// 다른 언어를 고르면 한글 패치(코드페이지, 글꼴, 텍스트 훅, 자막)를 모두 걸지 않는다. 영어는 빈 값(Language=)이다.
+// 시작할 때 한 번만 읽는다 (언어를 바꾸면 게임을 다시 시작해야 한다).
+// ---------------------------------------------------------------------------
+bool IsKoreanSelected()
+{
+    static int s_state = -1;
+    if (s_state < 0) {
+        char ini[MAX_PATH];
+        char lang[32] = {};
+        DWORD n = GetEnvironmentVariableA("LOCALAPPDATA", ini, MAX_PATH);
+        if (n > 0 && n + 32 < MAX_PATH) {
+            lstrcatA(ini, "\\SNEG\\POR2\\game_settings.ini");
+            GetPrivateProfileStringA("Text", "Language", "", lang, sizeof(lang), ini);
+        }
+        s_state = (lstrcmpiA(lang, "ko") == 0) ? 1 : 0;
+    }
+    return s_state == 1;
+}
+
+// ---------------------------------------------------------------------------
 // [실험] SNEG 자체 CJK(china) 렌더 경로로 한글 출력
 // languages\ko\language.ini [Render] NativeCjk=1 이면: 950->949 패치 + sneg 의 china/고해상도 경로를 그대로 쓰고
 // 우리 텍스트 훅(배율 0 고정, DrawMenu/DrawTextLines/HMenu/TextLabel/WordWrap/RenderShadow/KeyInput,
@@ -168,6 +190,8 @@ static const uint32_t kDDrawCp950[] = { 0x4B5D4, 0x4BBC7, 0x8091A };
 // sneg.dll 로드 직후(SNEG_Load 전) DLL 로드 알림에서 호출됨 (dllmain.cpp). 로거가 아직 없을 수 있음
 void EarlySnegPatch(uintptr_t baseAddress)
 {
+    if (!IsKoreanSelected())
+        return;
     PatchCodePage950To949(baseAddress, kSnegCp950, _countof(kSnegCp950), "sneg-early");
 }
 
@@ -214,6 +238,11 @@ void ApplySNEGPatches(uintptr_t baseAddress)
     PLOG_DEBUG << "[SNEG.DLL] baseAddress " << std::hex << std::showbase << baseAddress;
 #define MB(addr)    (baseAddress + (addr))
 
+    if (!IsKoreanSelected()) {
+        PLOG_DEBUG << "[SNEG.DLL] language is not ko -> Korean patches skipped";
+        InstallQuickSaveHook(baseAddress);  // 빠른 저장은 언어와 무관
+        return;
+    }
     PatchCodePage950To949(baseAddress, kSnegCp950, _countof(kSnegCp950), "sneg");
     InstallQuickSaveHook(baseAddress);      // F5 빠른 저장 (quicksave.cpp)
 
@@ -1375,6 +1404,10 @@ static void InstallUiFontHooks(uintptr_t base)
 
 void ApplyDDrawPatches(uintptr_t baseAddress)
 {
+    if (!IsKoreanSelected()) {
+        PLOG_DEBUG << "[ddraw] language is not ko -> Korean patches skipped";
+        return;
+    }
     PatchCodePage950To949(baseAddress, kDDrawCp950, _countof(kDDrawCp950), "ddraw");
 
     // SNEG 내레이션(DM 대사) 상자의 1차 줄바꿈: 한글은 공백에서만 (위 PatchCjkWordWrap 설명)

@@ -15,6 +15,7 @@ BOOL __fastcall cTextManager_DrawMenuMask_Hook(cTextManager* self, void* /*edx*/
 BOOL __fastcall cTextManager_DrawHMenu_Hook(cTextManager* self, void* /*edx*/, int /*unusedStackArg*/);
 void InstallFontMetricHooks();
 bool IsNativeCjkTest();     // sneg_hook.cpp
+bool IsKoreanSelected();    // sneg_hook.cpp
 
 /* 게임 함수 입구에 sneg(MinHook) 의 JMP 가 없을 때만 직접 훅한다.
    원본 입구는 모두 E9 가 아니다 (SUB ESP,xx 등) */
@@ -35,6 +36,11 @@ void ApplyMemoryPatches(uintptr_t baseAddress)
     uint8_t ESPtoEAX_I[5] = { 0x8b, 0x44, 0x24, 0x04, 0x90 };
     //patchBytes(0x00435e00, ESPtoEAX_I, 5); // GetCharHeight_00435e00
     //patchBytes(0x00435e30, ESPtoEAX_I, 5); // GetCharWidth_00435e30
+
+    if (!IsKoreanSelected()) {
+        PLOG_DEBUG << "[por2] language is not ko -> game text hooks skipped";
+        return;
+    }
 
     PatchRelativeCall(0x0049EDCE, reinterpret_cast<uintptr_t>(Input_Hook));
 

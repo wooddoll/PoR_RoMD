@@ -63,6 +63,7 @@ static LONG CALLBACK CrashLogVEH(PEXCEPTION_POINTERS ep)
 
 void ApplyDDrawPatches(uintptr_t baseAddress);   // sneg_hook.cpp
 void EarlySnegPatch(uintptr_t baseAddress);      // sneg_hook.cpp
+bool IsKoreanSelected();                         // sneg_hook.cpp
 
 // ---------------------------------------------------------------------------
 // sneg.dll 이 로드되는 순간(= ddraw DllMain 의 LoadLibraryA, SNEG_Load 호출 전)에 패치하기 위한 DLL 로드 알림.
@@ -123,7 +124,8 @@ DWORD WINAPI InitHookThread(LPVOID lpParam)
         if (unreg && g_snegEarlyPatched) { unreg(g_snegNotifyCookie); g_snegNotifyCookie = nullptr; }
     }
     LoadOriginalDll();
-    InstallBinkHooks();
+    if (IsKoreanSelected())      // 다른 언어면 한글 자막도 끈다
+        InstallBinkHooks();
     patchLazyDLL(L"sneg.dll", ApplySNEGPatches);
     patchLazyDLL(L"ddraw.dll", ApplyDDrawPatches);
     ApplyMemoryPatches();
