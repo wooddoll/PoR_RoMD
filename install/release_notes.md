@@ -90,3 +90,67 @@
 > **최종 동의 확인**
 > 정상적인 이용을 위해 위 안내 사항을 반드시 숙지해 주시기 바랍니다.
 > 본 프로그램을 계속 설치 및 이용하는 것은 위 내용에 동의함을 의미합니다.
+
+---
+
+# 🌐 English: Quick Save / Autosave add-on
+
+If your Windows is not set to Korean, the installer does not install the Korean translation.
+It copies only the quick save / autosave add-on (`version.dll`) to the game folder.
+
+- 🌿 Press F5 to save to a slot named 'QUICKSAVE', and F6 to load it.
+If you bound F5 or F6 to an in-game hotkey, that command runs together with save/load.
+Avoid binding these keys to prevent unexpected issues.
+- 🌿 After resting, the game is saved automatically as 'AUTOSAVE'.
+
+Updated versions are always released at <https://github.com/wooddoll/PoR_RoMD>.
+
+## 📢 Please read: terms of use
+
+By installing or using this add-on, you agree to all of the terms and notes below.
+Continue only if you have read and agree to them.
+
+### ✔ Supported version
+Made for the 2026 SNEG re-release (Steam, etc.). The 2001 original is not supported.
+It may stop working if a game update changes the game's internals.
+
+### ✔ For owners of the game only
+This add-on may be used only by people who have legitimately purchased the game (retail package, digital edition, etc.).
+
+### ✔ No commercial use or sale
+This add-on is a non-profit fan work.
+Selling, renting, or using all or part of it for commercial purposes is strictly prohibited.
+
+### ✔ Copyright
+This add-on contains only code written by the author.
+It does not include any original game data or other third-party copyrighted works.
+
+### ✔ Disclaimer
+This is an unofficial fan-made add-on. Depending on your system, the game may fail to start or errors may occur.
+The author takes no legal or material responsibility for any problems caused by installing or using it,
+such as damaged game data, corrupted save files, or system errors.
+(Backing up your game files and save data before installing is recommended.)
+
+## 📁 Installation
+
+- Copies `version.dll` and `minhook.x32.dll` to the game folder. No original game files are changed.
+- **To remove**: delete `version.dll` and `minhook.x32.dll` from the game folder.
+
+## 🛠️ Technical notes
+
+**Antivirus false positives**
+This add-on hooks game memory while the game is running.
+Because of this, some antivirus programs may wrongly flag `version.dll` as malware and block it.
+If the game does not start, add an exception for it.
+
+**Open source**
+All source code is public.
+If you are concerned about the installer's safety or want to modify it, visit the GitHub repository above
+to review the code, or download and build it yourself.
+
+---
+
+> [!NOTE]
+> **Final confirmation**
+> Please make sure you understand the notes above.
+> Continuing the installation or use means you agree to them.
