@@ -20,9 +20,31 @@ def resource_path(relative_path):
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
 
+def is_korean_windows():
+    """윈도우 표시 언어, 사용자 로케일, 시스템 코드페이지 중 하나라도 한국어면 True."""
+    try:
+        import ctypes
+        k = ctypes.windll.kernel32
+        if (k.GetUserDefaultUILanguage() & 0x3FF) == 0x12:   # LANG_KOREAN
+            return True
+        if (k.GetUserDefaultLCID() & 0x3FF) == 0x12:
+            return True
+        return k.GetACP() == 949
+    except Exception:
+        return True
+
+
+# 한국어 윈도우가 아니면 한글 패치 대신 빠른 저장/자동 저장(version.dll)만 설치한다
+IS_KO = is_korean_windows()
+
+
+def T(ko, en):
+    return ko if IS_KO else en
+
+
 embedded_data_path = resource_path('Data')
 if not os.path.exists(embedded_data_path) or not os.path.isdir(embedded_data_path):
-    print("패치 데이터를 확인할 수 없습니다.")
+    print(T("패치 데이터를 확인할 수 없습니다.", "Patch data not found."))
     sys.exit()
 
 
@@ -52,11 +74,12 @@ def check_por2(dirpath):
     if not os.path.isfile(os.path.join(dirpath, 'por2main.exe')):
         return False
     if not is_sneg(dirpath):
-        print("2001년 원본으로 보입니다. 이 인스톨러는 SNEG 재출시판(Steam 등) 전용입니다.")
+        print(T("2001년 원본으로 보입니다. 이 인스톨러는 SNEG 재출시판(Steam 등) 전용입니다.",
+                "This looks like the 2001 original. This installer supports only the 2026 SNEG re-release (Steam, etc.)."))
         return False
     for f in ('sneg.dll', 'sneg_ui_strings.dat'):
         if not os.path.isfile(os.path.join(dirpath, f)):
-            print(f"게임 폴더에 {f} 가 없습니다.")
+            print(T(f"게임 폴더에 {f} 가 없습니다.", f"{f} is missing in the game folder."))
             return False
     return True
 
@@ -71,17 +94,20 @@ def get_folder_path():
     root.withdraw()
     root.attributes('-topmost', True)
 
-    print("\\Pool of Radiance Ruins of Myth Drannor\\ 폴더, 실행파일(por2main.exe)이 있는 곳을 선택하세요.")
-    selected_path = filedialog.askdirectory(title="Pool of Radiance 게임 폴더를 선택하세요")
+    print(T("\\Pool of Radiance Ruins of Myth Drannor\\ 폴더, 실행파일(por2main.exe)이 있는 곳을 선택하세요.",
+            "Select the \\Pool of Radiance Ruins of Myth Drannor\\ folder that contains por2main.exe."))
+    selected_path = filedialog.askdirectory(title=T("Pool of Radiance 게임 폴더를 선택하세요",
+                                                    "Select the Pool of Radiance game folder"))
     if not selected_path:
-        print("폴더가 선택되지 않아 프로그램을 종료합니다.")
+        print(T("폴더가 선택되지 않아 프로그램을 종료합니다.", "No folder selected. Exiting."))
         sys.exit()
 
     gamePath = os.path.normpath(selected_path)
     if check_por2(gamePath):
         return gamePath
 
-    print(f"{gamePath}는 올바른 Pool of Radiance(SNEG 재출시판) 폴더가 아닙니다.")
+    print(T(f"{gamePath}는 올바른 Pool of Radiance(SNEG 재출시판) 폴더가 아닙니다.",
+            f"{gamePath} is not a valid Pool of Radiance (SNEG re-release) folder."))
     sys.exit()
 
 
@@ -287,6 +313,62 @@ def installSneg(gamePath):
         ('설정', snegSettings(hiRes)),
     ]
 
+
+def installQuickSaveOnly(gamePath):
+    # 한국어가 아닌 윈도우: version.dll + minhook.x32.dll 만 복사.
+    # version.dll 은 game_settings.ini [Text] Language=ko 일 때만 한글 패치를 켜므로, 다른 언어에서는 빠른 저장/자동 저장만 동작한다.
+    print("Copying version.dll and minhook.x32.dll... ", end='')
+    srcPath = os.path.join(embedded_data_path, 'version_sneg.dll')
+    if not os.path.isfile(srcPath):
+        print("failed: version_sneg.dll is missing in the patch data.")
+        return False
+    shutil.copy2(os.path.join(embedded_data_path, 'minhook.x32.dll'), gamePath)
+    shutil.copy2(srcPath, os.path.join(gamePath, 'version.dll'))
+    print("ok")
+    return True
+
+
+def mainEnglish():
+    print("""
+======================================================================
+  Pool of Radiance: Ruins of Myth Drannor (Steam build id: 26503525)
+                Quick Save / Autosave add-on
+======================================================================
+
+Your Windows is not set to Korean, so the Korean translation will not
+be installed. Only the quick save / autosave add-on (version.dll) will be
+copied to the game folder.
+
+  * F5 saves to a slot named 'QUICKSAVE', and F6 loads it.
+    If you bound F5 or F6 to an in-game hotkey, that command runs together
+    with save/load. Avoid binding these keys to prevent unexpected issues.
+  * After resting, the game is saved automatically as 'AUTOSAVE'.
+
+Supported: the 2026 SNEG re-release (Steam, etc.) only.
+To remove: delete version.dll and minhook.x32.dll from the game folder.
+
+Some antivirus programs may flag version.dll because it hooks game
+memory. If the game does not start, add an exception for it.
+Source code: https://github.com/wooddoll/PoR_RoMD
+
+This is an unofficial fan-made add-on, provided as is. Back up your save
+files before use. The author is not responsible for any damage.
+======================================================================
+""")
+    os.system("pause")
+
+    gamePath = get_folder_path()
+    if installQuickSaveOnly(gamePath):
+        print("\nDone. Start the game and press F5 to quick save, F6 to quick load.")
+    else:
+        print("\nInstallation failed.")
+    print("Report problems at https://github.com/wooddoll/PoR_RoMD/issues")
+    os.system("pause")
+
+
+if __name__ == "__main__" and not IS_KO:
+    mainEnglish()
+    sys.exit()
 
 if __name__ == "__main__":
     print("""
